@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings
 
 IS_PRODUCTION = False
 # TODO: Change the logger name to the appropriate name
-LOGGER_NAME = os.getenv("LOGGER_NAME", "backend_base")
+LOGGER_NAME = os.getenv("LOGGER_NAME", "pyagenity-api")
 
 logger = logging.getLogger(LOGGER_NAME)
 
@@ -25,16 +25,7 @@ class Settings(BaseSettings):
 
         ORIGINS (str): CORS allowed origins.
         ALLOWED_HOST (str): CORS allowed hosts.
-
-        POSTGRES_HOST (str | None): The hostname for the PostgreSQL database.
-        POSTGRES_USER (str | None): The username for the PostgreSQL database.
-        POSTGRES_PASSWORD (str | None): The password for the PostgreSQL database.
-        POSTGRES_DB (str | None): The database name for the PostgreSQL database.
-        POSTGRES_PORT (str | None): The port for the PostgreSQL database.
-
         REDIS_URL (str): The URL for the Redis server.
-
-        OPENAI_API_KEY (str): The API key for OpenAI.
 
         SENTRY_DSN (str): The DSN for Sentry error tracking.
 
@@ -64,55 +55,20 @@ class Settings(BaseSettings):
     ALLOWED_HOST: str
 
     #################################
-    ###### Database Config ##########
-    #################################
-    POSTGRES_HOST: str | None
-    POSTGRES_USER: str | None
-    POSTGRES_PASSWORD: str | None
-    POSTGRES_DB: str | None
-    POSTGRES_PORT: str | None
-
-    #################################
     ###### REDIS Config ##########
     #################################
     REDIS_URL: str
     REDIS_HOST: str
     REDIS_PORT: int
-    ###############################
-    # OPEN AI
-    ###############################
-    OPENAI_API_KEY: str
-
-    #################################
-    ###### EMAIL Config ##########
-    #################################
-    # MAIL_USERNAME: str
-    # MAIL_PASSWORD: str
-    # MAIL_FROM: str
-    # MAIL_PORT: int
-    # MAIL_SERVER: str
-    # MAIL_TLS: bool
-    # MAIL_SSL: bool
-    # USE_CREDENTIALS: bool
 
     #################################
     ###### sentry Config ############
     #################################
     SENTRY_DSN: str
 
-    # Create Email Config
-    # using FastAPI Mail
-    # def email_config(self) -> ConnectionConfig:
-    #     return ConnectionConfig(
-    #         MAIL_USERNAME=self.MAIL_USERNAME,
-    #         MAIL_PASSWORD=self.MAIL_PASSWORD,
-    #         MAIL_FROM=self.MAIL_FROM,
-    #         MAIL_PORT=self.MAIL_PORT,
-    #         MAIL_SERVER=self.MAIL_SERVER,
-    #         MAIL_TLS=self.MAIL_TLS,
-    #         MAIL_SSL=self.MAIL_SSL,
-    #         USE_CREDENTIALS=self.USE_CREDENTIALS
-    #     )
+    # JWT Auth
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str
 
     class Config:
         extra = "allow"
@@ -127,11 +83,5 @@ def get_settings() -> Settings:
         Settings: An instance of the Settings class containing
         application configurations.
     """
-    if not IS_PRODUCTION:
-        logger.info("Loading settings from .env file")
-        return Settings(
-            _env_file="./.env",
-        )
-
-    logger.debug("Loading settings from environment variables")
-    return Settings()
+    logger.info("Loading settings from environment variables and .env if present")
+    return Settings()  # type: ignore

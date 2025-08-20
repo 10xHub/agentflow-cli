@@ -1,16 +1,19 @@
+import jwt
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from firebase_admin import auth
 from starlette.responses import Response
 
 from src.app.core import logger
+from src.app.core.config.settings import get_settings
 from src.app.core.exceptions import UserAccountError
 from src.app.utils.schemas import AuthUserSchema
 
 
 def get_current_user(
     res: Response,
-    credential: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+    credential: HTTPAuthorizationCredentials = Depends(
+        HTTPBearer(auto_error=False),
+    ),
 ) -> AuthUserSchema:
     """
     Get the current user based on the provided HTTP
@@ -37,29 +40,23 @@ def get_current_user(
             message="Invalid token, please login again",
             error_code="REVOKED_TOKEN",
         )
+    settings = get_settings()
     try:
-        decoded_token = auth.verify_id_token(credential.credentials)
-    except auth.RevokedIdTokenError:
-        raise UserAccountError(
-            message="Invalid token, please login again",
-            error_code="REVOKED_TOKEN",
+        decoded_token = jwt.decode(
+            credential.credentials,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
         )
-    except auth.UserDisabledError:
+    except jwt.ExpiredSignatureError:
         raise UserAccountError(
-            message="Your account has been disabled, please contact support",
-            error_code="USER_ACCOUNT_DISABLE",
+            message="Token has expired, please login again",
+            error_code="EXPIRED_TOKEN",
         )
-    except auth.InvalidIdTokenError:
-        raise UserAccountError(
-            message="Invalid token, please login again",
-            error_code="INVALID_TOKEN",
-        )
-    except Exception as err:
-        logger.exception("AUTH ERROR", exc_info=err)
-        # pylint: disable=b904
+    except jwt.InvalidTokenError as err:
+        logger.exception("JWT AUTH ERROR", exc_info=err)
         raise UserAccountError(
             message="Invalid token, please login again",
             error_code="INVALID_TOKEN",
         )
     res.headers["WWW-Authenticate"] = 'Bearer realm="auth_required"'
-    return AuthUserSchema(**decoded_token)
+    return decoded_token
