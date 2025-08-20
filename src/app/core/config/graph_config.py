@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 
 class GraphConfig:
-    def __init__(self, path: str):
+    def __init__(self, path: str = "pyagenity.json"):
         with Path(path).open() as f:
             self.data: dict = json.load(f)
 
@@ -15,11 +15,12 @@ class GraphConfig:
             load_dotenv(env_file)
 
     @property
-    def graph_path(self) -> str | None:
+    def graph_path(self) -> str:
         graphs = self.data.get("graphs", {})
         if "agent" in graphs:
             return graphs["agent"]
-        return None
+
+        raise ValueError("Agent graph not found")
 
     @property
     def checkpointer_path(self) -> str | None:

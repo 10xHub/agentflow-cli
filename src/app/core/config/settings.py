@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     # INFO = 20
     # DEBUG = 10
     # NOTSET = 0
-    LOG_LEVEL: int
+    LOG_LEVEL: str = "INFO"
 
     SUMMARY: str = "Backend Base"
 
@@ -57,18 +57,24 @@ class Settings(BaseSettings):
     #################################
     ###### REDIS Config ##########
     #################################
-    REDIS_URL: str
-    REDIS_HOST: str
-    REDIS_PORT: int
+    REDIS_URL: str | None = None
 
     #################################
     ###### sentry Config ############
     #################################
-    SENTRY_DSN: str
+    SENTRY_DSN: str | None = None
 
     # JWT Auth
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
+
+    # Snowflake ID Generator Config
+    SNOWFLAKE_EPOCH: int
+    SNOWFLAKE_NODE_ID: int
+    SNOWFLAKE_WORKER_ID: int
+    SNOWFLAKE_TIME_BITS: int
+    SNOWFLAKE_NODE_BITS: int
+    SNOWFLAKE_WORKER_BITS: int
 
     class Config:
         extra = "allow"

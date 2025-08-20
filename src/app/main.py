@@ -1,34 +1,54 @@
-from contextlib import asynccontextmanager
+# from contextlib import asynccontextmanager
+
+import os
 
 from fastapi import FastAPI
+from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import ORJSONResponse
 from fastapi_injector import attach_injector
 from injector import Injector
+from pyagenity.checkpointer import BaseCheckpointer, BaseStore
+from pyagenity.graph import CompiledGraph
 from redis.asyncio import Redis
-from snowflakeid import SnowflakeIDConfig, SnowflakeIDGenerator
-from tortoise import Tortoise
+from snowflakekit import SnowflakeConfig, SnowflakeGenerator
 
+# from tortoise import Tortoise
 from src.app.core import get_settings, init_errors_handler, init_logger, setup_middleware
-from src.app.db import setup_db
+from src.app.core.config.graph_config import GraphConfig
+from src.app.loader import load_checkpointer, load_graph, load_store
 from src.app.routers import init_routes
 
 
 settings = get_settings()
-redis_client = Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-)
+# redis_client = Redis(
+#     host=settings.REDIS_HOST,
+#     port=settings.REDIS_PORT,
+# )
+
+graph_path = os.environ.get("GRAPH_PATH", "pyagenity.json")
+graph_config = GraphConfig(graph_path)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the cache
     # RedisCacheBackend(settings.REDIS_URL)
+    graph = await load_graph(graph_config.graph_path)
+    # save injector
+    injector.binder.bind(CompiledGraph, graph)
+
+    # load checkpointer
+    checkpointer = load_checkpointer(graph_config.checkpointer_path)
+    injector.binder.bind(BaseCheckpointer, checkpointer)
+
+    # load Store
+    store = load_store(graph_config.store_path)
+    injector.binder.bind(BaseStore, store)
+
     yield
     # Clean up
     # await close_caches()
     # close all the connections
-    await Tortoise.close_connections()
 
 
 app = FastAPI(
@@ -44,8 +64,6 @@ app = FastAPI(
 
 setup_middleware(app)
 
-setup_db(app)
-
 injector = Injector()
 attach_injector(app, injector=injector)
 
@@ -57,14 +75,17 @@ init_errors_handler(app)
 # init routes
 init_routes(app)
 
-config = SnowflakeIDConfig(
-    epoch=1609459200000,
-    node_id=1,
-    worker_id=1,
-    time_bits=39,
-    node_bits=5,
-    worker_bits=8,
+config = SnowflakeConfig(
+    epoch=settings.SNOWFLAKE_EPOCH,
+    node_id=settings.SNOWFLAKE_NODE_ID,
+    worker_id=settings.SNOWFLAKE_WORKER_ID,
+    time_bits=settings.SNOWFLAKE_TIME_BITS,
+    node_bits=settings.SNOWFLAKE_NODE_BITS,
+    worker_bits=settings.SNOWFLAKE_WORKER_BITS,
 )
 
-injector.binder.bind(SnowflakeIDGenerator, SnowflakeIDGenerator(config=config))
-injector.binder.bind(Redis, redis_client)
+injector.binder.bind(
+    SnowflakeGenerator,
+    SnowflakeGenerator(config=config),
+)
+# injector.binder.bind(Redis, redis_client)

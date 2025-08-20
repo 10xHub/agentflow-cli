@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "agent": "graph.react:app",
+    "checkpointer": "graph.react:checkpointer"
+  },
+  "env": ".env"
+}
