@@ -1,0 +1,108 @@
+[tool.aerich]
+tortoise_orm = "src.app.db.setup_database.TORTOISE_ORM"
+location = "./migrations"
+src_folder = "./."
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+lint.fixable = ["ALL"]
+lint.select = [
+    "E",   # pycodestyle
+    "W",   # pycodestyle
+    "F",   # Pyflakes
+    "PL",  # pylint
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "S",   # flake8-bandit
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "PIE", # flake8-pie
+    "Q",   # flake8-quotes
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "RUF", # Ruff-specific rules
+    "YTT", # flake8-2020
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "PTH", # flake8-use-pathlib
+    "G",   # flake8-logging-format
+    "INP", # flake8-no-pep420
+    "T20", # flake8-print
+]
+lint.ignore = [
+    "UP006", # https://github.com/charliermarsh/ruff/pull/4427
+    "UP007", # https://github.com/charliermarsh/ruff/pull/4427
+    # Mutable class attributes should be annotated with `typing.ClassVar`
+    # Too many violations
+    "RUF012",
+    # Logging statement uses f-string
+    "G004",
+    #B904 Within an `except` clause, raise exceptions with
+    #`raise ... from err` or `raise ... from None` to distinguish
+    #them from errors in exception handling
+    "B904",
+    #Do not perform function call `Injected` in argument defaults
+    "B008",
+    "ISC001",# flake8-implicit-str-concat
+]
+exclude = [
+    "migrations/*",  # Exclude the migrations folder
+    "venv/*",
+]
+# Allow unused variables when underscore-prefixed.
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+
+[tool.ruff.lint.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"bin/*.py" = ["E402", "S603", "T201", "S101"]
+"*/tests/*.py" = ["E402", "S603", "T201", "S101"]
+"*/test/*.py" = ["E402", "S603", "T201", "S101"]
+"scripts/*.py" = ["E402", "S603", "T201", "S101", "INP001"]
+"*/__init__.py" = ["E402", "S603", "T201", "S101"]
+"*/migrations/*.py" = ["E402", "S603", "T201", "S101"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+known-first-party = ["src"]
+[tool.ruff.lint.pylint]
+max-args = 10
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+[tool.bandit]
+exclude_dirs = ["*/tests/*", "*/migrations", "*/scripts/*"]
+skips = ["B101", "B611", "B601", "B608"]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+
+#[tool.mypy]
+#plugins = ["strawberry.ext.mypy_plugin"]
+
+[tool.pytest.ini_options]
+env = [
+    "ENVIRONMENT=pytest",
+]
+testpaths = [
+    "src/tests/*",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning"
+]
+
+[tool.pytest-env]
+ENVIRONMENT = "pytest"
+
