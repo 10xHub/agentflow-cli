@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from src.app.routers.checkpointer.router import router as checkpointer_router
 from src.app.routers.graph import router as graph_router
 
 
@@ -11,7 +12,7 @@ def init_routes(app: FastAPI):
     """
     Initialize the routes for the FastAPI application.
 
-    This function includes the graph router for pyagenity functionality.
+    This function includes the graph and checkpointer routers for pyagenity functionality.
     Auth and GraphQL routers are disabled for now.
 
     Args:
@@ -19,5 +20,6 @@ def init_routes(app: FastAPI):
         will be added.
     """
     app.include_router(graph_router)
+    app.include_router(checkpointer_router)
     # app.include_router(auth_router)
     # app.include_router(graphql_app, prefix="/gql")
