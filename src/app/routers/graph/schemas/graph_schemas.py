@@ -1,11 +1,12 @@
 from typing import Any, Optional
 
-from pyagenity.utils import ResponseGranularity
+from pyagenity.state import AgentState
+from pyagenity.utils import Message, ResponseGranularity
 from pydantic import BaseModel, Field
 
 
 class MessageSchema(BaseModel):
-    message_id: Optional[int] = Field(None, description="Unique identifier for the message")
+    message_id: int | None = Field(None, description="Unique identifier for the message")
     role: str = Field(
         default="user", description="Role of the message sender (user, assistant, etc.)"
     )
@@ -20,15 +21,15 @@ class GraphInputSchema(BaseModel):
     messages: list[MessageSchema] = Field(
         ..., description="List of messages to process through the graph"
     )
-    initial_state: Optional[dict[str, Any]] = Field(
+    initial_state: dict[str, Any] | None = Field(
         default=None,
         description="Initial state for the graph execution",
     )
-    config: Optional[dict[str, Any]] = Field(
+    config: dict[str, Any] | None = Field(
         default=None,
         description="Optional configuration for graph execution",
     )
-    thread_id: Optional[str] = Field(
+    thread_id: str | None = Field(
         default=None,
         description="Thread ID for conversation context",
     )
@@ -51,22 +52,23 @@ class GraphInvokeOutputSchema(BaseModel):
     Schema for graph invoke output.
     """
 
-    messages: list[dict[str, Any]] = Field(
-        ..., description="Final processed messages from the graph"
+    messages: list[Message] = Field(
+        ...,
+        description="Final processed messages from the graph",
     )
-    state: Optional[dict[str, Any]] = Field(
+    state: AgentState | None = Field(
         default=None,
         description="State information from the graph execution",
     )
-    context: Optional[list[dict[str, Any]]] = Field(
+    context: list[Message] | None = Field(
         default=None,
         description="Context information from the graph execution",
     )
-    summary: Optional[str] = Field(
+    summary: str | None = Field(
         default=None,
         description="Summary information from the graph execution",
     )
-    meta: Optional[dict[str, Any]] = Field(
+    meta: dict[str, Any] | None = Field(
         default=None,
         description="Meta information from the graph execution",
     )
@@ -78,4 +80,4 @@ class GraphStreamChunkSchema(BaseModel):
     """
 
     data: dict[str, Any] = Field(..., description="Chunk data")
-    metadata: Optional[dict[str, Any]] = Field(default=None, description="Chunk metadata")
+    metadata: dict[str, Any] | None = Field(default=None, description="Chunk metadata")

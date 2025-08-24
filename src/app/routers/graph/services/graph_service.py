@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException
 from injector import inject, singleton
@@ -105,6 +106,7 @@ class GraphService:
     async def invoke_graph(
         self,
         graph_input: GraphInputSchema,
+        user: dict[str, Any],
         background_tasks: BackgroundTasks,
     ) -> GraphInvokeOutputSchema:
         """
@@ -124,6 +126,8 @@ class GraphService:
 
             # Prepare the input
             input_data, config, meta = await self._prepare_input(graph_input)
+            # add user inside config
+            config["user"] = user
 
             # Execute the graph
             result = await self._graph.ainvoke(
@@ -136,32 +140,25 @@ class GraphService:
 
             # Extract messages from result and convert back to dictionaries
             messages: list[Message] = result.get("messages", [])
-            final_response = []
-            final_response = [
-                msg.to_dict(
-                    include_raw=graph_input.include_raw,
-                )
-                for msg in messages
-            ]
-
             state: AgentState | None = result.get("state", None)
-            context_message = []
-            if state and state.context:
-                context_message = [
-                    msg.to_dict(
-                        include_raw=graph_input.include_raw,
-                    )
-                    for msg in state.context
-                ]
+            context: list[Message] | None = result.get("context", None)
+            context_summary: str | None = result.get("context_summary", None)
+
+            # if not found read from state
+            if not context_summary and state:
+                context_summary = state.context_summary
+
+            if not context and state:
+                context = state.context
 
             # Generate background thread name
             # background_tasks.add_task(self._generate_background_thread_name, thread_id)
 
             return GraphInvokeOutputSchema(
-                messages=final_response,
-                state=state.to_dict(include_internal=graph_input.include_raw) if state else None,
-                context=context_message,
-                summary=state.context_summary if state else None,
+                messages=messages,
+                state=state,
+                context=context,
+                summary=context_summary,
                 meta=meta,
             )
 
@@ -172,6 +169,7 @@ class GraphService:
     async def stream_graph(
         self,
         graph_input: GraphInputSchema,
+        user: dict[str, Any],
         background_tasks: BackgroundTasks,
     ) -> AsyncIterator[GraphStreamChunkSchema]:
         """
@@ -192,9 +190,11 @@ class GraphService:
 
             # Prepare the config
             input_data, config, meta = await self._prepare_input(graph_input)
+            # add user inside config
+            config["user"] = user
 
             # Stream the graph execution
-            async for chunk in self._graph.astream(
+            async for chunk in await self._graph.astream(
                 input_data,
                 config=config,
                 response_granularity=graph_input.response_granularity,

@@ -33,9 +33,9 @@ class Settings(BaseSettings):
         extra (str): Configuration for handling extra fields. Default is "allow".
     """
 
-    APP_NAME: str
-    APP_VERSION: str
-    MODE: str
+    APP_NAME: str = "MyApp"
+    APP_VERSION: str = "0.1.0"
+    MODE: str = "development"
     # CRITICAL = 50
     # FATAL = CRITICAL
     # ERROR = 40
@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     #################################
     ###### CORS Config ##############
     #################################
-    ORIGINS: str
-    ALLOWED_HOST: str
+    ORIGINS: str = "*"
+    ALLOWED_HOST: str = "*"
 
     #################################
     ###### REDIS Config ##########
@@ -64,17 +64,20 @@ class Settings(BaseSettings):
     #################################
     SENTRY_DSN: str | None = None
 
-    # JWT Auth
-    JWT_SECRET_KEY: str
-    JWT_ALGORITHM: str
+    #################################
+    ###### Auth ############
+    #################################
+    JWT_SECRET_KEY: str | None
+    JWT_ALGORITHM: str | None
+    AUTH_BACKEND: str | None = None
 
     # Snowflake ID Generator Config
-    SNOWFLAKE_EPOCH: int
-    SNOWFLAKE_NODE_ID: int
-    SNOWFLAKE_WORKER_ID: int
-    SNOWFLAKE_TIME_BITS: int
-    SNOWFLAKE_NODE_BITS: int
-    SNOWFLAKE_WORKER_BITS: int
+    SNOWFLAKE_EPOCH: int = 1609459200000
+    SNOWFLAKE_NODE_ID: int = 1
+    SNOWFLAKE_WORKER_ID: int = 2
+    SNOWFLAKE_TIME_BITS: int = 39
+    SNOWFLAKE_NODE_BITS: int = 5
+    SNOWFLAKE_WORKER_BITS: int = 8
 
     class Config:
         extra = "allow"

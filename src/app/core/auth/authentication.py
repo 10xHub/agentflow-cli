@@ -1,3 +1,5 @@
+from typing import Any
+
 import jwt
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -6,15 +8,14 @@ from starlette.responses import Response
 from src.app.core import logger
 from src.app.core.config.settings import get_settings
 from src.app.core.exceptions import UserAccountError
-from src.app.utils.schemas import AuthUserSchema
 
 
-def get_current_user(
+def verify_jwt(
     res: Response,
     credential: HTTPAuthorizationCredentials = Depends(
         HTTPBearer(auto_error=False),
     ),
-) -> AuthUserSchema:
+) -> dict[str, Any]:
     """
     Get the current user based on the provided HTTP
     Authorization credentials.
@@ -41,11 +42,18 @@ def get_current_user(
             error_code="REVOKED_TOKEN",
         )
     settings = get_settings()
+
+    if settings.JWT_SECRET_KEY is None or settings.JWT_ALGORITHM is None:
+        raise UserAccountError(
+            message="JWT settings are not configured",
+            error_code="JWT_SETTINGS_NOT_CONFIGURED",
+        )
+
     try:
         decoded_token = jwt.decode(
             credential.credentials,
-            settings.JWT_SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM],
+            settings.JWT_SECRET_KEY,  # type: ignore
+            algorithms=[settings.JWT_ALGORITHM],  # type: ignore
         )
     except jwt.ExpiredSignatureError:
         raise UserAccountError(
