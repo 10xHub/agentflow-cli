@@ -71,13 +71,21 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str | None
     AUTH_BACKEND: str | None = None
 
-    # Snowflake ID Generator Config
+    #################################
+    ###### Auth ############
+    #################################
     SNOWFLAKE_EPOCH: int = 1609459200000
     SNOWFLAKE_NODE_ID: int = 1
     SNOWFLAKE_WORKER_ID: int = 2
     SNOWFLAKE_TIME_BITS: int = 39
     SNOWFLAKE_NODE_BITS: int = 5
     SNOWFLAKE_WORKER_BITS: int = 8
+
+    #################################
+    ###### Auth ############
+    #################################
+    THREAD_MODEL_NAME: str = "gemini/gemini-2.0-flash"
+    GENERATE_THREAD_NAME: bool = False
 
     class Config:
         extra = "allow"

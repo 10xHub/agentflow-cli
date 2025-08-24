@@ -7,8 +7,9 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import ORJSONResponse
 from fastapi_injector import attach_injector
 from injector import Injector
-from pyagenity.checkpointer import BaseCheckpointer, BaseStore
+from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.graph import CompiledGraph
+from pyagenity.store import BaseStore
 from redis.asyncio import Redis
 from snowflakekit import SnowflakeConfig, SnowflakeGenerator
 

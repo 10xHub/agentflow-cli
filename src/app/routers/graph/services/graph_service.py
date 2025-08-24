@@ -9,12 +9,15 @@ from pyagenity.utils import Message
 from snowflakekit import SnowflakeGenerator
 
 from src.app.core import logger
+from src.app.core.config.settings import get_settings
 from src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphStreamChunkSchema,
     MessageSchema,
 )
+
+from .thread_service import ThreadService
 
 
 @singleton
@@ -31,6 +34,7 @@ class GraphService:
         self,
         graph: CompiledGraph,
         generator: SnowflakeGenerator,
+        thread_service: ThreadService,
     ):
         """
         Initializes the GraphService with a CompiledGraph instance.
@@ -39,8 +43,10 @@ class GraphService:
             graph (CompiledGraph): An instance of CompiledGraph for
                                    graph execution operations.
         """
+        self.settings = get_settings()
         self._graph = graph
         self._generator = generator
+        self._thread_service = thread_service
 
     def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
         """
@@ -154,6 +160,14 @@ class GraphService:
             # Generate background thread name
             # background_tasks.add_task(self._generate_background_thread_name, thread_id)
 
+            if self.settings.GENERATE_THREAD_NAME:
+                background_tasks.add_task(
+                    self._thread_service.save_thread_name,
+                    config,
+                    config["thread_id"],
+                    messages,
+                )
+
             return GraphInvokeOutputSchema(
                 messages=messages,
                 state=state,
@@ -226,6 +240,9 @@ class GraphService:
 
             logger.info("Graph streaming completed successfully")
             # background_tasks.add_task(self._generate_background_thread_name, thread_id)
+            # save threads
+            # if self.settings.GENERATE_THREAD_NAME:
+            #     await self._thread_service.save_thread_name(config, config["thread_id"], messages)
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
