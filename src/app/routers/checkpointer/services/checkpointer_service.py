@@ -2,7 +2,6 @@
 
 from typing import Optional
 
-from langchain_core.runnables import RunnableConfig
 from pyagenity.base import BaseCheckpointer
 from pyagenity.memory import MemoryCheckpointer
 

@@ -5,7 +5,7 @@ Contains helper functions to generate Swagger Responses
 
 import uuid
 from datetime import datetime
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -15,11 +15,7 @@ from src.app.utils.schemas import (
 )
 
 
-# Generic Type Variable
-T = TypeVar("T")
-
-
-class _SwaggerSuccessSchemas(BaseModel, Generic[T]):
+class _SwaggerSuccessSchemas[T](BaseModel):
     """
     Swagger Success Response Schema
     """
@@ -32,7 +28,7 @@ class _SwaggerSuccessSchemas(BaseModel, Generic[T]):
     }
 
 
-class _SwaggerSuccessPaginationSchemas(BaseModel, Generic[T]):
+class _SwaggerSuccessPaginationSchemas[T](BaseModel):
     data: T
     metadata: dict = {
         "message": "Success",
@@ -116,9 +112,9 @@ class _SwaggerError426Schemas(BaseModel):
 
 
 def generate_swagger_responses(
-    model: Generic[T],  # type: ignore
+    model: type[BaseModel],
     show_pagination: bool = False,
-) -> dict[int, dict[str, Any]]:
+) -> dict[int | str, dict[str, Any]]:
     """
     Generate Swagger Responses Example, based on the provided model.
     This will generate the following responses:
@@ -134,7 +130,7 @@ def generate_swagger_responses(
     It will be used to generate redoc and swagger documentation.
 
     Args:
-        model (T): Base Pydantic Model, which will be used as response. Defaults to None.
+        model (type[BaseModel]): Base Pydantic Model class, which will be used as response.
         show_pagination (bool, optional): Show Pagination in Swagger Response. Defaults to False.
 
     Returns:

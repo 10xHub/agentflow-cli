@@ -11,7 +11,6 @@ from src.app.tasks.user_tasks import add_task_math
 from src.app.utils import generate_swagger_responses, success_response
 
 
-# dependencies=[Depends(get_current_user)]
 router = APIRouter(
     tags=["User"],
 )
@@ -29,11 +28,11 @@ async def user_details(
     user_id: UUID,
     service: UserService = Injected(UserService),
 ):
-    res2: AsyncTaskiqTask = await add_task_math.kiq(
-        x=5,
-        y=5,
-    )
-    logger.info(res2.task_id)
+    # res2: AsyncTaskiqTask = await add_task_math.kiq(
+    #     x=5,
+    #     y=5,
+    # )
+    # logger.info(res2.task_id)
 
     #
     # res3: AsyncTaskiqTask = await post_processing_user.kiq(

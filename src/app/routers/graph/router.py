@@ -8,9 +8,12 @@ from fastapi_injector import Injected
 from src.app.core.auth.auth_backend import verify_current_user
 from src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
+    GraphInvokeOutputSchema,
+    GraphStreamChunkSchema,
 )
 from src.app.routers.graph.services.graph_service import GraphService
 from src.app.utils import success_response
+from src.app.utils.swagger_helper import generate_swagger_responses
 
 
 router = APIRouter(
@@ -21,6 +24,7 @@ router = APIRouter(
 @router.post(
     "/v1/graph/invoke",
     summary="Invoke graph execution",
+    responses=generate_swagger_responses(GraphInvokeOutputSchema),
     description="Execute the graph with the provided input and return the final result",
     openapi_extra={},
 )
@@ -37,7 +41,7 @@ async def invoke_graph(
     logger.info(f"Graph invoke request received with {len(graph_input.messages)} messages")
     logger.debug(f"User info: {user}")
 
-    result = await service.invoke_graph(
+    result: GraphInvokeOutputSchema = await service.invoke_graph(
         graph_input,
         user,
         background_tasks,
@@ -46,7 +50,7 @@ async def invoke_graph(
     logger.info("Graph invoke completed successfully")
 
     return success_response(
-        result.model_dump(),
+        result,
         request,
     )
 
@@ -55,6 +59,7 @@ async def invoke_graph(
     "/v1/graph/stream",
     summary="Stream graph execution",
     description="Execute the graph with streaming output for real-time results",
+    responses=generate_swagger_responses(GraphStreamChunkSchema),
     openapi_extra={},
 )
 async def stream_graph(

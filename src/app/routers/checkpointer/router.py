@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.app.main import get_checkpointer
 from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     CheckpointerResponseSchema,
     CleanupSchema,

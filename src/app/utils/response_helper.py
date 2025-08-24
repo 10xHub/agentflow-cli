@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 
 from fastapi import Request
 from fastapi.responses import ORJSONResponse
+from openai import BaseModel
 
 from src.app.utils.schemas import (
     ErrorOutputSchema,
@@ -64,7 +65,7 @@ def merge_metadata(metadata: dict | None, request: Request, message: str = "") -
 
 
 def success_response(
-    res: T | None,
+    res: Any,
     request: Request,
     message: str = "OK",
     status_code: int = 200,
@@ -93,7 +94,6 @@ def success_response(
     return ORJSONResponse(response.model_dump(), status_code=status_code)
 
 
-# ruff: noqa: PLR0913
 def error_response(
     request: Request,
     error_code: str,
