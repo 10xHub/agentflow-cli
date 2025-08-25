@@ -1,5 +1,6 @@
 from typing import Any
 
+from injector import inject, singleton
 from litellm import acompletion
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.utils import Message
@@ -10,11 +11,13 @@ from src.app.core.config.settings import get_settings
 from .dummy_name_generator import generate_dummy_thread_name
 
 
+@singleton
 class ThreadService:
     """
     Service for thread-related operations, such as generating thread names using LLMs.
     """
 
+    @inject
     def __init__(self, checkpointer: BaseCheckpointer):
         self.settings = get_settings()
         self.model = self.settings.THREAD_MODEL_NAME or "gemini/gemini-2.0-flash"

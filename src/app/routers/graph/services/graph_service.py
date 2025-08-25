@@ -80,13 +80,59 @@ class GraphService:
 
         return converted_messages
 
+    def _serialize_chunk(self, chunk):
+        """
+        Serialize any object to a JSON-compatible format.
+
+        Args:
+            chunk: The chunk object to serialize
+
+        Returns:
+            JSON-serializable representation of the chunk
+        """
+        # If it's already a basic JSON type, return as-is
+        if chunk is None or isinstance(chunk, str | int | float | bool):
+            return chunk
+
+        # Handle collections recursively
+        if isinstance(chunk, dict):
+            return {key: self._serialize_chunk(value) for key, value in chunk.items()}
+        if isinstance(chunk, list | tuple):
+            return [self._serialize_chunk(item) for item in chunk]
+
+        # Try various serialization methods and fallbacks
+        serialization_attempts = [
+            lambda: chunk.model_dump() if hasattr(chunk, "model_dump") else None,
+            lambda: chunk.to_dict() if hasattr(chunk, "to_dict") else None,
+            lambda: chunk.dict() if hasattr(chunk, "dict") else None,
+            lambda: self._serialize_chunk(chunk.__dict__) if hasattr(chunk, "__dict__") else None,
+            lambda: str(chunk),  # Final fallback
+        ]
+
+        for attempt in serialization_attempts:
+            try:
+                result = attempt()
+                if result is not None:
+                    return result
+            except Exception as e:
+                logger.debug(f"Serialization attempt failed: {e}")
+                continue
+
+        return str(chunk)  # Should never reach here, but just in case
+
     async def _prepare_input(
         self,
         graph_input: GraphInputSchema,
     ):
+        is_new_thread = False
         config = graph_input.config or {}
-        thread_id = graph_input.thread_id or await self._generator.generate()
-        is_new_thread = bool(not graph_input.thread_id)
+        if "thread_id" in config:
+            thread_id = config["thread_id"]
+        else:
+            thread_id = await self._generator.generate()
+            is_new_thread = True
+
+        # update thread id
         config["thread_id"] = thread_id
 
         # check recursion limit set or not
@@ -213,21 +259,8 @@ class GraphService:
                 config=config,
                 response_granularity=graph_input.response_granularity,
             ):
-                # Convert any Message objects in the chunk to dictionaries
-                processed_chunk = chunk
-                if isinstance(chunk, dict):
-                    converted_chunk = {}
-                    for key, value in chunk.items():
-                        if hasattr(value, "to_dict"):
-                            converted_chunk[key] = value.to_dict()
-                        elif isinstance(value, list):
-                            converted_chunk[key] = [
-                                item.to_dict() if hasattr(item, "to_dict") else item
-                                for item in value
-                            ]
-                        else:
-                            converted_chunk[key] = value
-                    processed_chunk = converted_chunk
+                # Convert any objects in the chunk to JSON-serializable format
+                processed_chunk = self._serialize_chunk(chunk)
 
                 yield GraphStreamChunkSchema(
                     data=(

@@ -29,10 +29,6 @@ class GraphInputSchema(BaseModel):
         default=None,
         description="Optional configuration for graph execution",
     )
-    thread_id: str | None = Field(
-        default=None,
-        description="Thread ID for conversation context",
-    )
     recursion_limit: int = Field(
         default=25,
         description="Maximum recursion limit for graph execution",

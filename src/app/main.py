@@ -8,11 +8,10 @@ from injector import Injector
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.graph import CompiledGraph
 from pyagenity.store import BaseStore
-from redis.asyncio import Redis
 from snowflakekit import SnowflakeConfig, SnowflakeGenerator
 
 # from tortoise import Tortoise
-from src.app.core import get_settings, init_errors_handler, init_logger, setup_middleware
+from src.app.core import get_settings, init_errors_handler, init_logger, logger, setup_middleware
 from src.app.core.config.graph_config import GraphConfig
 from src.app.loader import load_checkpointer, load_graph, load_store
 from src.app.routers import init_routes
