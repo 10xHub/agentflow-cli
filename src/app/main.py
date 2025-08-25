@@ -1,5 +1,3 @@
-# from contextlib import asynccontextmanager
-
 import os
 
 from fastapi import FastAPI
@@ -50,6 +48,9 @@ async def lifespan(app: FastAPI):
     # Clean up
     # await close_caches()
     # close all the connections
+    if graph:
+        await graph.aclose()
+    logger.info("Application shutdown complete")
 
 
 app = FastAPI(

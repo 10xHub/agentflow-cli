@@ -1,44 +1,63 @@
 """Checkpointer API schemas."""
 
-from typing import Any, Optional
+from typing import Any
 
+from pyagenity.state import AgentState
+from pyagenity.utils import Message
 from pydantic import BaseModel, Field
 
 
-class StateSchema(BaseModel):
+########################
+#### State Related #####
+########################
+class ConfigInputSchema(BaseModel):
     """Schema for state data."""
 
     config: dict[str, Any] = Field(..., description="Configuration for the state")
-    state: dict[str, Any] = Field(..., description="State data")
+
+
+class StateResponseSchema(BaseModel):
+    """Schema for state response."""
+
+    state: AgentState | None = Field(None, description="State data")
+
+
+class PutStateSchema(BaseModel):
+    """Schema for putting state."""
+
+    config: dict[str, Any] = Field(..., description="Configuration for the state")
+    state: AgentState = Field(..., description="State data")
 
 
 class PutMessagesSchema(BaseModel):
     """Schema for putting messages."""
 
     config: dict[str, Any] = Field(..., description="Configuration for the messages")
-    messages: list[dict[str, Any]] = Field(..., description="List of message data to store")
-    metadata: Optional[dict[str, Any]] = Field(None, description="Optional metadata")
+    messages: list[Message] = Field(..., description="List of messages to store")
+    metadata: dict[str, Any] | None = Field(None, description="Optional metadata")
 
 
 class GetMessageSchema(BaseModel):
     """Schema for getting a single message."""
 
     config: dict[str, Any] = Field(..., description="Configuration for getting message")
+    message_id: str = Field(..., description="Message ID to retrieve")
 
 
 class ListMessagesSchema(BaseModel):
     """Schema for listing messages."""
 
     config: dict[str, Any] = Field(..., description="Configuration for listing messages")
-    search: Optional[str] = Field(None, description="Search query")
-    offset: Optional[int] = Field(None, description="Number of messages to skip")
-    limit: Optional[int] = Field(None, description="Maximum number of messages to return")
+    search: str | None = Field(None, description="Search query")
+    offset: int | None = Field(None, description="Number of messages to skip")
+    limit: int | None = Field(None, description="Maximum number of messages to return")
 
 
 class DeleteMessageSchema(BaseModel):
     """Schema for deleting a message."""
 
     config: dict[str, Any] = Field(..., description="Configuration for deleting message")
+    message_id: str = Field(..., description="Message ID to delete")
 
 
 class PutThreadSchema(BaseModel):
@@ -52,14 +71,23 @@ class GetThreadSchema(BaseModel):
     """Schema for getting a thread."""
 
     config: dict[str, Any] = Field(..., description="Configuration for getting thread")
+    thread_id: str = Field(..., description="Thread ID to retrieve")
 
 
 class ListThreadsSchema(BaseModel):
     """Schema for listing threads."""
 
-    search: Optional[str] = Field(None, description="Search query")
-    offset: Optional[int] = Field(None, description="Number of threads to skip")
-    limit: Optional[int] = Field(None, description="Maximum number of threads to return")
+    config: dict[str, Any] = Field(..., description="Configuration for the thread")
+    search: str | None = Field(None, description="Search query")
+    offset: int | None = Field(None, description="Number of threads to skip")
+    limit: int | None = Field(None, description="Maximum number of threads to return")
+
+
+class DeleteThreadSchema(BaseModel):
+    """Schema for deleting a thread."""
+
+    config: dict[str, Any] = Field(..., description="Configuration for deleting thread")
+    thread_id: str = Field(..., description="Thread ID to delete")
 
 
 class CleanupSchema(BaseModel):
@@ -82,41 +110,33 @@ class GetSyncStateSchema(BaseModel):
 
 
 # Response schemas
-class CheckpointerResponseSchema(BaseModel):
+class ResponseSchema(BaseModel):
     """Base response schema for checkpointer operations."""
 
     success: bool = Field(..., description="Whether the operation was successful")
     message: str = Field(..., description="Response message")
-    data: Optional[Any] = Field(None, description="Response data")
+    data: Any | None = Field(None, description="Response data")
 
 
-class StateResponseSchema(CheckpointerResponseSchema):
-    """Response schema for state operations."""
-
-    state: Optional[dict[str, Any]] = Field(None, description="State data")
-
-
-class MessageResponseSchema(CheckpointerResponseSchema):
+class MessageResponseSchema(BaseModel):
     """Response schema for message operations."""
 
-    message_data: Optional[dict[str, Any]] = Field(None, description="Message data")
+    message: Message | None = Field(None, description="Message data")
 
 
-class MessagesListResponseSchema(CheckpointerResponseSchema):
+class MessagesListResponseSchema(BaseModel):
     """Response schema for message list operations."""
 
-    messages: Optional[list[dict[str, Any]]] = Field(None, description="List of messages")
-    total: Optional[int] = Field(None, description="Total number of messages")
+    messages: list[Message] | None = Field(None, description="List of messages")
 
 
-class ThreadResponseSchema(CheckpointerResponseSchema):
+class ThreadResponseSchema(BaseModel):
     """Response schema for thread operations."""
 
-    thread_data: Optional[dict[str, Any]] = Field(None, description="Thread data")
+    thread: dict[str, Any] | None = Field(None, description="Thread data")
 
 
-class ThreadsListResponseSchema(CheckpointerResponseSchema):
+class ThreadsListResponseSchema(BaseModel):
     """Response schema for thread list operations."""
 
-    threads: Optional[list[dict[str, Any]]] = Field(None, description="List of threads")
-    total: Optional[int] = Field(None, description="Total number of threads")
+    threads: list[dict[str, Any]] | None = Field(None, description="List of threads")

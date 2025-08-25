@@ -2,8 +2,9 @@ import importlib
 import inspect
 import logging
 
-from pyagenity.checkpointer import BaseCheckpointer, BaseStore
+from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.graph import CompiledGraph
+from pyagenity.store import BaseStore
 
 
 logger = logging.getLogger("pyagenity-api.loader")

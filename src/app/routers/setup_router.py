@@ -4,10 +4,6 @@ from src.app.routers.checkpointer.router import router as checkpointer_router
 from src.app.routers.graph import router as graph_router
 
 
-# from src.app.routers.auth import router as auth_router
-# from src.app.routers.graphql import graphql_app
-
-
 def init_routes(app: FastAPI):
     """
     Initialize the routes for the FastAPI application.
@@ -21,5 +17,3 @@ def init_routes(app: FastAPI):
     """
     app.include_router(graph_router)
     app.include_router(checkpointer_router)
-    # app.include_router(auth_router)
-    # app.include_router(graphql_app, prefix="/gql")

@@ -1,35 +1,44 @@
 """Checkpointer router module."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any
 
+from fastapi import APIRouter, Depends, Request, status
+from fastapi_injector import Injected
+from pyagenity.utils import Message
+
+from src.app.core import logger
+from src.app.core.auth.auth_backend import verify_current_user
 from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
-    CheckpointerResponseSchema,
-    CleanupSchema,
-    DeleteMessageSchema,
-    GetMessageSchema,
-    ListMessagesSchema,
-    MessageResponseSchema,
+    ConfigInputSchema,
     MessagesListResponseSchema,
     PutMessagesSchema,
+    PutStateSchema,
+    ResponseSchema,
     StateResponseSchema,
-    StateSchema,
+    ThreadResponseSchema,
+    ThreadsListResponseSchema,
 )
 from src.app.routers.checkpointer.services.checkpointer_service import CheckpointerService
-from src.app.utils.response_helper import create_response_model
+from src.app.utils.response_helper import success_response
+from src.app.utils.swagger_helper import generate_swagger_responses
 
-router = APIRouter(prefix="/checkpointer", tags=["checkpointer"])
+
+router = APIRouter(tags=["checkpointer"])
 
 
-@router.post(
-    "/get-state",
-    response_model=create_response_model(StateResponseSchema),
+@router.get(
+    "/v1/checkpointer/state",
     status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(StateResponseSchema),
     summary="Get state from checkpointer",
     description="Retrieve state data from the checkpointer using configuration.",
 )
 async def get_state(
-    request: StateSchema, checkpointer=Depends(get_checkpointer)
-) -> StateResponseSchema:
+    request: Request,
+    config: dict[str, Any],
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
     """Get state from checkpointer.
 
     Args:
@@ -39,219 +48,379 @@ async def get_state(
     Returns:
         State response with state data or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.get_state(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get state: {e!s}"
-        )
+    logger.debug(f"User info: {user}")
+
+    result = await service.get_state(
+        config,
+        user,
+    )
+
+    return success_response(
+        result,
+        request,
+    )
 
 
-@router.post(
-    "/put-state",
-    response_model=create_response_model(StateResponseSchema),
+@router.put(
+    "/v1/checkpointer/state",
     status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(StateResponseSchema),
     summary="Put state to checkpointer",
     description="Store state data in the checkpointer using configuration.",
 )
 async def put_state(
-    request: StateSchema, checkpointer=Depends(get_checkpointer)
-) -> StateResponseSchema:
+    request: Request,
+    payload: PutStateSchema,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
     """Put state to checkpointer.
 
     Args:
-        request: State schema with configuration and state data
-        checkpointer: Injected checkpointer instance
+        request: Request object
+        payload: Put state schema with configuration and state data
+        service: Injected checkpointer service
+        user: Current authenticated user
 
     Returns:
-        State response indicating success or failure
+        Success response or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.put_state(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to put state: {e!s}"
-        )
+    logger.debug(f"User info: {user}")
+
+    # Convert state dict to AgentState if needed
+    res = await service.put_state(
+        payload.config,
+        user,
+        payload.state,
+    )
+
+    return success_response(
+        res,
+        request,
+    )
 
 
-@router.post(
-    "/clear-state",
-    response_model=create_response_model(CheckpointerResponseSchema),
+@router.delete(
+    "/v1/checkpointer/state",
     status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(ResponseSchema),
     summary="Clear state from checkpointer",
     description="Clear state data from the checkpointer using configuration.",
 )
 async def clear_state(
-    request: StateSchema, checkpointer=Depends(get_checkpointer)
-) -> CheckpointerResponseSchema:
+    request: Request,
+    payload: ConfigInputSchema,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
     """Clear state from checkpointer.
 
     Args:
-        request: State schema with configuration
-        checkpointer: Injected checkpointer instance
+        request: Request object
+        payload: Clear state schema with configuration
+        service: Injected checkpointer service
+        user: Current authenticated user
 
     Returns:
-        Response indicating success or failure
+        Success response or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.clear_state(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear state: {e!s}",
-        )
+    logger.debug(f"User info: {user}")
+
+    res = await service.clear_state(
+        payload.config,
+        user,
+    )
+
+    return success_response(
+        res,
+        request,
+    )
+
+
+# Now Handle Messages
 
 
 @router.post(
-    "/put-messages",
-    response_model=create_response_model(CheckpointerResponseSchema),
+    "/v1/checkpointer/messages",
     status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(ResponseSchema),
     summary="Put messages to checkpointer",
     description="Store messages in the checkpointer using configuration.",
 )
 async def put_messages(
-    request: PutMessagesSchema, checkpointer=Depends(get_checkpointer)
-) -> CheckpointerResponseSchema:
+    request: Request,
+    payload: PutMessagesSchema,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
     """Put messages to checkpointer.
 
     Args:
-        request: Put messages schema with configuration and messages
-        checkpointer: Injected checkpointer instance
+        request: Request object
+        payload: Put messages schema with configuration and messages
+        service: Injected checkpointer service
+        user: Current authenticated user
 
     Returns:
-        Response indicating success or failure
+        Success response or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.put_messages(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to put messages: {e!s}",
-        )
+    logger.debug(f"User info: {user}")
+
+    # Convert message dicts to Message objects if needed
+
+    res = await service.put_messages(
+        payload.config,
+        user,
+        payload.messages,
+        payload.metadata,
+    )
+
+    return success_response(
+        res,
+        request,
+    )
 
 
-@router.post(
-    "/get-message",
-    response_model=create_response_model(MessageResponseSchema),
+@router.get(
+    "/v1/checkpointer/messages/{message_id}",
     status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(Message),
     summary="Get message from checkpointer",
-    description="Retrieve a message from the checkpointer using configuration.",
+    description="Retrieve a specific message from the checkpointer using configuration and message ID.",
 )
 async def get_message(
-    request: GetMessageSchema, checkpointer=Depends(get_checkpointer)
-) -> MessageResponseSchema:
+    request: Request,
+    config: dict[str, Any],
+    message_id: str,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
     """Get message from checkpointer.
 
     Args:
-        request: Get message schema with configuration
-        checkpointer: Injected checkpointer instance
+        request: Request object
+        payload: Get message schema with configuration and message ID
+        service: Injected checkpointer service
+        user: Current authenticated user
 
     Returns:
         Message response with message data or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.get_message(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get message: {e!s}",
-        )
+    logger.debug(f"User info: {user}")
+
+    result = await service.get_message(
+        config,
+        user,
+        message_id,
+    )
+
+    return success_response(
+        result,
+        request,
+    )
 
 
-@router.post(
-    "/list-messages",
-    response_model=create_response_model(MessagesListResponseSchema),
+@router.get(
+    "/v1/checkpointer/messages",
     status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(MessagesListResponseSchema),
     summary="List messages from checkpointer",
-    description="Retrieve a list of messages from the checkpointer using configuration.",
+    description="Retrieve a list of messages from the checkpointer using configuration and optional filters.",
 )
 async def list_messages(
-    request: ListMessagesSchema, checkpointer=Depends(get_checkpointer)
-) -> MessagesListResponseSchema:
+    request: Request,
+    config: dict[str, Any],
+    search: str | None = None,
+    offset: int | None = None,
+    limit: int | None = None,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
     """List messages from checkpointer.
 
     Args:
-        request: List messages schema with configuration and filters
-        checkpointer: Injected checkpointer instance
+        request: Request object
+        payload: List messages schema with configuration and optional filters
+        service: Injected checkpointer service
+        user: Current authenticated user
 
     Returns:
         Messages list response with messages data or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.list_messages(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list messages: {e!s}",
-        )
+    logger.debug(f"User info: {user}")
+
+    result = await service.get_messages(
+        config,
+        user,
+        search,
+        offset,
+        limit,
+    )
+
+    return success_response(
+        result,
+        request,
+    )
 
 
-@router.post(
-    "/delete-message",
-    response_model=create_response_model(CheckpointerResponseSchema),
+@router.delete(
+    "/v1/checkpointer/messages/{message_id}",
     status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(ResponseSchema),
     summary="Delete message from checkpointer",
-    description="Delete a message from the checkpointer using configuration.",
+    description="Delete a specific message from the checkpointer using configuration and ID.",
 )
 async def delete_message(
-    request: DeleteMessageSchema, checkpointer=Depends(get_checkpointer)
-) -> CheckpointerResponseSchema:
+    request: Request,
+    message_id: str,
+    payload: ConfigInputSchema,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
     """Delete message from checkpointer.
 
     Args:
-        request: Delete message schema with configuration
-        checkpointer: Injected checkpointer instance
+        request: Request object
+        payload: Delete message schema with configuration and message ID
+        service: Injected checkpointer service
+        user: Current authenticated user
 
     Returns:
-        Response indicating success or failure
+        Success response or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.delete_message(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete message: {e!s}",
-        )
+    logger.debug(f"User info: {user}")
+
+    await service.delete_message(
+        payload.config,
+        user,
+        message_id,
+    )
+
+    return success_response(
+        {"success": True, "message": "Message deleted successfully"},
+        request,
+    )
 
 
-@router.post(
-    "/cleanup",
-    response_model=create_response_model(CheckpointerResponseSchema),
+# Handle Threads
+
+
+@router.get(
+    "/v1/checkpointer/threads/{thread_id}",
     status_code=status.HTTP_200_OK,
-    summary="Cleanup checkpointer",
-    description="Perform cleanup operations on the checkpointer.",
+    responses=generate_swagger_responses(ThreadResponseSchema),
+    summary="Get thread from checkpointer",
+    description="Retrieve a specific thread from the checkpointer using configuration.",
 )
-async def cleanup(
-    request: CleanupSchema, checkpointer=Depends(get_checkpointer)
-) -> CheckpointerResponseSchema:
-    """Cleanup checkpointer.
+async def get_thread(
+    request: Request,
+    config: dict[str, Any],
+    thread_id: str,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """Get thread from checkpointer.
 
     Args:
-        request: Cleanup schema with configuration
-        checkpointer: Injected checkpointer instance
+        request: Request object
+        payload: Get thread schema with configuration and thread ID
+        service: Injected checkpointer service
+        user: Current authenticated user
 
     Returns:
-        Response indicating success or failure
+        Thread response with thread data or error
     """
-    try:
-        service = CheckpointerService(checkpointer)
-        result = await service.cleanup(request)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to cleanup: {e!s}"
-        )
+    logger.debug(f"User info: {user}")
+
+    result = await service.get_thread(
+        config,
+        user,
+        thread_id,
+    )
+
+    return success_response(
+        {"thread_data": result},
+        request,
+    )
+
+
+@router.get(
+    "/v1/checkpointer/threads",
+    status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(ThreadsListResponseSchema),
+    summary="List threads from checkpointer",
+    description="Retrieve a list of threads from the checkpointer with optional filters.",
+)
+async def list_threads(
+    request: Request,
+    config: dict[str, Any],
+    search: str | None = None,
+    offset: int | None = None,
+    limit: int | None = None,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """List threads from checkpointer.
+
+    Args:
+        request: Request object
+        payload: List threads schema with configuration and optional filters
+        service: Injected checkpointer service
+        user: Current authenticated user
+
+    Returns:
+        Threads list response with threads data or error
+    """
+    logger.debug(f"User info: {user}")
+
+    result = await service.list_threads(
+        config,
+        user,
+        search,
+        offset,
+        limit,
+    )
+
+    return success_response(
+        result,
+        request,
+    )
+
+
+@router.delete(
+    "/v1/checkpointer/threads/{thread_id}",
+    status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(ResponseSchema),
+    summary="Delete thread from checkpointer",
+    description="Delete a specific thread from the checkpointer using configuration and thread ID.",
+)
+async def delete_thread(
+    request: Request,
+    thread_id: str | int,
+    payload: ConfigInputSchema,
+    service: CheckpointerService = Injected(CheckpointerService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """Delete thread from checkpointer.
+
+    Args:
+        request: Request object
+        payload: Delete thread schema with configuration and thread ID
+        service: Injected checkpointer service
+        user: Current authenticated user
+
+    Returns:
+        Success response or error
+    """
+    logger.debug(f"User info: {user} and thread ID: {thread_id}")
+
+    res = await service.delete_thread(
+        payload.config,
+        user,
+        thread_id,
+    )
+
+    return success_response(
+        res,
+        request,
+    )
