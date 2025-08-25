@@ -6,6 +6,7 @@ from pyagenity.state import AgentState
 from pyagenity.utils import Message
 
 from src.app.core import logger
+from src.app.core.config.settings import get_settings
 from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     MessagesListResponseSchema,
     ResponseSchema,
@@ -19,12 +20,14 @@ from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
 class CheckpointerService:
     def __init__(self, checkpointer: BaseCheckpointer[AgentState]):
         self.checkpointer = checkpointer
+        self.settings = get_settings(0)
 
     def _config(self, config: dict, user: dict):
         if not self.checkpointer:
             raise ValueError("Checkpointer is not configured")
 
-        config["is_user"] = user
+        config["user"] = user
+        config["user_id"] = user.get(self.settings.USER_ID_KEY, None)
         return config
 
     async def get_state(self, config: dict, user: dict) -> StateResponseSchema:
@@ -121,21 +124,20 @@ class CheckpointerService:
         )
 
     # Now Thread
-    async def get_thread(self, config: dict, user: dict, thread_id: str) -> ThreadResponseSchema:
+    async def get_thread(self, config: dict, user: dict) -> ThreadResponseSchema:
         config = self._config(config, user)
-        logger.debug(f"User info: {user} and thread ID: {thread_id}")
+        logger.debug(f"User info: {user} and")
         res = await self.checkpointer.aget_thread(config)
         return ThreadResponseSchema(thread=res)
 
     async def list_threads(
         self,
-        config: dict[str, Any],
         user: dict,
         search: str | None = None,
         offset: int | None = None,
         limit: int | None = None,
     ) -> ThreadsListResponseSchema:
-        config = self._config(config, user)
+        config = self._config({}, user)
         res = await self.checkpointer.alist_threads(config, search, offset, limit)
         return ThreadsListResponseSchema(threads=res)
 

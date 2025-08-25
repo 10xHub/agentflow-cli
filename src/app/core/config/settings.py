@@ -86,6 +86,7 @@ class Settings(BaseSettings):
     #################################
     THREAD_MODEL_NAME: str = "gemini/gemini-2.0-flash"
     GENERATE_THREAD_NAME: bool = False
+    USER_ID_KEY: str = "user_id"
 
     class Config:
         extra = "allow"

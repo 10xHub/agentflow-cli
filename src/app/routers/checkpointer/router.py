@@ -27,7 +27,7 @@ router = APIRouter(tags=["checkpointer"])
 
 
 @router.get(
-    "/v1/checkpointer/state",
+    "/v1/threads/{thread_id}/state",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(StateResponseSchema),
     summary="Get state from checkpointer",
@@ -35,7 +35,7 @@ router = APIRouter(tags=["checkpointer"])
 )
 async def get_state(
     request: Request,
-    config: dict[str, Any],
+    thread_id: int | str,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -50,6 +50,8 @@ async def get_state(
     """
     logger.debug(f"User info: {user}")
 
+    config = {"thread_id": thread_id}
+
     result = await service.get_state(
         config,
         user,
@@ -62,7 +64,7 @@ async def get_state(
 
 
 @router.put(
-    "/v1/checkpointer/state",
+    "/v1/threads/{thread_id}/state",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(StateResponseSchema),
     summary="Put state to checkpointer",
@@ -70,6 +72,7 @@ async def get_state(
 )
 async def put_state(
     request: Request,
+    thread_id: str | int,
     payload: PutStateSchema,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
@@ -86,10 +89,13 @@ async def put_state(
         Success response or error
     """
     logger.debug(f"User info: {user}")
+    config = {"thread_id": thread_id}
+    if payload.config:
+        config.update(payload.config)
 
     # Convert state dict to AgentState if needed
     res = await service.put_state(
-        payload.config,
+        config,
         user,
         payload.state,
     )
@@ -101,7 +107,7 @@ async def put_state(
 
 
 @router.delete(
-    "/v1/checkpointer/state",
+    "/v1/threads/{thread_id}/state",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(ResponseSchema),
     summary="Clear state from checkpointer",
@@ -109,7 +115,7 @@ async def put_state(
 )
 async def clear_state(
     request: Request,
-    payload: ConfigInputSchema,
+    thread_id: int | str,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -125,9 +131,10 @@ async def clear_state(
         Success response or error
     """
     logger.debug(f"User info: {user}")
+    config = {"thread_id": thread_id}
 
     res = await service.clear_state(
-        payload.config,
+        config,
         user,
     )
 
@@ -141,7 +148,7 @@ async def clear_state(
 
 
 @router.post(
-    "/v1/checkpointer/messages",
+    "/v1/threads/{thread_id}/messages",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(ResponseSchema),
     summary="Put messages to checkpointer",
@@ -149,6 +156,7 @@ async def clear_state(
 )
 async def put_messages(
     request: Request,
+    thread_id: str | int,
     payload: PutMessagesSchema,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
@@ -167,9 +175,12 @@ async def put_messages(
     logger.debug(f"User info: {user}")
 
     # Convert message dicts to Message objects if needed
+    config = {"thread_id": thread_id}
+    if payload.config:
+        config.update(payload.config)
 
     res = await service.put_messages(
-        payload.config,
+        config,
         user,
         payload.messages,
         payload.metadata,
@@ -182,7 +193,7 @@ async def put_messages(
 
 
 @router.get(
-    "/v1/checkpointer/messages/{message_id}",
+    "/v1/threads/{thread_id}/messages/{message_id}",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(Message),
     summary="Get message from checkpointer",
@@ -190,8 +201,8 @@ async def put_messages(
 )
 async def get_message(
     request: Request,
-    config: dict[str, Any],
-    message_id: str,
+    thread_id: str | int,
+    message_id: str | int,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -207,6 +218,7 @@ async def get_message(
         Message response with message data or error
     """
     logger.debug(f"User info: {user}")
+    config = {"thread_id": thread_id}
 
     result = await service.get_message(
         config,
@@ -221,15 +233,16 @@ async def get_message(
 
 
 @router.get(
-    "/v1/checkpointer/messages",
+    "/v1/threads/{thread_id}/messages",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(MessagesListResponseSchema),
     summary="List messages from checkpointer",
-    description="Retrieve a list of messages from the checkpointer using configuration and optional filters.",
+    description="Retrieve a list of messages from the checkpointer using configuration "
+    "and optional filters.",
 )
 async def list_messages(
     request: Request,
-    config: dict[str, Any],
+    thread_id: int | str,
     search: str | None = None,
     offset: int | None = None,
     limit: int | None = None,
@@ -248,6 +261,7 @@ async def list_messages(
         Messages list response with messages data or error
     """
     logger.debug(f"User info: {user}")
+    config = {"thread_id": thread_id}
 
     result = await service.get_messages(
         config,
@@ -264,7 +278,7 @@ async def list_messages(
 
 
 @router.delete(
-    "/v1/checkpointer/messages/{message_id}",
+    "/v1/threads/{thread_id}/messages/{message_id}",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(ResponseSchema),
     summary="Delete message from checkpointer",
@@ -272,7 +286,8 @@ async def list_messages(
 )
 async def delete_message(
     request: Request,
-    message_id: str,
+    message_id: str | int,
+    thread_id: str | int,
     payload: ConfigInputSchema,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
@@ -289,9 +304,12 @@ async def delete_message(
         Success response or error
     """
     logger.debug(f"User info: {user}")
+    config = {"thread_id": thread_id}
+    if payload.config:
+        config.update(payload.config)
 
     await service.delete_message(
-        payload.config,
+        config,
         user,
         message_id,
     )
@@ -306,7 +324,7 @@ async def delete_message(
 
 
 @router.get(
-    "/v1/checkpointer/threads/{thread_id}",
+    "/v1/threads/{thread_id}",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(ThreadResponseSchema),
     summary="Get thread from checkpointer",
@@ -314,8 +332,7 @@ async def delete_message(
 )
 async def get_thread(
     request: Request,
-    config: dict[str, Any],
-    thread_id: str,
+    thread_id: str | int,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -333,9 +350,8 @@ async def get_thread(
     logger.debug(f"User info: {user}")
 
     result = await service.get_thread(
-        config,
+        {"thread_id": thread_id},
         user,
-        thread_id,
     )
 
     return success_response(
@@ -345,7 +361,7 @@ async def get_thread(
 
 
 @router.get(
-    "/v1/checkpointer/threads",
+    "/v1/threads",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(ThreadsListResponseSchema),
     summary="List threads from checkpointer",
@@ -353,7 +369,6 @@ async def get_thread(
 )
 async def list_threads(
     request: Request,
-    config: dict[str, Any],
     search: str | None = None,
     offset: int | None = None,
     limit: int | None = None,
@@ -374,7 +389,6 @@ async def list_threads(
     logger.debug(f"User info: {user}")
 
     result = await service.list_threads(
-        config,
         user,
         search,
         offset,
@@ -388,7 +402,7 @@ async def list_threads(
 
 
 @router.delete(
-    "/v1/checkpointer/threads/{thread_id}",
+    "/v1/threads/{thread_id}",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(ResponseSchema),
     summary="Delete thread from checkpointer",
