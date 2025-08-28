@@ -13,6 +13,7 @@ from src.app.core.config.settings import get_settings
 from src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
+    GraphSchema,
     GraphStreamChunkSchema,
     MessageSchema,
 )
@@ -280,3 +281,13 @@ class GraphService:
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
             raise HTTPException(status_code=500, detail=f"Graph streaming failed: {e!s}")
+
+    async def graph_details(self) -> GraphSchema:
+        try:
+            logger.info("Getting graph details")
+            # Fetch and return graph details
+            res = self._graph.generate_graph()
+            return GraphSchema(**res)
+        except Exception as e:
+            logger.error(f"Failed to get graph details: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to get graph details: {e!s}")

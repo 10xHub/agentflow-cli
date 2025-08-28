@@ -77,3 +77,39 @@ class GraphStreamChunkSchema(BaseModel):
 
     data: dict[str, Any] = Field(..., description="Chunk data")
     metadata: dict[str, Any] | None = Field(default=None, description="Chunk metadata")
+
+
+class NodeSchema(BaseModel):
+    """Schema for individual graph nodes."""
+
+    id: str = Field(..., description="Unique identifier for the node")
+    name: str = Field(..., description="Name of the node")
+
+
+class EdgeSchema(BaseModel):
+    """Schema for individual graph edges."""
+
+    id: str = Field(..., description="Unique identifier for the edge")
+    source: str = Field(..., description="Source node identifier")
+    target: str = Field(..., description="Target node identifier")
+
+
+class GraphInfoSchema(BaseModel):
+    """Schema for graph metadata and configuration."""
+
+    node_count: int = Field(..., description="Number of nodes in the graph")
+    edge_count: int = Field(..., description="Number of edges in the graph")
+    checkpointer: bool = Field(..., description="Whether checkpointer is enabled")
+    checkpointer_type: str | None = Field(None, description="Type of checkpointer if enabled")
+    publisher: bool = Field(..., description="Whether publisher is enabled")
+    store: bool = Field(..., description="Whether store is enabled")
+    interrupt_before: list[str] | None = Field(None, description="Nodes to interrupt before")
+    interrupt_after: list[str] | None = Field(None, description="Nodes to interrupt after")
+
+
+class GraphSchema(BaseModel):
+    """Schema for the complete graph structure."""
+
+    info: GraphInfoSchema = Field(..., description="Graph metadata and configuration")
+    nodes: list[NodeSchema] = Field(..., description="List of nodes in the graph")
+    edges: list[EdgeSchema] = Field(..., description="List of edges in the graph")

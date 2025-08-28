@@ -9,6 +9,7 @@ from src.app.core.auth.auth_backend import verify_current_user
 from src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
+    GraphSchema,
     GraphStreamChunkSchema,
 )
 from src.app.routers.graph.services.graph_service import GraphService
@@ -101,4 +102,31 @@ async def stream_graph(
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
         },
+    )
+
+
+@router.get(
+    "/v1/graph",
+    summary="Invoke graph execution",
+    responses=generate_swagger_responses(GraphSchema),
+    description="Execute the graph with the provided input and return the final result",
+    openapi_extra={},
+)
+async def graph_details(
+    request: Request,
+    service: GraphService = Injected(GraphService),
+    _: dict[str, Any] = Depends(verify_current_user),
+):
+    """
+    Invoke the graph with the provided input and return the final result.
+    """
+    logger.info("Graph getting details")
+
+    result: GraphSchema = await service.graph_details()
+
+    logger.info("Graph invoke completed successfully")
+
+    return success_response(
+        result,
+        request,
     )
