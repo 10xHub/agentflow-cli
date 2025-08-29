@@ -130,3 +130,30 @@ async def graph_details(
         result,
         request,
     )
+
+
+@router.get(
+    "/v1/graph:StateSchema",
+    summary="Invoke graph execution",
+    responses=generate_swagger_responses(GraphSchema),
+    description="Execute the graph with the provided input and return the final result",
+    openapi_extra={},
+)
+async def state_schema(
+    request: Request,
+    service: GraphService = Injected(GraphService),
+    _: dict[str, Any] = Depends(verify_current_user),
+):
+    """
+    Invoke the graph with the provided input and return the final result.
+    """
+    logger.info("Graph getting details")
+
+    result: dict = await service.get_state_schema()
+
+    logger.info("Graph invoke completed successfully")
+
+    return success_response(
+        result,
+        request,
+    )

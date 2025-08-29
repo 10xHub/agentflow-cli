@@ -126,13 +126,3 @@ graph.set_entry_point("MAIN")
 app = graph.compile(
     checkpointer=checkpointer,
 )
-
-
-# # now run it
-
-# inp = {"messages": [Message.from_text("Please call the get_weather function for New York City")]}
-# config = {"thread_id": "12345", "recursion_limit": 10}
-
-# res = app.invoke(inp, config=config)
-
-# print(res)

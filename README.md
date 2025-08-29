@@ -1,53 +1,77 @@
 
-# Project Documentation
+# Pyagenity API
 
-## Table of Contents
-1. [Introduction](#introduction)
-2. [Project Structure](#project-structure)
-3. [Setup](#setup)
-   - [Prerequisites](#prerequisites)
-   - [Installation](#installation)
-4. [Database](#database)
-   - [Configuration](#database-configuration)
-   - [Migration](#database-migration)
-5. [Running the Application](#running-the-application)
-   - [Command Line](#command-line)
-   - [VS Code](#vs-code)
-6. [Development](#development)
-   - [Pre-commit Hooks](#pre-commit-hooks)
-   - [Code Style](#code-style)
-7. [API Documentation](#api-documentation)
-8. [Testing](#testing)
+A Python library for building AI agent graphs with FastAPI backend and CLI tools.
 
+## Installation
 
-## Introduction
-Welcome to the 10XScale-in Backend Base project. This FastAPI-based application serves as a robust foundation for building scalable and efficient backend services. Our project is designed with modern development practices in mind, offering a streamlined setup process and powerful features to accelerate your development workflow.
+```bash
+pip install pyagenity-api
+```
 
-Key Features:
-- FastAPI framework for high-performance, easy-to-use REST APIs
-- Aerich for smooth database migrations and management
-- Pre-commit hooks for maintaining code quality
-- VS Code integration for enhanced debugging capabilities
-- Comprehensive documentation to guide you through setup and development
+## Quick Start
 
-This backend base is ideal for developers looking to quickly bootstrap a new project or for teams aiming to standardize their backend infrastructure. Whether you're building a small service or laying the groundwork for a large-scale application, our project provides the tools and structure you need to succeed.
+1. **Initialize a new project:**
+```bash
+pyagenity init
+```
 
-The documentation that follows will guide you through setting up your development environment, running the application, managing the database, and contributing to the project. We've designed this guide to be as comprehensive as possible, ensuring that both newcomers and experienced developers can quickly get up to speed.
+2. **Create your graph file (e.g., `my_graph.py`):**
+```python
+from pyagenity.graph import StateGraph
+from pyagenity.state.agent_state import AgentState
 
-Let's get started on building your next great backend service!
+# Your graph logic here
+```
+
+3. **Update `pyagenity.json`:**
+```json
+{
+  "graphs": {
+    "my_agent": "my_graph:app"
+  }
+}
+```
+
+4. **Run the API server:**
+```bash
+pyagenity api
+```
+
+## CLI Commands
+
+- `pyagenity init` - Create a default config file
+- `pyagenity api` - Start the API server
+- `pyagenity version` - Show version information
+
+## Configuration
+
+The `pyagenity.json` file supports:
+
+```json
+{
+  "graphs": {
+    "agent_name": "module.path:object_name"
+  },
+  "env": ".env",
+  "auth": "None"
+}
+```
+
+## File Resolution
+
+The CLI automatically finds your config file in this order:
+1. Absolute path (if provided)
+2. Current working directory
+3. Package installation directory (fallback)
 
 ## Project Structure
 ```
-project_root/
-├── src/
-│   └── app/
-│       ├── main.py
-│       └── db/
-│           └── setup_database.py
-├── tests/
-├── requirements.txt
-├── .pre-commit-config.yaml
-└── README.md
+your_project/
+├── pyagenity.json          # Configuration file
+├── my_graph.py            # Your graph implementation
+├── requirements.txt       # Your dependencies
+└── .env                   # Environment variables
 ```
 
 ## Setup

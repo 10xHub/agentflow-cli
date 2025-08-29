@@ -1,7 +1,95 @@
-[tool.aerich]
-tortoise_orm = "src.app.db.setup_database.TORTOISE_ORM"
-location = "./migrations"
-src_folder = "./."
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyagenity-api"
+version = "1.0.0"
+description = "A Python API framework with GraphQL support and task management"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Shudipto Trafder", email = "iamsdt@duck.com"},
+]
+maintainers = [
+    {name = "Shudipto Trafder", email = "iamsdt@duck.com"},
+]
+keywords = ["api", "fastapi", "graphql", "task-management", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Framework :: FastAPI",
+]
+dependencies = [
+    "aerich==0.7.2",
+    "aiosmtplib==2.0.2",
+    "aiofiles==24.1.0",
+    "asyncpg",
+    "fastapi",
+    "firebase-admin==6.5.0",
+    "gunicorn==23.0.0",
+    "httpx==0.27.0",
+    "injector==0.22.0",
+    "lib==4.0.0",
+    "markdown-it-py==3.0.0",
+    "mkdocs-gen-files==0.5.0",
+    "mkdocstrings==0.25.2",
+    "mypy-extensions==1.0.0",
+    "oauth2client==4.1.3",
+    "orjson",
+    "pre-commit==3.8.0",
+    "python-multipart==0.0.19",
+    "pydantic==2.8.2",
+    "pydantic-settings==2.3.4",
+    "pytest==8.3.2",
+    "pytest-env==1.1.3",
+    "redis==5.0.7",
+    "requests==2.32.3",
+    "ruff==0.5.2",
+    "sentry-sdk==2.10.0",
+    "snowflakekit",
+    "starlette==0.40.0",
+    "strawberry-graphql==0.257.0",
+    "taskiq==0.11.10",
+    "taskiq-redis==1.0.0",
+    "tortoise==0.1.1",
+    "tortoise-orm==0.22.1",
+    "uvicorn==0.30.1",
+    "typer",
+    "python-dotenv",
+]
+
+[project.urls]
+Homepage = "https://github.com/Iamsdt/pyagenity-api"
+Repository = "https://github.com/Iamsdt/pyagenity-api"
+Issues = "https://github.com/Iamsdt/pyagenity-api/issues"
+Documentation = "https://pyagenity-api.readthedocs.io/"
+
+[project.scripts]
+pyagenity = "cli:main"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "graph*", "migrations*", "scripts*"]
+exclude = ["tests*", "docs*", "__pycache__*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.yaml", "*.yml", "*.md", "*.txt"]
 
 [tool.ruff]
 line-length = 100

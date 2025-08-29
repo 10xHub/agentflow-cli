@@ -291,3 +291,13 @@ class GraphService:
         except Exception as e:
             logger.error(f"Failed to get graph details: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get graph details: {e!s}")
+
+    async def get_state_schema(self) -> dict:
+        try:
+            logger.info("Getting state schema")
+            # Fetch and return state schema
+            res = self._graph.state_graph.state
+            return res.model_json_schema()
+        except Exception as e:
+            logger.error(f"Failed to get state schema: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to get state schema: {e!s}")

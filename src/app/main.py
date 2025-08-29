@@ -37,6 +37,7 @@ async def lifespan(app: FastAPI):
 
     # load checkpointer
     checkpointer = load_checkpointer(graph_config.checkpointer_path)
+    print("******Checkpointer", checkpointer)
     injector.binder.bind(BaseCheckpointer, checkpointer)
 
     # load Store

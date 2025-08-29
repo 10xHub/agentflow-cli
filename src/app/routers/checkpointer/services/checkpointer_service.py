@@ -1,6 +1,6 @@
 from typing import Any
 
-from injector import singleton
+from injector import inject, singleton
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.state import AgentState
 from pyagenity.utils import Message
@@ -18,9 +18,10 @@ from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
 
 @singleton
 class CheckpointerService:
-    def __init__(self, checkpointer: BaseCheckpointer[AgentState]):
+    @inject
+    def __init__(self, checkpointer: BaseCheckpointer):
         self.checkpointer = checkpointer
-        self.settings = get_settings(0)
+        self.settings = get_settings()
 
     def _config(self, config: dict, user: dict):
         if not self.checkpointer:
