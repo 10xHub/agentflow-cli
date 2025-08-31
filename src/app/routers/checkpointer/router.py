@@ -290,7 +290,7 @@ async def delete_message(
     request: Request,
     message_id: str | int,
     thread_id: str | int,
-    payload: StateSchema,
+    payload: ConfigSchema,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
