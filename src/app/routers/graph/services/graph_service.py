@@ -4,7 +4,6 @@ from typing import Any
 from fastapi import BackgroundTasks, HTTPException
 from injector import inject, singleton
 from pyagenity.graph import CompiledGraph
-from pyagenity.state import AgentState
 from pyagenity.utils import Message
 from snowflakekit import SnowflakeGenerator
 
@@ -191,18 +190,30 @@ class GraphService:
 
             logger.info("Graph execution completed successfully")
 
-            # Extract messages from result and convert back to dictionaries
+            # Extract messages and state from result
             messages: list[Message] = result.get("messages", [])
-            state: AgentState | None = result.get("state", None)
+            raw_state = result.get("state", None)
             context: list[Message] | None = result.get("context", None)
             context_summary: str | None = result.get("context_summary", None)
 
-            # if not found read from state
-            if not context_summary and state:
-                context_summary = state.context_summary
+            # If not found, try reading from state (supports both dict and model)
+            if not context_summary and raw_state is not None:
+                try:
+                    if isinstance(raw_state, dict):
+                        context_summary = raw_state.get("context_summary")
+                    else:
+                        context_summary = getattr(raw_state, "context_summary", None)
+                except Exception:
+                    context_summary = None
 
-            if not context and state:
-                context = state.context
+            if not context and raw_state is not None:
+                try:
+                    if isinstance(raw_state, dict):
+                        context = raw_state.get("context")
+                    else:
+                        context = getattr(raw_state, "context", None)
+                except Exception:
+                    context = None
 
             # Generate background thread name
             # background_tasks.add_task(self._generate_background_thread_name, thread_id)
@@ -215,9 +226,12 @@ class GraphService:
                     messages,
                 )
 
+            # state can be instance of pydentic or dict
+            state_dict = raw_state.model_dump() if raw_state is not None else raw_state  # type: ignore
+
             return GraphInvokeOutputSchema(
                 messages=messages,
-                state=state,
+                state=state_dict,
                 context=context,
                 summary=context_summary,
                 meta=meta,

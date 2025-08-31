@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 
+
 try:
     import importlib.resources
 
@@ -12,9 +13,9 @@ except ImportError:
     importlib = None  # type: ignore
     HAS_IMPORTLIB_RESOURCES = False
 
-from dotenv import load_dotenv
 import typer
 import uvicorn
+from dotenv import load_dotenv
 
 
 load_dotenv()

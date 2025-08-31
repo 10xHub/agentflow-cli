@@ -5,11 +5,11 @@ from .exceptions.handle_errors import init_errors_handler
 
 
 __all__ = [
-    "get_settings",
-    "Settings",
     "LOGGER_NAME",
-    "logger",
-    "init_logger",
+    "Settings",
+    "get_settings",
     "init_errors_handler",
+    "init_logger",
+    "logger",
     "setup_middleware",
 ]

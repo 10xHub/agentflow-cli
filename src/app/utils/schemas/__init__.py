@@ -4,8 +4,8 @@ from .user_schemas import AuthUserSchema
 
 __all__ = [
     "AuthUserSchema",
-    "ErrorSchemas",
     "ErrorOutputSchema",
     "ErrorResponse",
+    "ErrorSchemas",
     "SuccessResponse",
 ]

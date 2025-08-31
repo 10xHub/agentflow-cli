@@ -19,7 +19,6 @@ from typing import Any, TypeVar
 
 from fastapi import Request
 from fastapi.responses import ORJSONResponse
-from openai import BaseModel
 
 from src.app.utils.schemas import (
     ErrorOutputSchema,

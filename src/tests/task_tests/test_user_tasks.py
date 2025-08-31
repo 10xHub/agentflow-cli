@@ -7,7 +7,7 @@
 # async def test_add_task_math():
 #     task = await add_task_math.kiq(x=5, y=5)
 #     result = await task.wait_result()
-#     assert result.return_value == 10  # noqa
+#     assert result.return_value == 10
 
 
 # @pytest.mark.asyncio

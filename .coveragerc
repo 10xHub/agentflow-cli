@@ -1,0 +1,23 @@
+[run]
+branch = True
+source = src
+omit = 
+    src/tests/*
+    graph/*
+    migrations/*
+    src/app/worker.py
+    src/app/main.py
+    src/app/loader.py
+    src/app/routers/checkpointer/*
+    src/app/routers/graph/*
+    src/app/routers/*/services/*  # services often depend on external libs; still test parts
+    src/app/core/auth/*
+    src/app/core/config/setup_logs.py
+    src/app/core/config/sentry_config.py
+    src/app/core/config/worker_middleware.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    if __name__ == .__main__.

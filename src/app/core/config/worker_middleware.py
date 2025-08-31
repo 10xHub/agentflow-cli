@@ -93,6 +93,5 @@ class MonitoringMiddleware(TaskiqMiddleware):
         """
         logger.error(f"Exception on task: {message.task_id}", exc_info=exception)
         logger.error(
-            f"Exception on task {message.task_id} Result: "
-            f"{result.return_value if result else None}"
+            f"Exception on task {message.task_id} Result: {result.return_value if result else None}"
         )

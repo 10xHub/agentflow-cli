@@ -1,4 +1,6 @@
-from .task_tests import register_fake_repos
+"""Test package initializer.
 
+Intentionally empty to avoid importing optional test utilities during collection.
+"""
 
-__all__ = ["register_fake_repos"]
+__all__: list[str] = []

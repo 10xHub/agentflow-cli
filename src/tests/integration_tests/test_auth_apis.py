@@ -1,7 +1,7 @@
 # from src.tests.integration_tests.test_main import client
 
 
-# # ruff: noqa: PLR2004
+#
 # def test_get_user_api():
 #     user_id = "123e4567-e89b-12d3-a456-426614174000"
 #     response = client.get(f"v1/users/{user_id}")

@@ -3,7 +3,7 @@ from .swagger_helper import generate_swagger_responses
 
 
 __all__ = [
+    "error_response",
     "generate_swagger_responses",
     "success_response",
-    "error_response",
 ]

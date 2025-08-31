@@ -1,6 +1,5 @@
-from typing import Any, Optional
+from typing import Any
 
-from pyagenity.state import AgentState
 from pyagenity.utils import Message, ResponseGranularity
 from pydantic import BaseModel, Field
 
@@ -52,7 +51,7 @@ class GraphInvokeOutputSchema(BaseModel):
         ...,
         description="Final processed messages from the graph",
     )
-    state: AgentState | None = Field(
+    state: dict[str, Any] | None = Field(
         default=None,
         description="State information from the graph execution",
     )

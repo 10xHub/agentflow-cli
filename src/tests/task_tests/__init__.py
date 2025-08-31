@@ -1,4 +1,3 @@
-from .setup import register_fake_repos
+"""Task tests package initializer (empty)."""
 
-
-__all__ = ["register_fake_repos"]
+__all__: list[str] = []

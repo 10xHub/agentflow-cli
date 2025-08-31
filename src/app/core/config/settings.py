@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # DEBUG = 10
     # NOTSET = 0
     LOG_LEVEL: str = "INFO"
+    IS_DEBUG: bool = True
 
     SUMMARY: str = "Backend Base"
 

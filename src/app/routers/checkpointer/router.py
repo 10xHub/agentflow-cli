@@ -9,12 +9,12 @@ from pyagenity.utils import Message
 from src.app.core import logger
 from src.app.core.auth.auth_backend import verify_current_user
 from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
-    ConfigInputSchema,
+    ConfigSchema,
     MessagesListResponseSchema,
     PutMessagesSchema,
-    PutStateSchema,
     ResponseSchema,
     StateResponseSchema,
+    StateSchema,
     ThreadResponseSchema,
     ThreadsListResponseSchema,
 )
@@ -73,7 +73,7 @@ async def get_state(
 async def put_state(
     request: Request,
     thread_id: str | int,
-    payload: PutStateSchema,
+    payload: StateSchema,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -93,7 +93,7 @@ async def put_state(
     if payload.config:
         config.update(payload.config)
 
-    # Convert state dict to AgentState if needed
+    # State is provided as dict; service will handle merging/reconstruction
     res = await service.put_state(
         config,
         user,
@@ -197,7 +197,9 @@ async def put_messages(
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(Message),
     summary="Get message from checkpointer",
-    description="Retrieve a specific message from the checkpointer using configuration and message ID.",
+    description=(
+        "Retrieve a specific message from the checkpointer using configuration and message ID."
+    ),
 )
 async def get_message(
     request: Request,
@@ -288,7 +290,7 @@ async def delete_message(
     request: Request,
     message_id: str | int,
     thread_id: str | int,
-    payload: ConfigInputSchema,
+    payload: StateSchema,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -411,7 +413,7 @@ async def list_threads(
 async def delete_thread(
     request: Request,
     thread_id: str | int,
-    payload: ConfigInputSchema,
+    payload: ConfigSchema,
     service: CheckpointerService = Injected(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -428,8 +430,12 @@ async def delete_thread(
     """
     logger.debug(f"User info: {user} and thread ID: {thread_id}")
 
+    config = {"thread_id": thread_id}
+    if payload.config:
+        config.update(payload.config)
+
     res = await service.delete_thread(
-        payload.config,
+        config,
         user,
         thread_id,
     )
