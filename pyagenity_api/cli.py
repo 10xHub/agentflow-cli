@@ -150,13 +150,13 @@ def build(
     """Generate a Dockerfile for the Pyagenity API application."""
     output_path = Path(output)
     current_dir = Path.cwd()
-    
+
     # Check if Dockerfile already exists
     if output_path.exists() and not force:
         typer.echo(f"Dockerfile already exists at {output_path}", err=True)
         typer.echo("Use --force to overwrite", err=True)
         raise typer.Exit(1)
-    
+
     # Check for requirements.txt
     requirements_files = []
     requirements_paths = [
@@ -165,11 +165,11 @@ def build(
         current_dir / "requirements" / "base.txt",
         current_dir / "requirements" / "production.txt",
     ]
-    
+
     for req_path in requirements_paths:
         if req_path.exists():
             requirements_files.append(req_path)
-    
+
     if not requirements_files:
         typer.echo("⚠️  Warning: No requirements.txt file found!", err=True)
         typer.echo("Searched in the following locations:", err=True)
@@ -177,51 +177,48 @@ def build(
             typer.echo(f"  - {req_path}", err=True)
         typer.echo("")
         typer.echo("Consider creating a requirements.txt file with your dependencies.", err=True)
-        
+
         # Ask user if they want to continue
         if not typer.confirm("Continue generating Dockerfile without requirements.txt?"):
             raise typer.Exit(0)
-    
+
     # Determine the requirements file to use
     requirements_file = "requirements.txt"
     if requirements_files:
         requirements_file = requirements_files[0].name
         if len(requirements_files) > 1:
             typer.echo(f"Found multiple requirements files, using: {requirements_file}")
-    
+
     # Generate Dockerfile content
     dockerfile_content = generate_dockerfile_content(
         python_version=python_version,
         port=port,
         requirements_file=requirements_file,
-        has_requirements=bool(requirements_files)
+        has_requirements=bool(requirements_files),
     )
-    
+
     # Write Dockerfile
     try:
         with output_path.open("w") as f:
             f.write(dockerfile_content)
-        
+
         typer.echo(f"✅ Successfully generated Dockerfile at {output_path}")
-        
+
         if requirements_files:
             typer.echo(f"📦 Using requirements file: {requirements_files[0]}")
-        
+
         typer.echo("\n🚀 Next steps:")
         typer.echo("1. Review the generated Dockerfile")
         typer.echo("2. Build the Docker image: docker build -t pyagenity-api .")
         typer.echo("3. Run the container: docker run -p 8000:8000 pyagenity-api")
-        
+
     except Exception as e:
         typer.echo(f"Error writing Dockerfile: {e}", err=True)
         raise typer.Exit(1)
 
 
 def generate_dockerfile_content(
-    python_version: str,
-    port: int,
-    requirements_file: str,
-    has_requirements: bool
+    python_version: str, port: int, requirements_file: str, has_requirements: bool
 ) -> str:
     """Generate the content for the Dockerfile."""
     dockerfile_lines = [
@@ -248,41 +245,47 @@ def generate_dockerfile_content(
     ]
 
     if has_requirements:
-        dockerfile_lines.extend([
-            "# Install Python dependencies",
-            f"COPY {requirements_file} .",
-            f"RUN pip install --no-cache-dir --upgrade pip \\",
-            f"    && pip install --no-cache-dir -r {requirements_file}",
-            "",
-        ])
+        dockerfile_lines.extend(
+            [
+                "# Install Python dependencies",
+                f"COPY {requirements_file} .",
+                f"RUN pip install --no-cache-dir --upgrade pip \\",
+                f"    && pip install --no-cache-dir -r {requirements_file}",
+                "",
+            ]
+        )
     else:
-        dockerfile_lines.extend([
-            "# Install pyagenity-api (since no requirements.txt found)",
-            "RUN pip install --no-cache-dir --upgrade pip \\",
-            "    && pip install --no-cache-dir pyagenity-api",
-            "",
-        ])
+        dockerfile_lines.extend(
+            [
+                "# Install pyagenity-api (since no requirements.txt found)",
+                "RUN pip install --no-cache-dir --upgrade pip \\",
+                "    && pip install --no-cache-dir pyagenity-api",
+                "",
+            ]
+        )
 
-    dockerfile_lines.extend([
-        "# Copy application code",
-        "COPY . .",
-        "",
-        "# Create a non-root user",
-        "RUN groupadd -r appuser && useradd -r -g appuser appuser \\",
-        "    && chown -R appuser:appuser /app",
-        "USER appuser",
-        "",
-        "# Expose port",
-        f"EXPOSE {port}",
-        "",
-        "# Health check",
-        f"HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \\",
-        f"    CMD curl -f http://localhost:{port}/ping || exit 1",
-        "",
-        "# Run the application",
-        f"CMD [\"pag\", \"api\", \"--host\", \"0.0.0.0\", \"--port\", \"{port}\"]",
-        "",
-    ])
+    dockerfile_lines.extend(
+        [
+            "# Copy application code",
+            "COPY . .",
+            "",
+            "# Create a non-root user",
+            "RUN groupadd -r appuser && useradd -r -g appuser appuser \\",
+            "    && chown -R appuser:appuser /app",
+            "USER appuser",
+            "",
+            "# Expose port",
+            f"EXPOSE {port}",
+            "",
+            "# Health check",
+            f"HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \\",
+            f"    CMD curl -f http://localhost:{port}/ping || exit 1",
+            "",
+            "# Run the application",
+            f'CMD ["pag", "api", "--host", "0.0.0.0", "--port", "{port}"]',
+            "",
+        ]
+    )
 
     return "\n".join(dockerfile_lines)
 
