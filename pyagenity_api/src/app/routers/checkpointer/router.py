@@ -3,7 +3,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
-from fastapi_injector import Injected
+from injectq.integrations import InjectAPI
 from pyagenity.utils import Message
 
 from src.app.core import logger
@@ -36,7 +36,7 @@ router = APIRouter(tags=["checkpointer"])
 async def get_state(
     request: Request,
     thread_id: int | str,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Get state from checkpointer.
@@ -74,7 +74,7 @@ async def put_state(
     request: Request,
     thread_id: str | int,
     payload: StateSchema,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Put state to checkpointer.
@@ -116,7 +116,7 @@ async def put_state(
 async def clear_state(
     request: Request,
     thread_id: int | str,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Clear state from checkpointer.
@@ -158,7 +158,7 @@ async def put_messages(
     request: Request,
     thread_id: str | int,
     payload: PutMessagesSchema,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Put messages to checkpointer.
@@ -205,7 +205,7 @@ async def get_message(
     request: Request,
     thread_id: str | int,
     message_id: str | int,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Get message from checkpointer.
@@ -248,7 +248,7 @@ async def list_messages(
     search: str | None = None,
     offset: int | None = None,
     limit: int | None = None,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """List messages from checkpointer.
@@ -291,7 +291,7 @@ async def delete_message(
     message_id: str | int,
     thread_id: str | int,
     payload: ConfigSchema,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Delete message from checkpointer.
@@ -335,7 +335,7 @@ async def delete_message(
 async def get_thread(
     request: Request,
     thread_id: str | int,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Get thread from checkpointer.
@@ -374,7 +374,7 @@ async def list_threads(
     search: str | None = None,
     offset: int | None = None,
     limit: int | None = None,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """List threads from checkpointer.
@@ -414,7 +414,7 @@ async def delete_thread(
     request: Request,
     thread_id: str | int,
     payload: ConfigSchema,
-    service: CheckpointerService = Injected(CheckpointerService),
+    service: CheckpointerService = InjectAPI(CheckpointerService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """Delete thread from checkpointer.

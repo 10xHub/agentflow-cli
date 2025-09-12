@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
-from fastapi_injector import Injected
+from injectq.integrations import InjectAPI
 
 from src.app.core.auth.auth_backend import verify_current_user
 from src.app.routers.graph.schemas.graph_schemas import (
@@ -33,7 +33,7 @@ async def invoke_graph(
     request: Request,
     graph_input: GraphInputSchema,
     background_tasks: BackgroundTasks,
-    service: GraphService = Injected(GraphService),
+    service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """
@@ -67,7 +67,7 @@ async def stream_graph(
     request: Request,
     graph_input: GraphInputSchema,
     background_tasks: BackgroundTasks,
-    service: GraphService = Injected(GraphService),
+    service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
     """
@@ -84,13 +84,13 @@ async def stream_graph(
                 background_tasks,
             ):
                 # Format as server-sent events
-                yield f"data: {chunk.model_dump_json()}\n\n"
+                yield {"data": chunk.model_dump()}
         except Exception as e:
             logger.error(f"Error in stream generation: {e}")
-            yield f"data: {{'error': 'Stream generation failed: {e!s}'}}\n\n"
+            yield {"error": f"Stream generation failed: {e!s}"}
         finally:
             # Send end-of-stream marker
-            yield "data: [DONE]\n\n"
+            yield {"data": "[DONE]"}
 
     logger.info("Starting graph stream")
 
@@ -114,7 +114,7 @@ async def stream_graph(
 )
 async def graph_details(
     request: Request,
-    service: GraphService = Injected(GraphService),
+    service: GraphService = InjectAPI(GraphService),
     _: dict[str, Any] = Depends(verify_current_user),
 ):
     """
@@ -141,7 +141,7 @@ async def graph_details(
 )
 async def state_schema(
     request: Request,
-    service: GraphService = Injected(GraphService),
+    service: GraphService = InjectAPI(GraphService),
     _: dict[str, Any] = Depends(verify_current_user),
 ):
     """
