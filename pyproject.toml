@@ -77,7 +77,7 @@ Issues = "https://github.com/Iamsdt/pyagenity-api/issues"
 Documentation = "https://pyagenity-api.readthedocs.io/"
 
 [project.scripts]
-pyagenity = "cli:main"
+pag = "pyagenity_api.cli:main"
 
 [tool.setuptools]
 zip-safe = false
@@ -85,7 +85,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "graph*", "migrations*", "scripts*"]
+include = ["pyagenity_api*", "src*", "graph*", "migrations*", "scripts*"]
 exclude = ["tests*", "docs*", "__pycache__*"]
 
 [tool.setuptools.package-data]
