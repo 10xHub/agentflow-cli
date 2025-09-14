@@ -1,7 +1,6 @@
 # import os
 
 # from fastapi_injector import attach_injector_taskiq
-# from injector import Injector
 # from redis.asyncio import Redis
 # from snowflakekit import SnowflakeConfig, SnowflakeGenerator
 # from taskiq import (

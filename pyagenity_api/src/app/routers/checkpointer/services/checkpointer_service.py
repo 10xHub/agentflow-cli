@@ -1,6 +1,6 @@
 from typing import Any
 
-from injector import inject, singleton
+from injectq import inject, singleton
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.state import AgentState
 from pyagenity.utils import Message

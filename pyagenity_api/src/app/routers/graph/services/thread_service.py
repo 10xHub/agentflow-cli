@@ -1,6 +1,6 @@
 from typing import Any
 
-from injector import inject, singleton
+from injectq import inject, singleton
 from litellm import acompletion
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.utils import Message

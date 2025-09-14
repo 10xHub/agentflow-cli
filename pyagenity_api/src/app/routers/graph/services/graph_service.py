@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException
-from injector import inject, singleton
+from injectq import inject, singleton
 from pyagenity.graph import CompiledGraph
 from pyagenity.utils import Message, StreamChunk
 from snowflakekit import SnowflakeGenerator
@@ -13,7 +13,6 @@ from src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
-    GraphStreamChunkSchema,
     MessageSchema,
 )
 
