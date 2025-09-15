@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from src.app.core.config.settings import Settings
+from pyagenity_api.src.app.core.config.settings import Settings
 
 
 def parse_state_output(settings: Settings, response: BaseModel) -> dict[str, Any]:

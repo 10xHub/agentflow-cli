@@ -6,9 +6,12 @@ from fastapi import APIRouter, Depends, Request, status
 from injectq.integrations import InjectAPI
 from pyagenity.utils import Message
 
-from src.app.core import logger
-from src.app.core.auth.auth_backend import verify_current_user
-from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+from pyagenity_api.src.app.core import logger
+from pyagenity_api.src.app.core.auth.auth_backend import verify_current_user
+from pyagenity_api.src.app.utils.response_helper import success_response
+from pyagenity_api.src.app.utils.swagger_helper import generate_swagger_responses
+
+from .schemas.checkpointer_schemas import (
     ConfigSchema,
     MessagesListResponseSchema,
     PutMessagesSchema,
@@ -18,9 +21,7 @@ from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     ThreadResponseSchema,
     ThreadsListResponseSchema,
 )
-from src.app.routers.checkpointer.services.checkpointer_service import CheckpointerService
-from src.app.utils.response_helper import success_response
-from src.app.utils.swagger_helper import generate_swagger_responses
+from .services.checkpointer_service import CheckpointerService
 
 
 router = APIRouter(tags=["checkpointer"])

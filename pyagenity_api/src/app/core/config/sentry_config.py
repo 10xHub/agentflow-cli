@@ -3,7 +3,7 @@ from fastapi import Depends
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 
-from src.app.core import Settings, get_settings, logger
+from pyagenity_api.src.app.core import Settings, get_settings, logger
 
 
 def init_sentry(settings: Settings = Depends(get_settings)):

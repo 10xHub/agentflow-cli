@@ -2,8 +2,8 @@ import os
 
 from pydantic import BaseModel
 
-from src.app.core.config.settings import Settings
-from src.app.utils.parse_output import parse_message_output, parse_state_output
+from pyagenity_api.src.app.core.config.settings import Settings
+from pyagenity_api.src.app.utils.parse_output import parse_message_output, parse_state_output
 
 
 class StateModel(BaseModel):

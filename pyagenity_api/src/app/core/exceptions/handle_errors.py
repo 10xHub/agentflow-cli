@@ -2,15 +2,10 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from tortoise.exceptions import (
-    DoesNotExist,
-    IntegrityError,
-    MultipleObjectsReturned,
-)
 
-from src.app.core import logger
-from src.app.utils import error_response
-from src.app.utils.schemas import ErrorSchemas
+from pyagenity_api.src.app.core import logger
+from pyagenity_api.src.app.utils import error_response
+from pyagenity_api.src.app.utils.schemas import ErrorSchemas
 
 from .resources_exceptions import ResourceNotFoundError
 from .user_exception import (
@@ -30,9 +25,6 @@ def init_errors_handler(app: FastAPI):
         HTTPException: Handles HTTP exceptions.
         RequestValidationError: Handles request validation errors.
         ValueError: Handles value errors.
-        DoesNotExist: Handles Tortoise ORM DoesNotExist exceptions.
-        IntegrityError: Handles Tortoise ORM IntegrityError exceptions.
-        MultipleObjectsReturned: Handles Tortoise ORM MultipleObjectsReturned exceptions.
         UserAccountError: Handles custom user account errors.
         UserPermissionError: Handles custom user permission errors.
         ResourceNotFoundError: Handles custom resource not found errors.
@@ -68,39 +60,6 @@ def init_errors_handler(app: FastAPI):
             error_code="VALIDATION_ERROR",
             message=str(exc),
             status_code=422,
-        )
-
-    ########################################
-    ### Tortoise exception handler here ####
-    ########################################
-    @app.exception_handler(DoesNotExist)
-    async def not_found_exception_handler(request: Request, exc: DoesNotExist):
-        logger.error(f"Not found exception: url: {request.base_url}", exc_info=exc)
-        return error_response(
-            request,
-            error_code="RESOURCE_NOT_FOUND",
-            message="Requested Resource Not Found",
-            status_code=404,
-        )
-
-    @app.exception_handler(IntegrityError)
-    async def integrity_exception_handler(request: Request, exc: IntegrityError):
-        logger.error(f"Integrity exception: url: {request.base_url}", exc_info=exc)
-        return error_response(
-            request,
-            error_code="INTEGRITY_ERROR",
-            message=str(exc),
-            status_code=400,
-        )
-
-    @app.exception_handler(MultipleObjectsReturned)
-    async def multiple_object_exception_handler(request: Request, exc: MultipleObjectsReturned):
-        logger.error(f"Integrity exception: url: {request.base_url}", exc_info=exc)
-        return error_response(
-            request,
-            error_code="MULTIPLE_OBJECTS_RETURNED",
-            message=str(exc),
-            status_code=400,
         )
 
     ########################################

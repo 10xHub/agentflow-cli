@@ -1,8 +1,9 @@
-from src.app.core.exceptions.general_exception import GeneralException
-from src.app.core.exceptions.user_exception import (
+from pyagenity_api.src.app.core.exceptions.general_exception import GeneralException
+from pyagenity_api.src.app.core.exceptions.user_exception import (
     UserAccountError,
     UserPermissionError,
 )
+
 
 HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403

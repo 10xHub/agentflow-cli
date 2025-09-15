@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from src.app.utils.swagger_helper import generate_swagger_responses
+from pyagenity_api.src.app.utils.swagger_helper import generate_swagger_responses
 
 
 HTTP_OK = 200

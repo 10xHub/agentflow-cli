@@ -7,7 +7,7 @@ name = "pyagenity-api"
 version = "1.0.0"
 description = "CLI and API for Pyagenity"
 readme = "README.md"
-license = {text = "MIT"}    
+license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
     {name = "Shudipto Trafder", email = "shudiptotrafder@gmail.com"},
@@ -52,6 +52,7 @@ dependencies = [
     "uvicorn==0.30.1",
     "typer",
     "python-dotenv",
+    "PyJWT==2.8.0",
 ]
 
 [project.urls]
@@ -64,6 +65,7 @@ Documentation = "https://pyagenity-api.readthedocs.io/"
 dev = [
     "pytest==8.3.2",
     "pytest-env==1.1.3",
+    "pytest-xdist==3.8.0",
     "pre-commit==3.8.0",
     "ruff==0.5.2",
     "mkdocs-gen-files==0.5.0",
@@ -151,11 +153,11 @@ lint.ignore = [
     "B008",
     "ISC001",# flake8-implicit-str-concat
 ]
+# Allow unused variables when underscore-prefixed.
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 exclude = [
     "venv/*",
 ]
-# Allow unused variables when underscore-prefixed.
-lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 
 [tool.ruff.lint.mccabe]
@@ -196,7 +198,10 @@ env = [
     "ENVIRONMENT=pytest",
 ]
 testpaths = [
-    "src/pyagenity_api/tests/*",
+    "pyagenity_api/src/tests",
+]
+pythonpath = [
+    ".",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning"
@@ -204,4 +209,9 @@ filterwarnings = [
 
 [tool.pytest-env]
 ENVIRONMENT = "pytest"
+
+[dependency-groups]
+dev = [
+    "pytest-xdist>=3.8.0",
+]
 

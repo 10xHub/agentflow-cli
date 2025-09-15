@@ -1,4 +1,4 @@
-from src.app.utils.schemas import ErrorSchemas
+from pyagenity_api.src.app.utils.schemas import ErrorSchemas
 
 
 class GeneralException(Exception):

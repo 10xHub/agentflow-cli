@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import Depends, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from src.app.core.config.settings import get_settings
+from pyagenity_api.src.app.core.config.settings import get_settings
 
 from .authentication import verify_jwt
 

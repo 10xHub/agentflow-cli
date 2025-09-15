@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from src.app.utils.schemas import (
+from .schemas import (
     ErrorOutputSchema,
     ErrorSchemas,
 )

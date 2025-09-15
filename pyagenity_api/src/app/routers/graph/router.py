@@ -5,16 +5,16 @@ from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
 from injectq.integrations import InjectAPI
 
-from src.app.core.auth.auth_backend import verify_current_user
-from src.app.routers.graph.schemas.graph_schemas import (
+from pyagenity_api.src.app.core.auth.auth_backend import verify_current_user
+from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
     GraphStreamChunkSchema,
 )
-from src.app.routers.graph.services.graph_service import GraphService
-from src.app.utils import success_response
-from src.app.utils.swagger_helper import generate_swagger_responses
+from pyagenity_api.src.app.routers.graph.services.graph_service import GraphService
+from pyagenity_api.src.app.utils import success_response
+from pyagenity_api.src.app.utils.swagger_helper import generate_swagger_responses
 
 
 router = APIRouter(

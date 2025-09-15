@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 
-from src.app.utils.response_helper import success_response
-from src.app.utils.swagger_helper import generate_swagger_responses
+from pyagenity_api.src.app.utils.response_helper import success_response
+from pyagenity_api.src.app.utils.swagger_helper import generate_swagger_responses
 
 
 router = APIRouter(

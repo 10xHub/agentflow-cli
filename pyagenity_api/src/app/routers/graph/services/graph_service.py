@@ -7,9 +7,9 @@ from pyagenity.graph import CompiledGraph
 from pyagenity.utils import Message, StreamChunk
 from snowflakekit import SnowflakeGenerator
 
-from src.app.core import logger
-from src.app.core.config.settings import get_settings
-from src.app.routers.graph.schemas.graph_schemas import (
+from pyagenity_api.src.app.core import logger
+from pyagenity_api.src.app.core.config.settings import get_settings
+from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,

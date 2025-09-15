@@ -20,7 +20,7 @@ from typing import Any, TypeVar
 from fastapi import Request
 from fastapi.responses import ORJSONResponse
 
-from src.app.utils.schemas import (
+from .schemas import (
     ErrorOutputSchema,
     ErrorResponse,
     ErrorSchemas,

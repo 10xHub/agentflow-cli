@@ -5,9 +5,9 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import Response
 
-from src.app.core import logger
-from src.app.core.config.settings import get_settings
-from src.app.core.exceptions import UserAccountError
+from pyagenity_api.src.app.core import logger
+from pyagenity_api.src.app.core.config.settings import get_settings
+from pyagenity_api.src.app.core.exceptions import UserAccountError
 
 
 def verify_jwt(

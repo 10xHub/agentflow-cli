@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.exceptions import HTTPException
 
-from src.app.core.config.setup_middleware import setup_middleware
-from src.app.core.exceptions.handle_errors import init_errors_handler
+from pyagenity_api.src.app.core.config.setup_middleware import setup_middleware
+from pyagenity_api.src.app.core.exceptions.handle_errors import init_errors_handler
 
 
 HTTP_NOT_FOUND = 404

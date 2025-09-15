@@ -1,8 +1,9 @@
-from src.app.core.exceptions.resources_exceptions import (
+from pyagenity_api.src.app.core.exceptions.resources_exceptions import (
     InvalidOperationError,
     ResourceDuplicationError,
     ResourceNotFoundError,
 )
+
 
 HTTP_NOT_FOUND = 404
 HTTP_FORBIDDEN = 403
