@@ -55,7 +55,7 @@ Same as invoke endpoint, with optional `stream_mode` query parameter.
 **Query Parameters:**
 - `stream_mode` (optional): Stream mode ("values", "updates", "messages", etc.). Default: "values"
 
-**Response:** 
+**Response:**
 Server-Sent Events (SSE) stream with chunks in the following format:
 ```
 data: {"chunk_type": "values", "data": {...}, "metadata": {...}}

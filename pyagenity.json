@@ -1,8 +1,9 @@
 {
   "graphs": {
     "agent": "graph.react:app",
-    "checkpointer": "graph.react:checkpointer"
+    "checkpointer": "graph.react:checkpointer",
+    "container": null
   },
   "env": ".env",
-  "auth": "None"
+  "auth": null
 }
