@@ -2,10 +2,11 @@ from typing import Any
 
 from fastapi import Depends, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from injectq.integrations import InjectAPI
 
-from pyagenity_api.src.app.core.config.settings import get_settings
-
-from .authentication import verify_jwt
+from pyagenity_api.src.app.core import logger
+from pyagenity_api.src.app.core.auth.base_auth import BaseAuth
+from pyagenity_api.src.app.core.config.graph_config import GraphConfig
 
 
 def verify_current_user(
@@ -13,12 +14,18 @@ def verify_current_user(
     credential: HTTPAuthorizationCredentials = Depends(
         HTTPBearer(auto_error=False),
     ),
+    config: GraphConfig = InjectAPI(GraphConfig),
+    auth_backend: BaseAuth = InjectAPI(BaseAuth),
 ) -> dict[str, Any]:
     # check auth backend
     user = {}
-    settings = get_settings()
+    backend = config.auth_config()
+    if not backend:
+        return user
 
-    if settings.AUTH_BACKEND == "jwt":
-        # now check keys
-        user = verify_jwt(res, credential)
+    if not auth_backend:
+        logger.error("Auth backend is not configured")
+        return user
+
+    user = auth_backend.authenticate(res, credential)
     return user or {}

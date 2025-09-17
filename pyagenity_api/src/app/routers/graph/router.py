@@ -75,27 +75,14 @@ async def stream_graph(
     """
     logger.info(f"Graph stream request received with {len(graph_input.messages)} messages")
 
-    async def generate_stream():
-        """Generator function for streaming graph output."""
-        try:
-            async for chunk in service.stream_graph(
-                graph_input,
-                user,
-                background_tasks,
-            ):
-                # Format as server-sent events
-                yield {"data": chunk.model_dump()}
-        except Exception as e:
-            logger.error(f"Error in stream generation: {e}")
-            yield {"error": f"Stream generation failed: {e!s}"}
-        finally:
-            # Send end-of-stream marker
-            yield {"data": "[DONE]"}
-
-    logger.info("Starting graph stream")
+    result = service.stream_graph(
+        graph_input,
+        user,
+        background_tasks,
+    )
 
     return StreamingResponse(
-        generate_stream(),
+        result,
         media_type="text/plain",
         headers={
             "Cache-Control": "no-cache",
