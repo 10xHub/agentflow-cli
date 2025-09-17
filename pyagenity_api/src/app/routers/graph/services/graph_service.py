@@ -3,11 +3,12 @@ from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException
 from injectq import inject, singleton
+from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.graph import CompiledGraph
-from pyagenity.utils import Message, ContentType
+from pyagenity.utils import ContentType, Message
 from pydantic import BaseModel
 from snowflakekit import SnowflakeGenerator
-from starlette.responses import AsyncContentStream, Content, ContentStream
+from starlette.responses import Content
 
 from pyagenity_api.src.app.core import logger
 from pyagenity_api.src.app.core.config.graph_config import GraphConfig
@@ -16,6 +17,9 @@ from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInvokeOutputSchema,
     GraphSchema,
     MessageSchema,
+)
+from pyagenity_api.src.app.routers.graph.services.dummy_name_generator import (
+    generate_dummy_thread_name,
 )
 
 from .thread_service import ThreadService
@@ -36,6 +40,7 @@ class GraphService:
         graph: CompiledGraph,
         generator: SnowflakeGenerator,
         thread_service: ThreadService,
+        checkpointer: BaseCheckpointer,
         config: GraphConfig,
     ):
         """
@@ -49,6 +54,19 @@ class GraphService:
         self._generator = generator
         self._thread_service = thread_service
         self.config = config
+        self.checkpointer = checkpointer
+
+    async def _save_thread(self, config: dict[str, Any], thread_id: int):
+        """
+        Save the generated thread name to the database.
+        """
+        return await self.checkpointer.aput_thread(
+            config,
+            {
+                "thread_id": thread_id,
+                "thread_name": generate_dummy_thread_name(),
+            },
+        )
 
     def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
         """
@@ -183,6 +201,9 @@ class GraphService:
             # add user inside config
             config["user"] = user
 
+            # if its a new thread then save the thread into db
+            await self._save_thread(config, config["thread_id"])
+
             # Execute the graph
             result = await self._graph.ainvoke(
                 input_data,
@@ -275,6 +296,7 @@ class GraphService:
             input_data, config, meta = await self._prepare_input(graph_input)
             # add user inside config
             config["user"] = user
+            await self._save_thread(config, config["thread_id"])
 
             accumulated_messages: list[dict[str, Any]] = []
 
