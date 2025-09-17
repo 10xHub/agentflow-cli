@@ -5,6 +5,7 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import ORJSONResponse
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
+from pyagenity.graph import CompiledGraph
 from snowflakekit import SnowflakeConfig, SnowflakeGenerator
 
 # from tortoise import Tortoise
@@ -12,11 +13,10 @@ from pyagenity_api.src.app.core import (
     get_settings,
     init_errors_handler,
     init_logger,
-    logger,
     setup_middleware,
 )
 from pyagenity_api.src.app.core.config.graph_config import GraphConfig
-from pyagenity_api.src.app.loader import load_checkpointer, load_graph
+from pyagenity_api.src.app.loader import attach_all_modules, load_container
 from pyagenity_api.src.app.routers import init_routes
 
 
@@ -28,20 +28,22 @@ settings = get_settings()
 
 graph_path = os.environ.get("GRAPH_PATH", "pyagenity.json")
 graph_config = GraphConfig(graph_path)
+# Load the container
+container: InjectQ = load_container(graph_config.injectq_path) or InjectQ.get_instance()
 
-container = InjectQ.get_instance()
+# Save config instance
+container.bind_instance(GraphConfig, graph_config)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the cache
     # RedisCacheBackend(settings.REDIS_URL)
-    graph = await load_graph(graph_config.graph_path)
-    # save injector
-    # injector.binder.bind(CompiledGraph, graph)
 
-    # load checkpointer
-    checkpointer = load_checkpointer(graph_config.checkpointer_path)
+    graph: CompiledGraph | None = await attach_all_modules(
+        graph_config,
+        container=container,
+    )
 
     # load Store
     # store = load_store(graph_config.store_path)
@@ -55,8 +57,8 @@ async def lifespan(app: FastAPI):
     # await close_caches()
     # close all the connections
     if graph:
+        # release all the resources
         await graph.aclose()
-    logger.info("Application shutdown complete")
 
 
 app = FastAPI(
@@ -96,4 +98,3 @@ container.bind_instance(
     SnowflakeGenerator,
     SnowflakeGenerator(config=config),
 )
-# injector.binder.bind(Redis, redis_client)

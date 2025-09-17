@@ -1,7 +1,4 @@
-import sentry_sdk
 from fastapi import Depends
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from pyagenity_api.src.app.core import Settings, get_settings, logger
 
@@ -20,19 +17,28 @@ def init_sentry(settings: Settings = Depends(get_settings)):
     Returns:
         None
     """
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        integrations=[
-            FastApiIntegration(
-                transaction_style="endpoint",
-                failed_request_status_codes=[403, range(500, 599)],
-            ),
-            StarletteIntegration(
-                transaction_style="endpoint",
-                failed_request_status_codes=[403, range(500, 599)],
-            ),
-        ],
-        traces_sample_rate=1.0,
-        profiles_sample_rate=1.0,
-    )
-    logger.debug("Sentry initialized")
+    try:
+        import sentry_sdk  # noqa: PLC0415
+        from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: PLC0415
+        from sentry_sdk.integrations.starlette import StarletteIntegration  # noqa: PLC0415
+
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            integrations=[
+                FastApiIntegration(
+                    transaction_style="endpoint",
+                    failed_request_status_codes=[403, range(500, 599)],
+                ),
+                StarletteIntegration(
+                    transaction_style="endpoint",
+                    failed_request_status_codes=[403, range(500, 599)],
+                ),
+            ],
+            traces_sample_rate=1.0,
+            profiles_sample_rate=1.0,
+        )
+        logger.debug("Sentry initialized")
+    except ImportError:
+        logger.warning("sentry_sdk is not installed, Please install it to use Sentry")
+    except Exception as e:
+        logger.warning(f"Error initializing Sentry: {e}")

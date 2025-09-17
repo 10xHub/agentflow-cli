@@ -1,14 +1,16 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterable
 from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException
 from injectq import inject, singleton
 from pyagenity.graph import CompiledGraph
-from pyagenity.utils import Message, StreamChunk
+from pyagenity.utils import Message, ContentType
+from pydantic import BaseModel
 from snowflakekit import SnowflakeGenerator
+from starlette.responses import AsyncContentStream, Content, ContentStream
 
 from pyagenity_api.src.app.core import logger
-from pyagenity_api.src.app.core.config.settings import get_settings
+from pyagenity_api.src.app.core.config.graph_config import GraphConfig
 from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
@@ -34,6 +36,7 @@ class GraphService:
         graph: CompiledGraph,
         generator: SnowflakeGenerator,
         thread_service: ThreadService,
+        config: GraphConfig,
     ):
         """
         Initializes the GraphService with a CompiledGraph instance.
@@ -42,10 +45,10 @@ class GraphService:
             graph (CompiledGraph): An instance of CompiledGraph for
                                    graph execution operations.
         """
-        self.settings = get_settings()
         self._graph = graph
         self._generator = generator
         self._thread_service = thread_service
+        self.config = config
 
     def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
         """
@@ -217,13 +220,19 @@ class GraphService:
             # Generate background thread name
             # background_tasks.add_task(self._generate_background_thread_name, thread_id)
 
-            if self.settings.GENERATE_THREAD_NAME:
-                background_tasks.add_task(
-                    self._thread_service.save_thread_name,
-                    config,
-                    config["thread_id"],
-                    messages,
-                )
+            if meta["is_new_thread"] and self.config.generate_thread_name:
+                model_name = self.config.thread_model_name
+                if not model_name:
+                    logger.warning(
+                        "Thread model name is not configured, cannot generate thread name",
+                    )
+                else:
+                    background_tasks.add_task(
+                        self._thread_service.generate_thread_name_invoke,
+                        config,
+                        config["thread_id"],
+                        messages,
+                    )
 
             # state can be instance of pydentic or dict
             state_dict = raw_state.model_dump() if raw_state is not None else raw_state  # type: ignore
@@ -245,7 +254,7 @@ class GraphService:
         graph_input: GraphInputSchema,
         user: dict[str, Any],
         background_tasks: BackgroundTasks,
-    ) -> AsyncIterator[StreamChunk]:
+    ) -> AsyncIterable[Content]:
         """
         Streams the graph execution with the provided input.
 
@@ -267,6 +276,8 @@ class GraphService:
             # add user inside config
             config["user"] = user
 
+            accumulated_messages: list[dict[str, Any]] = []
+
             # Stream the graph execution
             async for chunk in self._graph.astream(
                 input_data,
@@ -276,13 +287,34 @@ class GraphService:
                 mt = chunk.metadata or {}
                 mt.update(meta)
                 chunk.metadata = mt
-                yield chunk
+                if (
+                    (
+                        meta["is_new_thread"]
+                        and chunk.content_type is not None
+                        and ContentType.MESSAGE in chunk.content_type
+                    )
+                    and chunk.data is not None
+                    and "message" in chunk.data
+                ):
+                    accumulated_messages.append(chunk.data.get("message", {}))
+
+                yield chunk.model_dump_json()
 
             logger.info("Graph streaming completed successfully")
-            # background_tasks.add_task(self._generate_background_thread_name, thread_id)
-            # save threads
-            # if self.settings.GENERATE_THREAD_NAME:
-            #     await self._thread_service.save_thread_name(config, config["thread_id"], messages)
+
+            if meta["is_new_thread"] and self.config.generate_thread_name:
+                model_name = self.config.thread_model_name
+                if not model_name:
+                    logger.warning(
+                        "Thread model name is not configured, cannot generate thread name",
+                    )
+                else:
+                    background_tasks.add_task(
+                        self._thread_service.generate_thread_name_stream,
+                        config,
+                        config["thread_id"],
+                        accumulated_messages,
+                    )
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
@@ -302,7 +334,7 @@ class GraphService:
         try:
             logger.info("Getting state schema")
             # Fetch and return state schema
-            res = self._graph.state
+            res: BaseModel = self._graph._state
             return res.model_json_schema()
         except Exception as e:
             logger.error(f"Failed to get state schema: {e}")

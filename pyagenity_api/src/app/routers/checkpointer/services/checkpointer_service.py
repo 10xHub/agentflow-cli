@@ -30,7 +30,6 @@ class CheckpointerService:
 
         cfg: dict[str, Any] = dict(config or {})
         cfg["user"] = user
-        cfg["user_id"] = user.get(self.settings.USER_ID_KEY, None)
         return cfg
 
     async def get_state(self, config: dict[str, Any], user: dict) -> StateResponseSchema:
@@ -70,6 +69,9 @@ class CheckpointerService:
         merged = self._merge_states(old_state, state)
         to_store = self._reconstruct_state(old_state, merged)
         res = await self.checkpointer.aput_state(cfg, to_store)  # type: ignore[arg-type]
+        # update cache as well
+        await self.checkpointer.aput_state_cache(cfg, to_store)  # type: ignore
+
         return StateResponseSchema(
             state=parse_state_output(
                 self.settings,
