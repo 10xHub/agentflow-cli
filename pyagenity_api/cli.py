@@ -186,11 +186,12 @@ DEFAULT_CONFIG_JSON = json.dumps(
     {
         "graphs": {
             "agent": "graph.react:app",
-            "checkpointer": "graph.react:checkpointer",
             "container": None,
         },
         "env": ".env",
         "auth": None,
+        "thread_model_name": "gemini/gemini-2.0-flash",
+        "generate_thread_name": False,
     },
     indent=2,
 )

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyagenity-api"
-version = "1.0.0"
+version = "0.1.1"
 description = "CLI and API for Pyagenity"
 readme = "README.md"
 license = {text = "MIT"}
