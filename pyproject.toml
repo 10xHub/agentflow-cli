@@ -35,7 +35,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
-    "Framework :: PyAgenity",
 ]
 dependencies = [
     "pyagenity",
