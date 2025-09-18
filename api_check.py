@@ -6,6 +6,64 @@ BASE_URL = "http://localhost:8000"
 if __name__ == "__main__":
     print("Starting API tests...\n")
 
+    # Test Graph APIs
+    print("=== Graph APIs ===")
+
+    # POST /v1/graph/invoke
+    print("Testing POST /v1/graph/invoke")
+    payload = {
+        "messages": [{"role": "user", "content": "Hello world"}],
+        "recursion_limit": 25,
+        "response_granularity": "low",
+        "include_raw": False,
+        "config": {
+            "thread_id": 1,
+        },
+    }
+    response = requests.post(f"{BASE_URL}/v1/graph/invoke", json=payload)
+    print(f"Status: {response.status_code}")
+    try:
+        print(f"Response: {response.json()}\n")
+    except:
+        print(f"Response: {response.text}\n")
+
+    # POST /v1/graph/stream (Note: This will stream, but for test we'll just check response)
+    print("Testing POST /v1/graph/stream")
+    payload = {
+        "messages": [{"role": "user", "content": "Stream this"}],
+        "recursion_limit": 25,
+        "response_granularity": "low",
+        "include_raw": False,
+    }
+    response = requests.post(f"{BASE_URL}/v1/graph/stream", json=payload, stream=True)
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        for line in response.iter_lines():
+            if line:
+                print(f"Stream chunk: {line.decode('utf-8')}")
+    else:
+        print(f"Response: {response.text}\n")
+
+    # GET /v1/graph
+    print("Testing GET /v1/graph")
+    response = requests.get(f"{BASE_URL}/v1/graph")
+    print(f"Status: {response.status_code}")
+    try:
+        print(f"Response: {response.json()}\n")
+    except:
+        print(f"Response: {response.text}\n")
+
+    # GET /v1/graph:StateSchema
+    print("Testing GET /v1/graph:StateSchema")
+    response = requests.get(f"{BASE_URL}/v1/graph:StateSchema")
+    print(f"Status: {response.status_code}")
+    try:
+        print(f"Response: {response.json()}\n")
+    except:
+        print(f"Response: {response.text}\n")
+
+    print("All API tests completed!")
+
     # Test Checkpointer APIs
     print("=== Checkpointer APIs ===")
 
@@ -113,58 +171,3 @@ if __name__ == "__main__":
         print(f"Response: {response.json()}\n")
     except:
         print(f"Response: {response.text}\n")
-
-    # Test Graph APIs
-    print("=== Graph APIs ===")
-
-    # POST /v1/graph/invoke
-    print("Testing POST /v1/graph/invoke")
-    payload = {
-        "messages": [{"role": "user", "content": "Hello world"}],
-        "recursion_limit": 25,
-        "response_granularity": "low",
-        "include_raw": False,
-    }
-    response = requests.post(f"{BASE_URL}/v1/graph/invoke", json=payload)
-    print(f"Status: {response.status_code}")
-    try:
-        print(f"Response: {response.json()}\n")
-    except:
-        print(f"Response: {response.text}\n")
-
-    # POST /v1/graph/stream (Note: This will stream, but for test we'll just check response)
-    print("Testing POST /v1/graph/stream")
-    payload = {
-        "messages": [{"role": "user", "content": "Stream this"}],
-        "recursion_limit": 25,
-        "response_granularity": "low",
-        "include_raw": False,
-    }
-    response = requests.post(f"{BASE_URL}/v1/graph/stream", json=payload, stream=True)
-    print(f"Status: {response.status_code}")
-    if response.status_code == 200:
-        for line in response.iter_lines():
-            if line:
-                print(f"Stream chunk: {line.decode('utf-8')}")
-    else:
-        print(f"Response: {response.text}\n")
-
-    # GET /v1/graph
-    print("Testing GET /v1/graph")
-    response = requests.get(f"{BASE_URL}/v1/graph")
-    print(f"Status: {response.status_code}")
-    try:
-        print(f"Response: {response.json()}\n")
-    except:
-        print(f"Response: {response.text}\n")
-
-    # GET /v1/graph:StateSchema
-    print("Testing GET /v1/graph:StateSchema")
-    response = requests.get(f"{BASE_URL}/v1/graph:StateSchema")
-    print(f"Status: {response.status_code}")
-    try:
-        print(f"Response: {response.json()}\n")
-    except:
-        print(f"Response: {response.text}\n")
-
-    print("All API tests completed!")

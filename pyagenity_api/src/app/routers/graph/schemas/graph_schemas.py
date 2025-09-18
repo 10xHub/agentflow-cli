@@ -104,6 +104,11 @@ class GraphInfoSchema(BaseModel):
     store: bool = Field(..., description="Whether store is enabled")
     interrupt_before: list[str] | None = Field(None, description="Nodes to interrupt before")
     interrupt_after: list[str] | None = Field(None, description="Nodes to interrupt after")
+    context_type: str | None = Field(None, description="Type of context for the graph")
+    id_generator: str | None = Field(None, description="ID generator type for the graph")
+    id_type: str | None = Field(None, description="ID type for the graph")
+    state_type: str | None = Field(None, description="State type for the graph")
+    state_fields: list[str] | None = Field(None, description="State fields for the graph")
 
 
 class GraphSchema(BaseModel):
