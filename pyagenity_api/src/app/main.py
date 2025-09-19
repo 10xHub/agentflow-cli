@@ -84,17 +84,3 @@ init_errors_handler(app)
 
 # init routes
 init_routes(app)
-
-config = SnowflakeConfig(
-    epoch=settings.SNOWFLAKE_EPOCH,
-    node_id=settings.SNOWFLAKE_NODE_ID,
-    worker_id=settings.SNOWFLAKE_WORKER_ID,
-    time_bits=settings.SNOWFLAKE_TIME_BITS,
-    node_bits=settings.SNOWFLAKE_NODE_BITS,
-    worker_bits=settings.SNOWFLAKE_WORKER_BITS,
-)
-
-container.bind_instance(
-    SnowflakeGenerator,
-    SnowflakeGenerator(config=config),
-)

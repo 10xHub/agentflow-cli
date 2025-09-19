@@ -1,13 +1,12 @@
 from collections.abc import AsyncIterable
 from typing import Any
-
+from uuid import uuid4
 from fastapi import BackgroundTasks, HTTPException
-from injectq import inject, singleton
+from injectq import InjectQ, inject, singleton
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.graph import CompiledGraph
 from pyagenity.utils import ContentType, Message
 from pydantic import BaseModel
-from snowflakekit import SnowflakeGenerator
 from starlette.responses import Content
 
 from pyagenity_api.src.app.core import logger
@@ -38,7 +37,6 @@ class GraphService:
     def __init__(
         self,
         graph: CompiledGraph,
-        generator: SnowflakeGenerator,
         thread_service: ThreadService,
         checkpointer: BaseCheckpointer,
         config: GraphConfig,
@@ -51,7 +49,6 @@ class GraphService:
                                    graph execution operations.
         """
         self._graph = graph
-        self._generator = generator
         self._thread_service = thread_service
         self.config = config
         self.checkpointer = checkpointer
@@ -149,11 +146,11 @@ class GraphService:
         if "thread_id" in config:
             thread_id = config["thread_id"]
         else:
-            thread_id = await self._generator.generate()
+            thread_id = await InjectQ.get_instance().atry_get("generated_id") or str(uuid4())
             is_new_thread = True
 
         # update thread id
-        config["thread_id"] = thread_id
+        config["thread_id"] = str(thread_id)
 
         # check recursion limit set or not
         config["recursion_limit"] = graph_input.recursion_limit or 25
@@ -171,7 +168,7 @@ class GraphService:
             config,
             {
                 "is_new_thread": is_new_thread,
-                "thread_id": thread_id,
+                "thread_id": str(thread_id),
             },
         )
 

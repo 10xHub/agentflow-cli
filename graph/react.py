@@ -258,8 +258,15 @@ def should_use_tools(state: AgentState) -> str:
     return END
 
 
+# Agent State
+class CustomAgentState(AgentState):
+    jd_text: str = ""  # Custom field for demonstration
+    cv_text: str = ""  # Custom field for demonstration
+    jd_id: int = 0  # Custom field for demonstration
+
+
 # Initialize the state graph for orchestrating agent flow
-graph = StateGraph()
+graph = StateGraph[CustomAgentState](CustomAgentState())
 
 # Add nodes to the graph
 graph.add_node("MAIN", main_agent)  # Main agent processing node
