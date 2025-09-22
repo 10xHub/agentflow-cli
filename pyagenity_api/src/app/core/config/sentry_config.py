@@ -18,9 +18,9 @@ def init_sentry(settings: Settings = Depends(get_settings)):
         None
     """
     try:
-        import sentry_sdk  # noqa: PLC0415
-        from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: PLC0415
-        from sentry_sdk.integrations.starlette import StarletteIntegration  # noqa: PLC0415
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
 
         sentry_sdk.init(
             dsn=settings.SENTRY_DSN,

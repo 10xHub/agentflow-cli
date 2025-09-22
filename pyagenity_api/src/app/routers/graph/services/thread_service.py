@@ -14,7 +14,7 @@ from .dummy_name_generator import generate_dummy_thread_name
 
 
 MODEL_PROMPT = """
-You are a helpful assistant. Given the following conversation, generate a concise, descriptive 
+You are a helpful assistant. Given the following conversation, generate a concise, descriptive
 thread name summarizing its topic.
 
 Requirements:

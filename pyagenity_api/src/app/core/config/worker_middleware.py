@@ -62,7 +62,8 @@
 #         """
 #         Handles post-save operations for a task.
 
-#         This method is called after a task is saved. It logs the task ID and the result of the task.
+#         This method is called after a task is saved. It logs the task ID and the result of the
+#           task.
 
 #         Args:
 #             message (TaskiqMessage): The message object containing task details.
@@ -93,5 +94,6 @@
 #         """
 #         logger.error(f"Exception on task: {message.task_id}", exc_info=exception)
 #         logger.error(
-#             f"Exception on task {message.task_id} Result: {result.return_value if result else None}"
+#             f"Exception on task {message.task_id} Result: {result.return_value if result
+#               else None}"
 #         )

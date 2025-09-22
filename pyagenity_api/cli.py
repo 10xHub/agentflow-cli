@@ -132,9 +132,8 @@ def find_config_file(config_path: str) -> str:
 def api(
     config: str = typer.Option("pyagenity.json", help="Path to config file"),
     host: str = typer.Option(
-        "0.0.0.0",  # noqa: S104  # Binding to all interfaces for server
-        help="Host to run the API on (default: 0.0.0.0, binds to all interfaces;"
-        " use 127.0.0.1 for localhost only)",
+        "127.0.0.1",  # Binding to localhost only
+        help="Host to run the API on (default: 127.0.0.1, binds to localhost only)",
     ),
     port: int = typer.Option(8000, help="Port to run the API on"),
     reload: bool = typer.Option(True, help="Enable auto-reload"),
@@ -240,6 +239,8 @@ from typing import Any
 from dotenv import load_dotenv
 from injectq import Inject
 from litellm import acompletion
+
+from pyagenity.adapters.llm.model_response_converter import ModelResponseConverter
 from pyagenity.checkpointer import InMemoryCheckpointer
 from pyagenity.graph import StateGraph, ToolNode
 from pyagenity.state.agent_state import AgentState
@@ -411,7 +412,10 @@ async def main_agent(
             stream=is_stream,
         )
 
-    return response
+    return ModelResponseConverter(
+        response,
+        converter="litellm",
+    )
 
 
 def should_use_tools(state: AgentState) -> str:
@@ -484,40 +488,6 @@ graph.set_entry_point("MAIN")
 app = graph.compile(
     checkpointer=checkpointer,
 )
-
-
-async def check_tools():
-    return await tool_node.all_tools()
-
-
-if __name__ == "__main__":
-    """
-    Example usage of the compiled graph agent.
-
-    This demonstrates how to invoke the agent with a user message
-    that requests tool usage (weather information).
-    """
-
-    # Example input with a message requesting weather information
-    input_data = {
-        "messages": [Message.from_text("Please call the get_weather function for New York City")]
-    }
-
-    # Configuration for this conversation thread
-    config = {"thread_id": "12345", "recursion_limit": 10}
-
-    # Display graph structure for debugging
-    logger.info("Graph Details:")
-    logger.info(app.generate_graph())
-
-    # Execute the graph with the input
-    logger.info("Executing graph...")
-    # result = app.invoke(input_data, config=config)
-
-    # Display the final result
-    # logger.info("Final response: %s", result)
-    res = asyncio.run(check_tools())
-    logger.info("Tools: %s", res)
 '''
 
 
