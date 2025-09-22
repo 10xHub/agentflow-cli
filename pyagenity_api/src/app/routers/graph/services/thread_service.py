@@ -2,15 +2,11 @@ import json
 from typing import Any
 
 from injectq import inject, singleton
-from litellm import acompletion
-from litellm.types.utils import ModelResponse
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.utils import Message
 
 from pyagenity_api.src.app.core import logger
 from pyagenity_api.src.app.core.config.graph_config import GraphConfig
-
-from .dummy_name_generator import generate_dummy_thread_name
 
 
 MODEL_PROMPT = """

@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterable
+from inspect import isawaitable
 from typing import Any
 from uuid import uuid4
 
@@ -6,7 +7,8 @@ from fastapi import BackgroundTasks, HTTPException
 from injectq import InjectQ, inject, singleton
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.graph import CompiledGraph
-from pyagenity.utils import ContentType, Message
+from pyagenity.utils import Message
+from pyagenity.utils.thread_info import ThreadInfo
 from pydantic import BaseModel
 from starlette.responses import Content
 
@@ -17,9 +19,6 @@ from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInvokeOutputSchema,
     GraphSchema,
     MessageSchema,
-)
-from pyagenity_api.src.app.routers.graph.services.dummy_name_generator import (
-    generate_dummy_thread_name,
 )
 
 from .thread_service import ThreadService
@@ -58,12 +57,12 @@ class GraphService:
         """
         Save the generated thread name to the database.
         """
+        thread_name = InjectQ.get_instance().get("generated_thread_name")
+        if isawaitable(thread_name):
+            thread_name = await thread_name
         return await self.checkpointer.aput_thread(
             config,
-            {
-                "thread_id": thread_id,
-                "thread_name": generate_dummy_thread_name(),
-            },
+            ThreadInfo(thread_id=thread_id, thread_name=thread_name),
         )
 
     def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
