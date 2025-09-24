@@ -21,8 +21,6 @@ from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     MessageSchema,
 )
 
-from .thread_service import ThreadService
-
 
 @singleton
 class GraphService:
@@ -37,7 +35,6 @@ class GraphService:
     def __init__(
         self,
         graph: CompiledGraph,
-        thread_service: ThreadService,
         checkpointer: BaseCheckpointer,
         config: GraphConfig,
     ):
@@ -49,11 +46,10 @@ class GraphService:
                                    graph execution operations.
         """
         self._graph = graph
-        self._thread_service = thread_service
         self.config = config
         self.checkpointer = checkpointer
 
-    async def _save_thread(self, config: dict[str, Any], thread_id: int):
+    async def _save_thread_name(self, config: dict[str, Any], thread_id: int):
         """
         Save the generated thread name to the database.
         """
@@ -63,6 +59,15 @@ class GraphService:
         return await self.checkpointer.aput_thread(
             config,
             ThreadInfo(thread_id=thread_id, thread_name=thread_name),
+        )
+
+    async def _save_thread(self, config: dict[str, Any], thread_id: int):
+        """
+        Save the generated thread name to the database.
+        """
+        return await self.checkpointer.aput_thread(
+            config,
+            ThreadInfo(thread_id=thread_id),
         )
 
     def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
@@ -84,13 +89,11 @@ class GraphService:
             if msg.role not in allowed_roles:
                 logger.warning(f"Invalid role '{msg.role}' in message, defaulting to 'user'")
 
-            role = msg.role if msg.role in allowed_roles else "user"
             # Cast role to the expected Literal type for type checking
             # System role are not allowed for safety reasons
             # Fixme: Fix message id
-            converted_msg = Message.from_text(
-                role=role,  # type: ignore
-                data=msg.content,
+            converted_msg = Message.text_message(
+                content=msg.content,
                 message_id=msg.message_id,  # type: ignore
             )
             converted_messages.append(converted_msg)
@@ -239,18 +242,11 @@ class GraphService:
             # background_tasks.add_task(self._generate_background_thread_name, thread_id)
 
             if meta["is_new_thread"] and self.config.generate_thread_name:
-                model_name = self.config.thread_model_name
-                if not model_name:
-                    logger.warning(
-                        "Thread model name is not configured, cannot generate thread name",
-                    )
-                else:
-                    background_tasks.add_task(
-                        self._thread_service.generate_thread_name_invoke,
-                        config,
-                        config["thread_id"],
-                        messages,
-                    )
+                background_tasks.add_task(
+                    self._save_thread_name,
+                    config,
+                    config["thread_id"],
+                )
 
             # state can be instance of pydentic or dict
             state_dict = raw_state.model_dump() if raw_state is not None else raw_state  # type: ignore
@@ -295,8 +291,6 @@ class GraphService:
             config["user"] = user
             await self._save_thread(config, config["thread_id"])
 
-            accumulated_messages: list[dict[str, Any]] = []
-
             # Stream the graph execution
             async for chunk in self._graph.astream(
                 input_data,
@@ -306,34 +300,16 @@ class GraphService:
                 mt = chunk.metadata or {}
                 mt.update(meta)
                 chunk.metadata = mt
-                if (
-                    (
-                        meta["is_new_thread"]
-                        and chunk.content_type is not None
-                        and ContentType.MESSAGE in chunk.content_type
-                    )
-                    and chunk.data is not None
-                    and "message" in chunk.data
-                ):
-                    accumulated_messages.append(chunk.data.get("message", {}))
-
                 yield chunk.model_dump_json()
 
             logger.info("Graph streaming completed successfully")
 
             if meta["is_new_thread"] and self.config.generate_thread_name:
-                model_name = self.config.thread_model_name
-                if not model_name:
-                    logger.warning(
-                        "Thread model name is not configured, cannot generate thread name",
-                    )
-                else:
-                    background_tasks.add_task(
-                        self._thread_service.generate_thread_name_stream,
-                        config,
-                        config["thread_id"],
-                        accumulated_messages,
-                    )
+                background_tasks.add_task(
+                    self._save_thread_name,
+                    config,
+                    config["thread_id"],
+                )
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
