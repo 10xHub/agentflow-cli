@@ -132,9 +132,8 @@ class CheckpointerService:
         cfg = self._config(config, user)
         logger.debug(f"User info: {user} and")
         res = await self.checkpointer.aget_thread(cfg)
-        print("Thread fetched:", res)
 
-        return ThreadResponseSchema(thread=res.model_dump() if hasattr(res, "dict") else res.__dict__)
+        return ThreadResponseSchema(thread=res.model_dump() if res is not None else None)
 
     async def list_threads(
         self,
@@ -145,8 +144,9 @@ class CheckpointerService:
     ) -> ThreadsListResponseSchema:
         cfg = self._config({}, user)
         res = await self.checkpointer.alist_threads(cfg, search, offset, limit)
-        print("Threads fetched:", res)
-        return ThreadsListResponseSchema(threads=[t.model_dump() if hasattr(t, "dict") else t.__dict__ for t in res])
+        return ThreadsListResponseSchema(
+            threads=[t.model_dump() if t is not None else None for t in res]
+        )
 
     async def delete_thread(
         self,
