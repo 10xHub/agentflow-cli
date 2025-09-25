@@ -10,6 +10,7 @@ from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
+    GraphStopSchema,
     GraphStreamChunkSchema,
 )
 from pyagenity_api.src.app.routers.graph.services.graph_service import GraphService
@@ -139,6 +140,41 @@ async def state_schema(
     result: dict = await service.get_state_schema()
 
     logger.info("Graph invoke completed successfully")
+
+    return success_response(
+        result,
+        request,
+    )
+
+
+@router.post(
+    "/v1/graph/stop",
+    summary="Stop graph execution",
+    description="Stop the currently running graph execution for a specific thread",
+    responses=generate_swagger_responses(dict),
+    openapi_extra={},
+)
+async def stop_graph(
+    request: Request,
+    stop_request: GraphStopSchema,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """
+    Stop the graph execution for a specific thread.
+
+    Args:
+        stop_request: Request containing thread_id and optional config
+
+    Returns:
+        Status information about the stop operation
+    """
+    logger.info(f"Graph stop request received for thread: {stop_request.thread_id}")
+    logger.debug(f"User info: {user}")
+
+    result = await service.stop_graph(stop_request.thread_id, user, stop_request.config)
+
+    logger.info(f"Graph stop completed for thread {stop_request.thread_id}")
 
     return success_response(
         result,
