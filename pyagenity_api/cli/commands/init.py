@@ -7,7 +7,12 @@ from typing import Any
 
 from pyagenity_api.cli.commands import BaseCommand
 from pyagenity_api.cli.exceptions import FileOperationError
-from pyagenity_api.cli.templates.defaults import DEFAULT_CONFIG_JSON, DEFAULT_REACT_PY
+from pyagenity_api.cli.templates.defaults import (
+    DEFAULT_CONFIG_JSON,
+    DEFAULT_PRE_COMMIT,
+    DEFAULT_PYPROJECT,
+    DEFAULT_REACT_PY,
+)
 
 
 class InitCommand(BaseCommand):
@@ -17,6 +22,7 @@ class InitCommand(BaseCommand):
         self,
         path: str = ".",
         force: bool = False,
+        prod: bool = False,
         **kwargs: Any,
     ) -> int:
         """Execute the init command.
@@ -31,11 +37,10 @@ class InitCommand(BaseCommand):
         """
         try:
             # Print banner
-            self.output.print_banner(
-                "Init",
-                "Create pyagenity.json and graph/react.py scaffold files",
-                color="magenta",
-            )
+            subtitle = "Create pyagenity.json and graph/react.py scaffold files"
+            if prod:
+                subtitle += " plus production config files"
+            self.output.print_banner("Init", subtitle, color="magenta")
 
             base_path = Path(path)
 
@@ -57,6 +62,15 @@ class InitCommand(BaseCommand):
             init_path = graph_dir / "__init__.py"
             self._write_file(init_path, "", force=force)
 
+            # Production extra files
+            if prod:
+                pre_commit_path = base_path / ".pre-commit-config.yaml"
+                pyproject_path = base_path / "pyproject.toml"
+                self._write_file(pre_commit_path, DEFAULT_PRE_COMMIT + "\n", force=force)
+                self._write_file(pyproject_path, DEFAULT_PYPROJECT + "\n", force=force)
+                self.output.success(f"Created pre-commit config at {pre_commit_path}")
+                self.output.success(f"Created pyproject file at {pyproject_path}")
+
             # Success messages
             self.output.success(f"Created config file at {config_path}")
             self.output.success(f"Created react graph at {react_path}")
@@ -70,6 +84,9 @@ class InitCommand(BaseCommand):
                 "Set up environment variables in .env file",
                 "Run the API server with: pag api",
             ]
+            if prod:
+                next_steps.insert(0, "Install pre-commit hooks: pre-commit install")
+                next_steps.insert(1, "Review pyproject.toml for metadata updates")
 
             for i, step in enumerate(next_steps, 1):
                 self.output.info(f"{i}. {step}")

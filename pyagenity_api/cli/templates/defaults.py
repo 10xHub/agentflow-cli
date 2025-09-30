@@ -309,40 +309,177 @@ app = graph.compile(
     checkpointer=checkpointer,
 )
 
-
-async def check_tools():
-    return await tool_node.all_tools()
-
-
-if __name__ == "__main__":
-    \"\"\"
-    Example usage of the compiled graph agent.
-
-    This demonstrates how to invoke the agent with a user message
-    that requests tool usage (weather information).
-    \"\"\"
-
-    # Example input with a message requesting weather information
-    input_data = {
-        "messages": [Message.from_text("Please call the get_weather function for New York City")]
-    }
-
-    # Configuration for this conversation thread
-    config = {"thread_id": "12345", "recursion_limit": 10}
-
-    # Display graph structure for debugging
-    logger.info("Graph Details:")
-    logger.info(app.generate_graph())
-
-    # Execute the graph with the input
-    logger.info("Executing graph...")
-    # result = app.invoke(input_data, config=config)
-
-    # Display the final result
-    # logger.info("Final response: %s", result)
-    res = asyncio.run(check_tools())
-    logger.info("Tools: %s", res)
 '''
+
+# Production templates (mirroring root repo tooling for convenience)
+DEFAULT_PRE_COMMIT: Final[str] = """repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v6.0.0
+        hooks:
+            - id: check-yaml
+                exclude: ^(tests|docs|examples)/
+            - id: trailing-whitespace
+                exclude: ^(tests|docs|examples)/
+            - id: check-added-large-files
+                args: [--maxkb=100]
+                exclude: ^(tests|docs|examples)/
+            - id: check-ast
+                exclude: ^(tests|docs|examples)/
+            - id: check-builtin-literals
+                exclude: ^(tests|docs|examples)/
+            - id: check-case-conflict
+                exclude: ^(tests|docs|examples)/
+            - id: check-docstring-first
+                exclude: ^(tests|docs|examples)/
+            - id: check-merge-conflict
+                exclude: ^(tests|docs|examples)/
+            - id: debug-statements
+                exclude: ^(tests|docs|examples)/
+            - id: detect-private-key
+                exclude: ^(tests|docs|examples)/
+
+    - repo: https://github.com/asottile/pyupgrade
+        rev: v3.17.0
+        hooks:
+            - id: pyupgrade
+                args: [--py310-plus]
+                exclude: ^(tests|docs|examples)/
+
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+        rev: v0.5.7
+        hooks:
+            - id: ruff-format
+                exclude: ^(tests|docs|examples)/
+
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+        rev: v0.5.7
+        hooks:
+            - id: ruff
+                args: [--fix, --exit-non-zero-on-fix]
+                exclude: ^(tests|docs|examples)/
+
+    - repo: https://github.com/PyCQA/bandit
+        rev: 1.7.9
+        hooks:
+            - id: bandit
+                args: [-c, pyproject.toml]
+                additional_dependencies: ["bandit[toml]"]
+                exclude: ^(tests|docs|examples)/
+"""
+
+DEFAULT_PYPROJECT: Final[str] = """[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyagenity-api-app"
+version = "0.1.0"
+description = "Pyagenity API application"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+        {name = "Your Name", email = "you@example.com"},
+]
+maintainers = [
+        {name = "Your Name", email = "you@example.com"},
+]
+keywords = ["pyagenity", "api", "fastapi", "cli", "pag"]
+classifiers = [
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+        "pyagenity-api",
+]
+
+[project.scripts]
+pag = "pyagenity_api.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+lint.fixable = ["ALL"]
+lint.select = [
+    "E", "W", "F", "PL", "I", "B", "A", "S", "ISC", "ICN", "PIE", "Q",
+    "RET", "SIM", "TID", "RUF", "YTT", "UP", "C4", "PTH", "G", "INP", "T20",
+]
+lint.ignore = [
+    "UP006", "UP007", "RUF012", "G004", "B904", "B008", "ISC001",
+]
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+exclude = [
+    "venv/*",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"bin/*.py" = ["E402", "S603", "T201", "S101"]
+"*/tests/*.py" = ["E402", "S603", "T201", "S101"]
+"*/test/*.py" = ["E402", "S603", "T201", "S101"]
+"scripts/*.py" = ["E402", "S603", "T201", "S101", "INP001"]
+"*/__init__.py" = ["E402", "S603", "T201", "S101"]
+"*/migrations/*.py" = ["E402", "S603", "T201", "S101"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.bandit]
+exclude_dirs = ["*/tests/*", "*/pyagenity_api/tests/*"]
+skips = ["B101", "B611", "B601", "B608"]
+
+[tool.pytest.ini_options]
+env = ["ENVIRONMENT=pytest"]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]
+addopts = [
+    "--cov=pyagenity_api", "--cov-report=html", "--cov-report=term-missing",
+    "--cov-report=xml", "--cov-fail-under=0", "--strict-markers", "-v"
+]
+
+[tool.coverage.run]
+source = ["pyagenity_api"]
+branch = true
+omit = [
+    "*/__init__.py", "*/tests/*", "*/migrations/*", "*/scripts/*", "*/venv/*", "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == '__main__':", "pragma: no cover", "@abc.abstractmethod", "@abstractmethod",
+    "raise NotImplementedError",
+]
+show_missing = true
+
+[tool.coverage.paths]
+source = ["pyagenity_api", "*/site-packages/pyagenity_api"]
+
+[tool.pytest-env]
+ENVIRONMENT = "pytest"
+"""
 
 
 # Docker templates

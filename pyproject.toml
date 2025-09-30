@@ -188,13 +188,43 @@ filterwarnings = [
     "ignore::DeprecationWarning"
 ]
 addopts = [
-    "--cov=pyagenity",
+        # Limit coverage collection to the local project package only
+        "--cov=pyagenity_api",
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
     "--cov-fail-under=0",
     "--strict-markers",
     "-v"
+]
+
+[tool.coverage.run]
+# Only measure the first-party project package
+source = ["pyagenity_api"]
+branch = true
+omit = [
+    "*/__init__.py",           # often trivial
+    "*/tests/*",               # exclude test code
+    "*/migrations/*",
+    "*/scripts/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == '__main__':",
+    "pragma: no cover",
+    "@abc.abstractmethod",
+    "@abstractmethod",
+    "raise NotImplementedError",
+]
+show_missing = true
+
+[tool.coverage.paths]
+source = [
+    "pyagenity_api",
+    "*/site-packages/pyagenity_api",
 ]
 
 [tool.pytest-env]

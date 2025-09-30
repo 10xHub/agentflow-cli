@@ -1,6 +1,8 @@
 
 # Home
 
+> For the full command-line tooling guide, see the **[Pyagenity CLI Reference](./cli.md)**.
+
 ## Introduction
 Welcome to the 10XScale-in Backend Base project. This FastAPI-based application serves as a robust foundation for building scalable and efficient backend services. Our project is designed with modern development practices in mind, offering a streamlined setup process and powerful features to accelerate your development workflow.
 

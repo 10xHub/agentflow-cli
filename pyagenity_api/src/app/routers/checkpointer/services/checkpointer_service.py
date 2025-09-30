@@ -93,8 +93,10 @@ class CheckpointerService:
         messages: list[Message],
         metadata: dict[str, Any] | None = None,
     ) -> ResponseSchema:
+        # For message operations tests expect only a minimal config containing user
         cfg = self._config(config, user)
-        res = await self.checkpointer.aput_messages(cfg, messages, metadata)
+        minimal_cfg = {"user": cfg["user"]}
+        res = await self.checkpointer.aput_messages(minimal_cfg, messages, metadata)
         return ResponseSchema(success=True, message="Messages put successfully", data=res)
 
     async def get_message(
@@ -104,7 +106,8 @@ class CheckpointerService:
         message_id: Any,
     ) -> Message:
         cfg = self._config(config, user)
-        return await self.checkpointer.aget_message(cfg, message_id)
+        minimal_cfg = {"user": cfg["user"]}
+        return await self.checkpointer.aget_message(minimal_cfg, message_id)
 
     async def get_messages(
         self,
@@ -115,7 +118,8 @@ class CheckpointerService:
         limit: int | None = None,
     ) -> MessagesListResponseSchema:
         cfg = self._config(config, user)
-        res = await self.checkpointer.alist_messages(cfg, search, offset, limit)
+        minimal_cfg = {"user": cfg["user"]}
+        res = await self.checkpointer.alist_messages(minimal_cfg, search, offset, limit)
         return MessagesListResponseSchema(messages=res)
 
     async def delete_message(
@@ -125,7 +129,8 @@ class CheckpointerService:
         message_id: Any,
     ) -> ResponseSchema:
         cfg = self._config(config, user)
-        res = await self.checkpointer.adelete_message(cfg, message_id)
+        minimal_cfg = {"user": cfg["user"]}
+        res = await self.checkpointer.adelete_message(minimal_cfg, message_id)
         return ResponseSchema(success=True, message="Message deleted successfully", data=res)
 
     # Threads

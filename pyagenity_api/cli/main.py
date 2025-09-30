@@ -149,6 +149,14 @@ def init(
         "-f",
         help="Overwrite existing files if they exist",
     ),
+    prod: bool = typer.Option(
+        False,
+        "--prod",
+        help=(
+            "Initialize production-ready project (adds pyproject.toml and "
+            ".pre-commit-config.yaml)"
+        ),
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -168,7 +176,7 @@ def init(
 
     try:
         command = InitCommand(output)
-        exit_code = command.execute(path=path, force=force)
+        exit_code = command.execute(path=path, force=force, prod=prod)
         sys.exit(exit_code)
     except Exception as e:
         sys.exit(handle_exception(e))
