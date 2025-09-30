@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyagenity-api"
-version = "0.1.1"
+version = "0.1.2"
 description = "CLI and API for Pyagenity"
 readme = "README.md"
 license = {text = "MIT"}
@@ -37,17 +37,13 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
-    "pyagenity",
+    "pyagenity>=0.3.0",
     "fastapi",
     "gunicorn==23.0.0",
-    "oauth2client==4.1.3",
     "orjson",
     "python-multipart==0.0.19",
     "pydantic==2.8.2",
     "pydantic-settings==2.3.4",
-    "redis==5.0.7",
-    "sentry-sdk==2.10.0",
-    "snowflakekit",
     "uvicorn==0.30.1",
     "typer",
     "python-dotenv",
@@ -61,20 +57,6 @@ Issues = "https://github.com/Iamsdt/pyagenity-api/issues"
 Documentation = "https://pyagenity-api.readthedocs.io/"
 
 [project.optional-dependencies]
-dev = [
-    "pytest==8.3.2",
-    "pytest-env==1.1.3",
-    "pytest-xdist==3.8.0",
-    "pre-commit==3.8.0",
-    "ruff==0.5.2",
-    "mkdocs-gen-files==0.5.0",
-    "mkdocstrings==0.25.2",
-    "mypy-extensions==1.0.0",
-    "httpx==0.27.0",
-    "lib==4.0.0",
-    "markdown-it-py==3.0.0",
-    "requests==2.32.3",
-]
 sentry = [
     "sentry-sdk==2.10.0",
 ]
@@ -220,6 +202,20 @@ ENVIRONMENT = "pytest"
 
 [dependency-groups]
 dev = [
+    "snowflakekit",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "pytest-env>=1.1.5",
     "pytest-xdist>=3.8.0",
+    "pre-commit>=3.8.0",
+    "ruff==0.5.2",
+    "mkdocs-gen-files==0.5.0",
+    "mkdocstrings==0.25.2",
+    "mypy-extensions==1.0.0",
+    "httpx==0.27.0",
+    "lib==4.0.0",
+    "markdown-it-py==3.0.0",
+    "requests==2.32.3",
 ]
 

@@ -1,7 +1,11 @@
 import os
+from importlib.util import find_spec
 
 from pyagenity.utils.id_generator import BaseIDGenerator, IDType
-from snowflakekit import SnowflakeConfig, SnowflakeGenerator
+
+
+# Check if snowflakekit is available
+HAS_SNKOWFLAKE = find_spec("snowflakekit") is not None
 
 
 class SnowFlakeIdGenerator(BaseIDGenerator):
@@ -17,6 +21,12 @@ class SnowFlakeIdGenerator(BaseIDGenerator):
     ):
         # IF all these are None then try to read from env
         config = None
+        if not HAS_SNKOWFLAKE:
+            raise ImportError(
+                "snowflakekit is not installed. Please install it to use SnowFlakeIdGenerator."
+            )
+
+        from snowflakekit import SnowflakeConfig, SnowflakeGenerator
 
         if (
             snowflake_epoch is None

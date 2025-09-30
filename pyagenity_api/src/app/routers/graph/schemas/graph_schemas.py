@@ -117,3 +117,12 @@ class GraphSchema(BaseModel):
     info: GraphInfoSchema = Field(..., description="Graph metadata and configuration")
     nodes: list[NodeSchema] = Field(..., description="List of nodes in the graph")
     edges: list[EdgeSchema] = Field(..., description="List of edges in the graph")
+
+
+class GraphStopSchema(BaseModel):
+    """Schema for stopping graph execution."""
+
+    thread_id: str = Field(..., description="Thread ID to stop execution for")
+    config: dict[str, Any] | None = Field(
+        default=None, description="Optional configuration for the stop operation"
+    )
