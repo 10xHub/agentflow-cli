@@ -21,8 +21,6 @@ from pyagenity_api.src.app.routers.graph.schemas.graph_schemas import (
     MessageSchema,
 )
 
-from .thread_service import ThreadService
-
 
 @singleton
 class GraphService:
@@ -37,7 +35,6 @@ class GraphService:
     def __init__(
         self,
         graph: CompiledGraph,
-        thread_service: ThreadService,
         checkpointer: BaseCheckpointer,
         config: GraphConfig,
     ):
@@ -49,11 +46,10 @@ class GraphService:
                                    graph execution operations.
         """
         self._graph = graph
-        self._thread_service = thread_service
         self.config = config
         self.checkpointer = checkpointer
 
-    async def _save_thread(self, config: dict[str, Any], thread_id: int):
+    async def _save_thread_name(self, config: dict[str, Any], thread_id: int):
         """
         Save the generated thread name to the database.
         """
@@ -63,6 +59,15 @@ class GraphService:
         return await self.checkpointer.aput_thread(
             config,
             ThreadInfo(thread_id=thread_id, thread_name=thread_name),
+        )
+
+    async def _save_thread(self, config: dict[str, Any], thread_id: int):
+        """
+        Save the generated thread name to the database.
+        """
+        return await self.checkpointer.aput_thread(
+            config,
+            ThreadInfo(thread_id=thread_id),
         )
 
     def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
@@ -84,58 +89,122 @@ class GraphService:
             if msg.role not in allowed_roles:
                 logger.warning(f"Invalid role '{msg.role}' in message, defaulting to 'user'")
 
-            role = msg.role if msg.role in allowed_roles else "user"
             # Cast role to the expected Literal type for type checking
             # System role are not allowed for safety reasons
             # Fixme: Fix message id
-            converted_msg = Message.from_text(
-                role=role,  # type: ignore
-                data=msg.content,
+            converted_msg = Message.text_message(
+                content=msg.content,
                 message_id=msg.message_id,  # type: ignore
             )
             converted_messages.append(converted_msg)
 
         return converted_messages
 
-    def _serialize_chunk(self, chunk):
+    def _process_state_and_messages(
+        self, graph_input: GraphInputSchema, raw_state, messages: list[Message]
+    ) -> tuple[dict[str, Any] | None, list[Message]]:
+        """Process state and messages based on include_raw parameter."""
+        if graph_input.include_raw:
+            # Include everything when include_raw is True
+            state_dict = raw_state.model_dump() if raw_state is not None else raw_state
+            return state_dict, messages
+
+        # Filter out execution_meta from state and raw from messages
+        # when include_raw is False
+        if raw_state is not None:
+            state_dict = raw_state.model_dump()
+            # Remove execution_meta if present
+            if "execution_meta" in state_dict:
+                del state_dict["execution_meta"]
+        else:
+            state_dict = raw_state
+
+        # Filter raw data from messages
+        filtered_messages = []
+        for msg in messages:
+            msg_dict = msg.model_dump()
+            # Remove raw field if present
+            if "raw" in msg_dict:
+                del msg_dict["raw"]
+            # Create filtered message
+            filtered_msg = Message.model_validate(msg_dict)
+            filtered_messages.append(filtered_msg)
+
+        return state_dict, filtered_messages
+
+    def _extract_context_info(
+        self, raw_state, result: dict[str, Any]
+    ) -> tuple[list[Message] | None, str | None]:
+        """Extract context and context_summary from result or state."""
+        context: list[Message] | None = result.get("context")
+        context_summary: str | None = result.get("context_summary")
+
+        # If not found, try reading from state (supports both dict and model)
+        if not context_summary and raw_state is not None:
+            try:
+                if isinstance(raw_state, dict):
+                    context_summary = raw_state.get("context_summary")
+                else:
+                    context_summary = getattr(raw_state, "context_summary", None)
+            except Exception:
+                context_summary = None
+
+        if not context and raw_state is not None:
+            try:
+                if isinstance(raw_state, dict):
+                    context = raw_state.get("context")
+                else:
+                    context = getattr(raw_state, "context", None)
+            except Exception:
+                context = None
+
+        return context, context_summary
+
+    async def stop_graph(
+        self,
+        thread_id: str,
+        user: dict[str, Any],
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
-        Serialize any object to a JSON-compatible format.
+        Stop the graph execution for a specific thread.
 
         Args:
-            chunk: The chunk object to serialize
+            thread_id (str): The thread ID to stop
+            user (dict): User information for context
+            config (dict, optional): Additional configuration for the stop operation
 
         Returns:
-            JSON-serializable representation of the chunk
+            dict: Stop result with status information
+
+        Raises:
+            HTTPException: If stop operation fails or user doesn't have permission.
         """
-        # If it's already a basic JSON type, return as-is
-        if chunk is None or isinstance(chunk, str | int | float | bool):
-            return chunk
+        try:
+            logger.info(f"Stopping graph execution for thread: {thread_id}")
+            logger.debug(f"User info: {user}")
 
-        # Handle collections recursively
-        if isinstance(chunk, dict):
-            return {key: self._serialize_chunk(value) for key, value in chunk.items()}
-        if isinstance(chunk, list | tuple):
-            return [self._serialize_chunk(item) for item in chunk]
+            # Prepare config with thread_id and user info
+            stop_config = {
+                "thread_id": thread_id,
+                "user": user,
+            }
 
-        # Try various serialization methods and fallbacks
-        serialization_attempts = [
-            lambda: chunk.model_dump() if hasattr(chunk, "model_dump") else None,
-            lambda: chunk.to_dict() if hasattr(chunk, "to_dict") else None,
-            lambda: chunk.dict() if hasattr(chunk, "dict") else None,
-            lambda: self._serialize_chunk(chunk.__dict__) if hasattr(chunk, "__dict__") else None,
-            lambda: str(chunk),  # Final fallback
-        ]
+            # Merge additional config if provided
+            if config:
+                stop_config.update(config)
 
-        for attempt in serialization_attempts:
-            try:
-                result = attempt()
-                if result is not None:
-                    return result
-            except Exception as e:
-                logger.debug(f"Serialization attempt failed: {e}")
-                continue
+            # Call the graph's astop method
+            result = await self._graph.astop(stop_config)
 
-        return str(chunk)  # Should never reach here, but just in case
+            logger.info(f"Graph stop completed for thread {thread_id}: {result}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Graph stop failed for thread {thread_id}: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Graph stop failed for thread {thread_id}: {e!s}"
+            )
 
     async def _prepare_input(
         self,
@@ -213,50 +282,27 @@ class GraphService:
             # Extract messages and state from result
             messages: list[Message] = result.get("messages", [])
             raw_state = result.get("state", None)
-            context: list[Message] | None = result.get("context", None)
-            context_summary: str | None = result.get("context_summary", None)
 
-            # If not found, try reading from state (supports both dict and model)
-            if not context_summary and raw_state is not None:
-                try:
-                    if isinstance(raw_state, dict):
-                        context_summary = raw_state.get("context_summary")
-                    else:
-                        context_summary = getattr(raw_state, "context_summary", None)
-                except Exception:
-                    context_summary = None
-
-            if not context and raw_state is not None:
-                try:
-                    if isinstance(raw_state, dict):
-                        context = raw_state.get("context")
-                    else:
-                        context = getattr(raw_state, "context", None)
-                except Exception:
-                    context = None
+            # Extract context information using helper method
+            context, context_summary = self._extract_context_info(raw_state, result)
 
             # Generate background thread name
             # background_tasks.add_task(self._generate_background_thread_name, thread_id)
 
             if meta["is_new_thread"] and self.config.generate_thread_name:
-                model_name = self.config.thread_model_name
-                if not model_name:
-                    logger.warning(
-                        "Thread model name is not configured, cannot generate thread name",
-                    )
-                else:
-                    background_tasks.add_task(
-                        self._thread_service.generate_thread_name_invoke,
-                        config,
-                        config["thread_id"],
-                        messages,
-                    )
+                background_tasks.add_task(
+                    self._save_thread_name,
+                    config,
+                    config["thread_id"],
+                )
 
-            # state can be instance of pydentic or dict
-            state_dict = raw_state.model_dump() if raw_state is not None else raw_state  # type: ignore
+            # Process state and messages based on include_raw parameter
+            state_dict, processed_messages = self._process_state_and_messages(
+                graph_input, raw_state, messages
+            )
 
             return GraphInvokeOutputSchema(
-                messages=messages,
+                messages=processed_messages,
                 state=state_dict,
                 context=context,
                 summary=context_summary,
@@ -295,8 +341,6 @@ class GraphService:
             config["user"] = user
             await self._save_thread(config, config["thread_id"])
 
-            accumulated_messages: list[dict[str, Any]] = []
-
             # Stream the graph execution
             async for chunk in self._graph.astream(
                 input_data,
@@ -306,34 +350,16 @@ class GraphService:
                 mt = chunk.metadata or {}
                 mt.update(meta)
                 chunk.metadata = mt
-                if (
-                    (
-                        meta["is_new_thread"]
-                        and chunk.content_type is not None
-                        and ContentType.MESSAGE in chunk.content_type
-                    )
-                    and chunk.data is not None
-                    and "message" in chunk.data
-                ):
-                    accumulated_messages.append(chunk.data.get("message", {}))
-
                 yield chunk.model_dump_json()
 
             logger.info("Graph streaming completed successfully")
 
             if meta["is_new_thread"] and self.config.generate_thread_name:
-                model_name = self.config.thread_model_name
-                if not model_name:
-                    logger.warning(
-                        "Thread model name is not configured, cannot generate thread name",
-                    )
-                else:
-                    background_tasks.add_task(
-                        self._thread_service.generate_thread_name_stream,
-                        config,
-                        config["thread_id"],
-                        accumulated_messages,
-                    )
+                background_tasks.add_task(
+                    self._save_thread_name,
+                    config,
+                    config["thread_id"],
+                )
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
