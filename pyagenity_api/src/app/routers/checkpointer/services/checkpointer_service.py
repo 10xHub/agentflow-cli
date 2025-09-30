@@ -30,6 +30,7 @@ class CheckpointerService:
 
         cfg: dict[str, Any] = dict(config or {})
         cfg["user"] = user
+        cfg["user_id"] = user.get("user_id", "anonymous")
         return cfg
 
     async def get_state(self, config: dict[str, Any], user: dict) -> StateResponseSchema:
@@ -132,7 +133,7 @@ class CheckpointerService:
         cfg = self._config(config, user)
         logger.debug(f"User info: {user} and")
         res = await self.checkpointer.aget_thread(cfg)
-        return ThreadResponseSchema(thread=res)
+        return ThreadResponseSchema(thread=res.model_dump() if res else None)
 
     async def list_threads(
         self,
@@ -143,7 +144,7 @@ class CheckpointerService:
     ) -> ThreadsListResponseSchema:
         cfg = self._config({}, user)
         res = await self.checkpointer.alist_threads(cfg, search, offset, limit)
-        return ThreadsListResponseSchema(threads=res)
+        return ThreadsListResponseSchema(threads=[t.model_dump() for t in res])
 
     async def delete_thread(
         self,

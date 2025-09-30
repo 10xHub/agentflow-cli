@@ -156,6 +156,15 @@ async def attach_all_modules(
     graph = await load_graph(config.graph_path)
     logger.info("All modules attached successfully")
 
+    # This binding we have done already in the library
+    # # Bind checkpointer instance if configured
+    # checkpointer = load_checkpointer(config.checkpointer_path)
+    # container.bind_instance(BaseCheckpointer, checkpointer, allow_none=True)
+
+    # # Bind store instance if configured
+    # store = load_store(config.store_path)
+    # container.bind_instance(BaseStore, store, allow_none=True)
+
     # load auth backend
     auth_config = config.auth_config()
     if auth_config:

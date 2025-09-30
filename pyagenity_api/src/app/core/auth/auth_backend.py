@@ -27,5 +27,7 @@ def verify_current_user(
         logger.error("Auth backend is not configured")
         return user
 
-    user = auth_backend.authenticate(res, credential)
+    user: dict | None = auth_backend.authenticate(res, credential)
+    if user and "user_id" not in user:
+        logger.error("Authentication failed: 'user_id' not found in user info")
     return user or {}
