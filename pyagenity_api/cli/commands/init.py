@@ -1,0 +1,113 @@
+"""Init command implementation."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from pyagenity_api.cli.commands import BaseCommand
+from pyagenity_api.cli.exceptions import FileOperationError
+from pyagenity_api.cli.templates.defaults import DEFAULT_CONFIG_JSON, DEFAULT_REACT_PY
+
+
+class InitCommand(BaseCommand):
+    """Command to initialize default config and graph files."""
+
+    def execute(
+        self,
+        path: str = ".",
+        force: bool = False,
+        **kwargs: Any,
+    ) -> int:
+        """Execute the init command.
+
+        Args:
+            path: Directory to initialize files in
+            force: Overwrite existing files
+            **kwargs: Additional arguments
+
+        Returns:
+            Exit code
+        """
+        try:
+            # Print banner
+            self.output.print_banner(
+                "Init",
+                "Create pyagenity.json and graph/react.py scaffold files",
+                color="magenta",
+            )
+
+            base_path = Path(path)
+
+            # Create directory if it doesn't exist
+            base_path.mkdir(parents=True, exist_ok=True)
+
+            # Write config JSON
+            config_path = base_path / "pyagenity.json"
+            self._write_file(config_path, DEFAULT_CONFIG_JSON + "\n", force=force)
+
+            # Write graph/react.py
+            graph_dir = base_path / "graph"
+            graph_dir.mkdir(parents=True, exist_ok=True)
+
+            react_path = graph_dir / "react.py"
+            self._write_file(react_path, DEFAULT_REACT_PY, force=force)
+
+            # Write __init__.py to make graph a package
+            init_path = graph_dir / "__init__.py"
+            self._write_file(init_path, "", force=force)
+
+            # Success messages
+            self.output.success(f"Created config file at {config_path}")
+            self.output.success(f"Created react graph at {react_path}")
+            self.output.success(f"Created graph package at {init_path}")
+
+            # Next steps
+            self.output.info("\n🚀 Next steps:")
+            next_steps = [
+                "Review and customize pyagenity.json configuration",
+                "Modify graph/react.py to implement your agent logic",
+                "Set up environment variables in .env file",
+                "Run the API server with: pag api",
+            ]
+
+            for i, step in enumerate(next_steps, 1):
+                self.output.info(f"{i}. {step}")
+
+            return 0
+
+        except FileOperationError as e:
+            return self.handle_error(e)
+        except Exception as e:
+            file_error = FileOperationError(f"Failed to initialize project: {e}")
+            return self.handle_error(file_error)
+
+    def _write_file(self, path: Path, content: str, *, force: bool) -> None:
+        """Write content to path, creating parents.
+
+        Args:
+            path: Path to write to
+            content: Content to write
+            force: Whether to overwrite existing files
+
+        Raises:
+            FileOperationError: If file exists and force is False, or write fails
+        """
+        try:
+            # Create parent directories
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Check if file exists and force is not set
+            if path.exists() and not force:
+                raise FileOperationError(
+                    f"File already exists: {path}. Use --force to overwrite.", file_path=str(path)
+                )
+
+            # Write the file
+            path.write_text(content, encoding="utf-8")
+            self.logger.debug(f"Successfully wrote file: {path}")
+
+        except OSError as e:
+            raise FileOperationError(
+                f"Failed to write file {path}: {e}", file_path=str(path)
+            ) from e
