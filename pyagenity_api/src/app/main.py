@@ -6,7 +6,6 @@ from fastapi.responses import ORJSONResponse
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
 from pyagenity.graph import CompiledGraph
-from snowflakekit import SnowflakeConfig, SnowflakeGenerator
 
 # from tortoise import Tortoise
 from pyagenity_api.src.app.core import (
@@ -48,9 +47,6 @@ async def lifespan(app: FastAPI):
     # load Store
     # store = load_store(graph_config.store_path)
     # injector.binder.bind(BaseStore, store)
-
-    print("Application startup complete")
-    print(container.get_dependency_graph())
 
     yield
     # Clean up

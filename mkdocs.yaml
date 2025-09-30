@@ -1,27 +1,15 @@
-site_name: Hire10x.ai
-site_description: Next Generation Hiring Platform
+site_name: PyAgenity-API
+site_description: "A lightweight Python framework for building intelligent agents and multi-agent workflows."
+# Required for Material's instant navigation and previews
+site_url: https://iamsdt.github.io/pyagenity-api/
+repo_url: https://github.com/Iamsdt/PyAgenity-api
+repo_name: Iamsdt/PyAgenity-api
+
 theme:
   name: material
-  palette:
-    - scheme: default
-      primary: "blue"
-      accent: "deep-orange"
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-
-    # Palette toggle for dark mode
-    - scheme: slate
-      primary: "indigo"
-      accent: "deep-orange"
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
-
-  font:
-    text: "Roboto"
-
-  # handle navigations
+  language: en
+  logo: null
+  favicon: null
   features:
     - navigation.pagination
     - navigation.goto_top
@@ -33,25 +21,11 @@ theme:
     - search.share
     - content.code.copy
 
-markdown_extensions:
-  - admonition
-  - pymdownx.details
-  - pymdownx.superfences
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.superfences
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
 
 plugins:
   - search
   - autorefs
+  - section-index
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -80,3 +54,24 @@ plugins:
   - gen-files:
       scripts:
         - scripts/generate_docs.py
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+
+# nav:
+#   - Home: index.md
+#   - Reference: reference/index.md
+#   - Changelog: https://pypi.org/project/pyagenity/

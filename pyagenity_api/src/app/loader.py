@@ -179,4 +179,7 @@ async def attach_all_modules(
         # bind None
         container.bind_instance(BaseAuth, None, allow_none=True)
 
+    logger.info("Container loaded successfully")
+    logger.debug(f"Container dependency graph: {container.get_dependency_graph()}")
+
     return graph
