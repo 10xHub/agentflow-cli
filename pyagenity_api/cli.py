@@ -149,7 +149,7 @@
 # def api(
 #     config: str = typer.Option("pyagenity.json", help="Path to config file"),
 #     host: str = typer.Option(
-#         "0.0.0.0",  # noqa: S104  # Binding to all interfaces for server
+#         "0.0.0.0",  # Binding to all interfaces for server
 #         help="Host to run the API on (default: 0.0.0.0, binds to all interfaces;"
 #         " use 127.0.0.1 for localhost only)",
 #     ),

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pyagenity_api.cli.core.output import OutputFormatter
 from pyagenity_api.cli.logger import CLILoggerMixin
+
 
 if TYPE_CHECKING:
     from pyagenity_api.cli.exceptions import PyagenityCLIError

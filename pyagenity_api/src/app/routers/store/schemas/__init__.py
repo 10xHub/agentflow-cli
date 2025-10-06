@@ -12,6 +12,7 @@ from .store_schemas import (
     UpdateMemorySchema,
 )
 
+
 __all__ = [
     "BaseConfigSchema",
     "DeleteMemorySchema",

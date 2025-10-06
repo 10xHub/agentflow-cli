@@ -75,7 +75,7 @@ gcloud = [
 ]
 
 [project.scripts]
-pag = "pyagenity_api.cli:main"
+pag = "pyagenity_api.cli.main:main"
 
 [tool.setuptools]
 zip-safe = false
