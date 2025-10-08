@@ -6,11 +6,19 @@ from pyagenity.graph import StateGraph, ToolNode
 from pyagenity.state.agent_state import AgentState
 from pyagenity.utils.constants import END
 from pyagenity.utils.converter import convert_messages
+from pydantic import Field
 
 
 load_dotenv()
 
 checkpointer = InMemoryCheckpointer()
+
+
+class MyState(AgentState):
+    jd_id: str = Field(default="default_jd_id", description="JD ID for the user")
+    jd_text: str = Field(default="", description="JD Text for the user")
+    cid: str = Field(default="default_cid", description="CID for the user")
+    cv_text: str = Field(default="", description="CV Text for the user")
 
 
 def get_weather(
@@ -105,7 +113,7 @@ def should_use_tools(state: AgentState) -> str:
     return END
 
 
-graph = StateGraph()
+graph = StateGraph(state=MyState())
 graph.add_node("MAIN", main_agent)
 graph.add_node("TOOL", tool_node)
 
