@@ -1,6 +1,7 @@
 from typing import Any
 
-from pyagenity.utils import Message, ResponseGranularity
+from pyagenity.state import Message
+from pyagenity.utils import ResponseGranularity
 from pydantic import BaseModel, Field
 
 
@@ -35,10 +36,6 @@ class GraphInputSchema(BaseModel):
     response_granularity: ResponseGranularity = Field(
         default=ResponseGranularity.LOW,
         description="Granularity of the response (full, partial, low)",
-    )
-    include_raw: bool = Field(
-        default=False,
-        description="Whether to include raw response data",
     )
 
 

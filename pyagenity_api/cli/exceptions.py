@@ -1,7 +1,5 @@
 """Custom exceptions for the Pyagenity CLI."""
 
-from __future__ import annotations
-
 
 class PyagenityCLIError(Exception):
     """Base exception for all Pyagenity CLI errors."""

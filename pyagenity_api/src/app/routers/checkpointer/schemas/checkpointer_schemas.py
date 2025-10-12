@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pyagenity.utils import Message
+from pyagenity.state import Message
 from pydantic import BaseModel, Field
 
 

@@ -42,7 +42,6 @@ class OutputFormatter:
             color: Color name for the banner
             width: Banner width
         """
-        border = "=" * min(len(title) + 6, width)
         colored_title = Colors.colorize(f"== {title} ==", color)
 
         typer.echo("")
@@ -160,7 +159,7 @@ class OutputFormatter:
             typer.echo(f"\n{title}:", file=self.stream)
 
         # Calculate column widths
-        all_rows = [headers] + rows
+        all_rows = [headers, *rows]
         col_widths = [
             max(len(str(row[i])) for row in all_rows if i < len(row)) for i in range(len(headers))
         ]

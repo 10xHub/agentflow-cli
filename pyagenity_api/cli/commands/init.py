@@ -1,7 +1,5 @@
 """Init command implementation."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +28,7 @@ class InitCommand(BaseCommand):
         Args:
             path: Directory to initialize files in
             force: Overwrite existing files
+            prod: Include production config files
             **kwargs: Additional arguments
 
         Returns:

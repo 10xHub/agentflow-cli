@@ -1,18 +1,20 @@
 """Unit tests for CheckpointerService."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from pyagenity.checkpointer import BaseCheckpointer
-from pyagenity.state import AgentState
-from pyagenity.utils import Message
 
-from pyagenity_api.src.app.routers.checkpointer.services.checkpointer_service import CheckpointerService
+import pytest
+from pyagenity.checkpointer import BaseCheckpointer
+from pyagenity.state import AgentState, Message
+
 from pyagenity_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
-    StateResponseSchema,
-    ResponseSchema,
     MessagesListResponseSchema,
+    ResponseSchema,
+    StateResponseSchema,
     ThreadResponseSchema,
     ThreadsListResponseSchema,
+)
+from pyagenity_api.src.app.routers.checkpointer.services.checkpointer_service import (
+    CheckpointerService,
 )
 
 
@@ -50,9 +52,9 @@ class TestCheckpointerService:
         """Test _config method validates checkpointer and adds user info."""
         config = {"thread_id": "test_thread"}
         user = {"user_id": "123", "username": "test_user"}
-        
+
         result = checkpointer_service._config(config, user)
-        
+
         assert result["user"] == user
         assert result["thread_id"] == "test_thread"
 
@@ -61,7 +63,7 @@ class TestCheckpointerService:
         service = CheckpointerService.__new__(CheckpointerService)
         service.checkpointer = None
         service.settings = MagicMock()
-        
+
         with pytest.raises(ValueError, match="Checkpointer is not configured"):
             service._config({}, {})
 
@@ -71,13 +73,15 @@ class TestCheckpointerService:
         # Create a mock AgentState
         mock_state = MagicMock(spec=AgentState)
         mock_checkpointer.aget_state.return_value = mock_state
-        
+
         # Mock parse_state_output to return a simple dict
-        with patch('pyagenity_api.src.app.routers.checkpointer.services.checkpointer_service.parse_state_output') as mock_parse:
+        with patch(
+            "pyagenity_api.src.app.routers.checkpointer.services.checkpointer_service.parse_state_output"
+        ) as mock_parse:
             mock_parse.return_value = {"test": "data"}
-            
+
             result = await checkpointer_service.get_state({}, {"user_id": "123"})
-            
+
             assert isinstance(result, StateResponseSchema)
             assert result.state == {"test": "data"}
             mock_checkpointer.aget_state.assert_called_once()
@@ -87,9 +91,9 @@ class TestCheckpointerService:
         """Test get_state falls back to cache when primary state is None."""
         mock_checkpointer.aget_state.return_value = None
         mock_checkpointer.aget_state_cache.return_value = {"cached": "data"}
-        
+
         result = await checkpointer_service.get_state({}, {"user_id": "123"})
-        
+
         assert isinstance(result, StateResponseSchema)
         assert result.state == {"cached": "data"}
         mock_checkpointer.aget_state_cache.assert_called_once()
@@ -98,9 +102,9 @@ class TestCheckpointerService:
     async def test_clear_state_success(self, checkpointer_service, mock_checkpointer):
         """Test clear_state returns success response."""
         mock_checkpointer.aclear_state.return_value = True
-        
+
         result = await checkpointer_service.clear_state({}, {"user_id": "123"})
-        
+
         assert isinstance(result, ResponseSchema)
         assert result.success is True
         assert "cleared successfully" in result.message
@@ -113,9 +117,9 @@ class TestCheckpointerService:
         messages = [MagicMock(spec=Message)]
         metadata = {"timestamp": "2023-01-01"}
         mock_checkpointer.aput_messages.return_value = True
-        
+
         result = await checkpointer_service.put_messages({}, {"user_id": "123"}, messages, metadata)
-        
+
         assert isinstance(result, ResponseSchema)
         assert result.success is True
         assert "put successfully" in result.message
@@ -128,9 +132,11 @@ class TestCheckpointerService:
         """Test get_messages returns messages list."""
         mock_messages = [MagicMock(spec=Message)]
         mock_checkpointer.alist_messages.return_value = mock_messages
-        
-        result = await checkpointer_service.get_messages({}, {"user_id": "123"}, search="test", offset=0, limit=10)
-        
+
+        result = await checkpointer_service.get_messages(
+            {}, {"user_id": "123"}, search="test", offset=0, limit=10
+        )
+
         assert isinstance(result, MessagesListResponseSchema)
         assert result.messages == mock_messages
         mock_checkpointer.alist_messages.assert_called_once_with(
@@ -143,9 +149,9 @@ class TestCheckpointerService:
         mock_thread = MagicMock()
         mock_thread.model_dump.return_value = {"thread_id": "123", "data": "test"}
         mock_checkpointer.aget_thread.return_value = mock_thread
-        
+
         result = await checkpointer_service.get_thread({}, {"user_id": "123"})
-        
+
         assert isinstance(result, ThreadResponseSchema)
         assert result.thread == {"thread_id": "123", "data": "test"}
         mock_checkpointer.aget_thread.assert_called_once()
@@ -156,9 +162,11 @@ class TestCheckpointerService:
         mock_thread = MagicMock()
         mock_thread.model_dump.return_value = {"thread_id": "123"}
         mock_checkpointer.alist_threads.return_value = [mock_thread]
-        
-        result = await checkpointer_service.list_threads({"user_id": "123"}, search="test", offset=0, limit=10)
-        
+
+        result = await checkpointer_service.list_threads(
+            {"user_id": "123"}, search="test", offset=0, limit=10
+        )
+
         assert isinstance(result, ThreadsListResponseSchema)
         assert result.threads == [{"thread_id": "123"}]
         mock_checkpointer.alist_threads.assert_called_once()
@@ -167,9 +175,9 @@ class TestCheckpointerService:
     async def test_delete_thread_success(self, checkpointer_service, mock_checkpointer):
         """Test delete_thread returns success response."""
         mock_checkpointer.aclean_thread.return_value = True
-        
+
         result = await checkpointer_service.delete_thread({}, {"user_id": "123"}, "thread_123")
-        
+
         assert isinstance(result, ResponseSchema)
         assert result.success is True
         assert "deleted successfully" in result.message
@@ -180,13 +188,13 @@ class TestCheckpointerService:
         old_state = MagicMock(spec=AgentState)
         old_state.model_dump.return_value = {"existing": "data", "keep": "this"}
         old_state.execution_meta = {"meta": "data"}
-        
+
         updates = {"new": "value", "existing": "updated"}
-        
+
         result = checkpointer_service._merge_states(old_state, updates)
-        
+
         assert result["existing"] == "updated"
-        assert result["new"] == "value" 
+        assert result["new"] == "value"
         assert result["keep"] == "this"
         assert result["execution_meta"] == {"meta": "data"}
 
@@ -195,20 +203,20 @@ class TestCheckpointerService:
         old_state = MagicMock(spec=AgentState)
         old_state.model_dump.return_value = {"context": ["old_message"]}
         old_state.execution_meta = {}
-        
+
         updates = {"context": ["new_message"]}
-        
+
         result = checkpointer_service._merge_states(old_state, updates)
-        
+
         assert result["context"] == ["old_message", "new_message"]
 
     def test_deep_merge_dicts(self, checkpointer_service):
         """Test _deep_merge_dicts merges nested dictionaries."""
         base = {"level1": {"nested": "value1", "keep": "this"}}
         updates = {"level1": {"nested": "updated", "new": "added"}}
-        
+
         result = checkpointer_service._deep_merge_dicts(base, updates)
-        
+
         assert result["level1"]["nested"] == "updated"
         assert result["level1"]["keep"] == "this"
         assert result["level1"]["new"] == "added"

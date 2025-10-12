@@ -1,7 +1,5 @@
 """Version command implementation."""
 
-from __future__ import annotations
-
 import tomllib
 from typing import Any
 

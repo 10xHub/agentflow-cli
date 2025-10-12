@@ -1,8 +1,9 @@
-from fastapi import Depends
-
 from typing import TYPE_CHECKING
 
+from fastapi import Depends
+
 from pyagenity_api.src.app.core import Settings, get_settings, logger
+
 
 if TYPE_CHECKING:  # pragma: no cover - only for type hints
     import sentry_sdk  # noqa: F401
@@ -18,7 +19,7 @@ def init_sentry(settings: Settings = Depends(get_settings)) -> None:
     logged instead of failing hard.
     """
     try:
-        import sentry_sdk  # noqa: PLC0415
+        import sentry_sdk
         from sentry_sdk.integrations.fastapi import FastApiIntegration
         from sentry_sdk.integrations.starlette import StarletteIntegration
 

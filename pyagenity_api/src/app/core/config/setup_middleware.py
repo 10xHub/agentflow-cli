@@ -18,17 +18,11 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     This middleware generates a unique request ID and a timestamp when a request is received.
     It adds these values to the request state and includes them in the response headers.
 
-    Attributes:
-        None
 
     Methods:
         dispatch(request: Request, call_next):
             Generates a unique request ID and timestamp, adds them to the request state,
             and includes them in the response headers.
-
-    Args:
-        request (Request): The incoming HTTP request.
-        call_next (Callable): The next middleware or route handler to be called.
 
     Returns:
         Response: The HTTP response with added request ID and timestamp headers.

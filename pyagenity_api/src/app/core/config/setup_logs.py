@@ -4,7 +4,7 @@ import sys
 from fastapi.logger import logger as fastapi_logger
 
 
-def init_logger(level):
+def init_logger(level: int | str = logging.INFO) -> None:
     """
     Initializes and configures logging for the application.
 

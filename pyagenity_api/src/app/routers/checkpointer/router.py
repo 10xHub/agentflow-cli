@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
 from injectq.integrations import InjectAPI
-from pyagenity.utils import Message
+from pyagenity.state import Message
 
 from pyagenity_api.src.app.core import logger
 from pyagenity_api.src.app.core.auth.auth_backend import verify_current_user

@@ -54,7 +54,7 @@ class GraphConfig:
             return None
 
         if isinstance(res, str) and "jwt" in res:
-            # Now check jwt secrect and algorithm available in env
+            # Now check jwt secret and algorithm available in env
             secret = os.environ.get("JWT_SECRET_KEY", None)
             algorithm = os.environ.get("JWT_ALGORITHM", None)
             if not secret or not algorithm:
@@ -67,7 +67,10 @@ class GraphConfig:
 
         if isinstance(res, dict):
             method = res.get("method", None)
-            path = res.get("path", None)
+            path: str | None = res.get("path", None)
+            if not path or not method:
+                raise ValueError("Both method and path must be provided in auth config")
+
             if method == "custom" and path and Path(path).exists():
                 return {
                     "method": "custom",

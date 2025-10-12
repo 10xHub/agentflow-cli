@@ -1,7 +1,5 @@
 """Input validation utilities for the CLI."""
 
-from __future__ import annotations
-
 import re
 from pathlib import Path
 from typing import Any
@@ -28,7 +26,7 @@ class Validator:
         if not isinstance(port, int):
             raise ValidationError("Port must be an integer", field="port")
 
-        if port < 1 or port > 65535:
+        if port < 1 or port > 65535:  # noqa: PLR2004
             raise ValidationError("Port must be between 1 and 65535", field="port")
 
         return port
@@ -53,7 +51,7 @@ class Validator:
             raise ValidationError("Host cannot be empty", field="host")
 
         # Basic validation - could be enhanced with more sophisticated checks
-        if len(host) > 255:
+        if len(host) > 255:  # noqa: PLR2004
             raise ValidationError("Host address too long", field="host")
 
         return host.strip()
@@ -111,7 +109,7 @@ class Validator:
         major, minor = int(parts[0]), int(parts[1])
 
         # Validate Python version range (3.8+)
-        if major < 3 or (major == 3 and minor < 8):
+        if major < 3 or (major == 3 and minor < 8):  # noqa: PLR2004
             raise ValidationError("Python version must be 3.8 or higher", field="python_version")
 
         return version
@@ -144,7 +142,7 @@ class Validator:
                 field="service_name",
             )
 
-        if len(name) > 63:
+        if len(name) > 63:  # noqa: PLR2004
             raise ValidationError(
                 "Service name must be 63 characters or less", field="service_name"
             )
@@ -209,13 +207,12 @@ class Validator:
         try:
             with env_path.open("r", encoding="utf-8") as f:
                 for line_num, line in enumerate(f, 1):
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        if "=" not in line:
-                            raise ValidationError(
-                                f"Invalid environment file format at line {line_num}: {line}",
-                                field="env_file",
-                            )
+                    up_line = line.strip()
+                    if up_line and not up_line.startswith("#") and "=" not in up_line:
+                        raise ValidationError(
+                            f"Invalid environment file format at line {line_num}: {up_line}",
+                            field="env_file",
+                        )
         except UnicodeDecodeError as e:
             raise ValidationError(
                 f"Environment file contains invalid characters: {e}", field="env_file"

@@ -1,7 +1,5 @@
 """CLI constants and configuration values."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Final
 
@@ -10,7 +8,7 @@ from typing import Final
 CLI_VERSION: Final[str] = "1.0.0"
 
 # Default configuration values
-DEFAULT_HOST: Final[str] = "0.0.0.0"  # noqa: S104
+DEFAULT_HOST: Final[str] = "127.0.0.1"
 DEFAULT_PORT: Final[int] = 8000
 DEFAULT_CONFIG_FILE: Final[str] = "pyagenity.json"
 DEFAULT_PYTHON_VERSION: Final[str] = "3.13"

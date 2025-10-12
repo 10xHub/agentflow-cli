@@ -1,3 +1,5 @@
+# file: noqa: T201
+
 import requests
 
 

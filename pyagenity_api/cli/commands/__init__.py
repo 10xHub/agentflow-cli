@@ -1,16 +1,10 @@
 """CLI command modules."""
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pyagenity_api.cli.core.output import OutputFormatter
 from pyagenity_api.cli.logger import CLILoggerMixin
-
-
-if TYPE_CHECKING:
-    from pyagenity_api.cli.exceptions import PyagenityCLIError
 
 
 class BaseCommand(ABC, CLILoggerMixin):
@@ -50,6 +44,6 @@ class BaseCommand(ABC, CLILoggerMixin):
         if isinstance(error, PyagenityCLIError):
             self.output.error(error.message)
             return error.exit_code
-        else:
-            self.output.error(f"Unexpected error: {error}")
-            return 1
+
+        self.output.error(f"Unexpected error: {error}")
+        return 1

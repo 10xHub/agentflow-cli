@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from injectq import inject, singleton
+from pyagenity.state import Message
 from pyagenity.store import BaseStore
-from pyagenity.utils import Message
 
 from pyagenity_api.src.app.core import logger
 from pyagenity_api.src.app.routers.store.schemas.store_schemas import (

@@ -2,8 +2,7 @@ from typing import Any
 
 from injectq import inject, singleton
 from pyagenity.checkpointer import BaseCheckpointer
-from pyagenity.state import AgentState
-from pyagenity.utils import Message
+from pyagenity.state import AgentState, Message
 
 from pyagenity_api.src.app.core import logger
 from pyagenity_api.src.app.core.config.settings import get_settings

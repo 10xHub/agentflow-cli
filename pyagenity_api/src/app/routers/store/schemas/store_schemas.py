@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from pyagenity.state import Message
 from pyagenity.store.store_schema import (
     DistanceMetric,
     MemoryRecord,
@@ -11,7 +12,6 @@ from pyagenity.store.store_schema import (
     MemoryType,
     RetrievalStrategy,
 )
-from pyagenity.utils import Message
 from pydantic import BaseModel, Field
 
 

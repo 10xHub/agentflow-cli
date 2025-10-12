@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks, HTTPException
 from injectq import InjectQ, inject, singleton
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.graph import CompiledGraph
-from pyagenity.utils import Message
+from pyagenity.state import Message
 from pyagenity.utils.thread_info import ThreadInfo
 from pydantic import BaseModel
 from starlette.responses import Content
