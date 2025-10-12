@@ -37,6 +37,10 @@ class GraphInputSchema(BaseModel):
         default=ResponseGranularity.LOW,
         description="Granularity of the response (full, partial, low)",
     )
+    include_raw: bool = Field(
+        default=False,
+        description="Whether to include raw data in the response",
+    )
 
 
 class GraphInvokeOutputSchema(BaseModel):
