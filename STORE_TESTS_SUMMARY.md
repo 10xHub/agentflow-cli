@@ -74,7 +74,7 @@ The integration tests are **structurally complete** but require **InjectQ contai
 
 ### Current Issue:
 ```
-injectq.utils.exceptions.InjectionError: No InjectQ container in current request context. 
+injectq.utils.exceptions.InjectionError: No InjectQ container in current request context.
 Did you call setup_fastapi(app, container)?
 ```
 
@@ -188,7 +188,7 @@ TOTAL                                                                   110     
 - **Docstrings**: Every test has clear documentation
 
 ### Important Discovery:
-- **Message Content**: Must use `Message.text_message(role="user", content="text")` 
+- **Message Content**: Must use `Message.text_message(role="user", content="text")`
   - Not `Message(role="user", content="string")`
   - Content must be list[ContentBlock], not string
 
