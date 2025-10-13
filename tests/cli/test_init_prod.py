@@ -19,13 +19,13 @@ def run_cli(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
 
 
 def test_init_prod_creates_extra_files(tmp_path: Path) -> None:
-    """Ensure prod init creates pyagenity.json, graph files, and prod configs."""
+    """Ensure prod init creates agentflowjson, graph files, and prod configs."""
     result = run_cli(["init", "--prod"], tmp_path)
 
     assert result.returncode == 0, result.stderr or result.stdout
 
     # Core files
-    assert (tmp_path / "pyagenity.json").exists()
+    assert (tmp_path / "agentflowjson").exists()
     assert (tmp_path / "graph" / "react.py").exists()
     assert (tmp_path / "graph" / "__init__.py").exists()
 
@@ -36,4 +36,4 @@ def test_init_prod_creates_extra_files(tmp_path: Path) -> None:
     # Basic sanity check on pyproject content
     content = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
     assert "[project]" in content
-    assert "pyagenity-api" in content  # dependency reference
+    assert "agentflow-cli" in content  # dependency reference

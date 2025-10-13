@@ -5,7 +5,7 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import ORJSONResponse
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
-from pyagenity.graph import CompiledGraph
+from agentflowgraph import CompiledGraph
 
 # from tortoise import Tortoise
 from agentflow_cli.src.app.core import (
@@ -25,7 +25,7 @@ settings = get_settings()
 #     port=settings.REDIS_PORT,
 # )
 
-graph_path = os.environ.get("GRAPH_PATH", "pyagenity.json")
+graph_path = os.environ.get("GRAPH_PATH", "agentflowjson")
 graph_config = GraphConfig(graph_path)
 # Load the container
 container: InjectQ = load_container(graph_config.injectq_path) or InjectQ.get_instance()

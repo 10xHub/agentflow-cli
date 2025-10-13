@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from pyagenity.state import Message
-from pyagenity.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
+from agentflowstate import Message
+from agentflowstore.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
 from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
     DeleteMemorySchema,
@@ -20,9 +20,7 @@ from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
 class TestStoreMemory:
     """Tests for store_memory method."""
 
-    async def test_store_memory_with_string_content(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_store_memory_with_string_content(self, store_service, mock_store, mock_user):
         """Test storing a memory with string content."""
         # Arrange
         memory_id = str(uuid4())
@@ -69,9 +67,7 @@ class TestStoreMemory:
         assert call_args[0][1] == sample_message
         assert call_args[1]["memory_type"] == MemoryType.SEMANTIC
 
-    async def test_store_memory_with_custom_config(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_store_memory_with_custom_config(self, store_service, mock_store, mock_user):
         """Test storing memory with custom configuration."""
         # Arrange
         memory_id = str(uuid4())
@@ -92,9 +88,7 @@ class TestStoreMemory:
         assert config["embedding_model"] == "custom-model"
         assert config["user_id"] == "test-user-123"
 
-    async def test_store_memory_with_options(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_store_memory_with_options(self, store_service, mock_store, mock_user):
         """Test storing memory with additional options."""
         # Arrange
         memory_id = str(uuid4())
@@ -198,9 +192,7 @@ class TestSearchMemories:
         assert call_args[1]["distance_metric"] == DistanceMetric.EUCLIDEAN
         assert call_args[1]["max_tokens"] == 2000
 
-    async def test_search_memories_empty_results(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_search_memories_empty_results(self, store_service, mock_store, mock_user):
         """Test memory search with no results."""
         # Arrange
         mock_store.asearch.return_value = []
@@ -242,9 +234,7 @@ class TestGetMemory:
         config = {"custom": "value"}
 
         # Act
-        result = await store_service.get_memory(
-            sample_memory_id, config, mock_user
-        )
+        result = await store_service.get_memory(sample_memory_id, config, mock_user)
 
         # Assert
         call_args = mock_store.aget.call_args
@@ -260,9 +250,7 @@ class TestGetMemory:
         options = {"include_deleted": False}
 
         # Act
-        result = await store_service.get_memory(
-            sample_memory_id, {}, mock_user, options=options
-        )
+        result = await store_service.get_memory(sample_memory_id, {}, mock_user, options=options)
 
         # Assert
         call_args = mock_store.aget.call_args
@@ -326,17 +314,13 @@ class TestListMemories:
         options = {"sort_by": "created_at"}
 
         # Act
-        result = await store_service.list_memories(
-            {}, mock_user, options=options
-        )
+        result = await store_service.list_memories({}, mock_user, options=options)
 
         # Assert
         call_args = mock_store.aget_all.call_args
         assert call_args[1]["sort_by"] == "created_at"
 
-    async def test_list_memories_empty(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_list_memories_empty(self, store_service, mock_store, mock_user):
         """Test listing memories when none exist."""
         # Arrange
         mock_store.aget_all.return_value = []
@@ -364,9 +348,7 @@ class TestUpdateMemory:
         )
 
         # Act
-        result = await store_service.update_memory(
-            sample_memory_id, payload, mock_user
-        )
+        result = await store_service.update_memory(sample_memory_id, payload, mock_user)
 
         # Assert
         assert result.success is True
@@ -386,9 +368,7 @@ class TestUpdateMemory:
         payload = UpdateMemorySchema(content=sample_message)
 
         # Act
-        result = await store_service.update_memory(
-            sample_memory_id, payload, mock_user
-        )
+        result = await store_service.update_memory(sample_memory_id, payload, mock_user)
 
         # Assert
         assert result.success is True
@@ -407,9 +387,7 @@ class TestUpdateMemory:
         )
 
         # Act
-        result = await store_service.update_memory(
-            sample_memory_id, payload, mock_user
-        )
+        result = await store_service.update_memory(sample_memory_id, payload, mock_user)
 
         # Assert
         call_args = mock_store.aupdate.call_args
@@ -428,9 +406,7 @@ class TestDeleteMemory:
         mock_store.adelete.return_value = {"deleted": True}
 
         # Act
-        result = await store_service.delete_memory(
-            sample_memory_id, {}, mock_user
-        )
+        result = await store_service.delete_memory(sample_memory_id, {}, mock_user)
 
         # Assert
         assert result.success is True
@@ -448,9 +424,7 @@ class TestDeleteMemory:
         config = {"soft_delete": True}
 
         # Act
-        result = await store_service.delete_memory(
-            sample_memory_id, config, mock_user
-        )
+        result = await store_service.delete_memory(sample_memory_id, config, mock_user)
 
         # Assert
         call_args = mock_store.adelete.call_args
@@ -465,9 +439,7 @@ class TestDeleteMemory:
         options = {"force": True}
 
         # Act
-        result = await store_service.delete_memory(
-            sample_memory_id, {}, mock_user, options=options
-        )
+        result = await store_service.delete_memory(sample_memory_id, {}, mock_user, options=options)
 
         # Assert
         call_args = mock_store.adelete.call_args
@@ -478,9 +450,7 @@ class TestDeleteMemory:
 class TestForgetMemory:
     """Tests for forget_memory method."""
 
-    async def test_forget_memory_with_type(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_forget_memory_with_type(self, store_service, mock_store, mock_user):
         """Test forgetting memories by type."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 5}
@@ -495,9 +465,7 @@ class TestForgetMemory:
         call_args = mock_store.aforget_memory.call_args
         assert call_args[1]["memory_type"] == MemoryType.EPISODIC
 
-    async def test_forget_memory_with_category(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_forget_memory_with_category(self, store_service, mock_store, mock_user):
         """Test forgetting memories by category."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 3}
@@ -510,9 +478,7 @@ class TestForgetMemory:
         call_args = mock_store.aforget_memory.call_args
         assert call_args[1]["category"] == "work"
 
-    async def test_forget_memory_with_filters(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_forget_memory_with_filters(self, store_service, mock_store, mock_user):
         """Test forgetting memories with filters."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 2}
@@ -531,9 +497,7 @@ class TestForgetMemory:
         assert call_args[1]["category"] == "personal"
         assert call_args[1]["filters"] == {"tag": "old"}
 
-    async def test_forget_memory_with_options(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_forget_memory_with_options(self, store_service, mock_store, mock_user):
         """Test forgetting memories with options."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 1}
@@ -549,15 +513,11 @@ class TestForgetMemory:
         call_args = mock_store.aforget_memory.call_args
         assert call_args[1]["dry_run"] is True
 
-    async def test_forget_memory_excludes_none_values(
-        self, store_service, mock_store, mock_user
-    ):
+    async def test_forget_memory_excludes_none_values(self, store_service, mock_store, mock_user):
         """Test that None values are excluded from forget call."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 0}
-        payload = ForgetMemorySchema(
-            memory_type=None, category=None, filters=None
-        )
+        payload = ForgetMemorySchema(memory_type=None, category=None, filters=None)
 
         # Act
         result = await store_service.forget_memory(payload, mock_user)

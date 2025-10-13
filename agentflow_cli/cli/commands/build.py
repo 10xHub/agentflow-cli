@@ -86,7 +86,7 @@ class BuildCommand(BaseCommand):
                 self.output.info(f"Using requirements file: {requirements_files[0]}")
             else:
                 self.output.warning(
-                    "No requirements.txt found - will install pyagenity-api from PyPI"
+                    "No requirements.txt found - will install agentflow-cli from PyPI"
                 )
 
             # Generate docker-compose.yml if requested
@@ -196,14 +196,14 @@ class BuildCommand(BaseCommand):
             steps = [
                 "Review the generated Dockerfile and docker-compose.yml",
                 "Build and run with: docker compose up --build",
-                "Or build separately: docker build -t pyagenity-api .",
+                "Or build separately: docker build -t agentflow-cli .",
                 "Access your API at: http://localhost:8000",
             ]
         else:
             steps = [
                 "Review the generated Dockerfile",
-                "Build the image: docker build -t pyagenity-api .",
-                "Run the container: docker run -p 8000:8000 pyagenity-api",
+                "Build the image: docker build -t agentflow-cli .",
+                "Run the container: docker run -p 8000:8000 agentflow-cli",
                 "Access your API at: http://localhost:8000",
             ]
 

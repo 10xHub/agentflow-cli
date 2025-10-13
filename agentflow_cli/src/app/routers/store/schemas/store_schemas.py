@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from pyagenity.state import Message
-from pyagenity.store.store_schema import (
+from agentflowstate import Message
+from agentflowstore.store_schema import (
     DistanceMetric,
     MemoryRecord,
     MemorySearchResult,

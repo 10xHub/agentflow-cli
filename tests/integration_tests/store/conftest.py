@@ -6,8 +6,8 @@ from uuid import uuid4
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pyagenity.store import BaseStore
-from pyagenity.store.store_schema import MemorySearchResult, MemoryType
+from agentflowstore import BaseStore
+from agentflowstore.store_schema import MemorySearchResult, MemoryType
 
 from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
 from agentflow_cli.src.app.routers.store.router import router as store_router

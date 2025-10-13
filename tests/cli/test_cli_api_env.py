@@ -29,7 +29,7 @@ def silent_output():
 
 def test_api_command_with_env_file(monkeypatch, tmp_path, silent_output):
     # Prepare a fake config file and .env
-    cfg = tmp_path / "pyagenity.json"
+    cfg = tmp_path / "agentflowjson"
     # Provide minimal valid configuration expected by validation (include 'graphs')
     cfg.write_text('{"graphs": {"default": "graph/react.py"}}', encoding="utf-8")
     env_file = tmp_path / ".env.dev"

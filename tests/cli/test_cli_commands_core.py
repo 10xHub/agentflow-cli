@@ -1,4 +1,5 @@
 import types
+
 import pytest
 
 from agentflow_cli.cli.commands import BaseCommand
@@ -6,6 +7,7 @@ from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import CLI_VERSION
 from agentflow_cli.cli.core.output import OutputFormatter
 from agentflow_cli.cli.exceptions import PyagenityCLIError
+
 
 CLI_CUSTOM_EXIT = 5
 

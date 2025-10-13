@@ -2,8 +2,8 @@
 
 import pytest
 from pydantic import ValidationError
-from pyagenity.state import Message
-from pyagenity.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
+from agentflowstate import Message
+from agentflowstore.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
 from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
     DeleteMemorySchema,

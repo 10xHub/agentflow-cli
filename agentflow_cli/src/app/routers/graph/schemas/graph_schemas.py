@@ -1,7 +1,7 @@
 from typing import Any
 
-from pyagenity.state import Message
-from pyagenity.utils import ResponseGranularity
+from agentflowstate import Message
+from agentflowutils import ResponseGranularity
 from pydantic import BaseModel, Field
 
 

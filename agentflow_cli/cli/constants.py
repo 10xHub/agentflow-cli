@@ -10,15 +10,15 @@ CLI_VERSION: Final[str] = "1.0.0"
 # Default configuration values
 DEFAULT_HOST: Final[str] = "127.0.0.1"
 DEFAULT_PORT: Final[int] = 8000
-DEFAULT_CONFIG_FILE: Final[str] = "pyagenity.json"
+DEFAULT_CONFIG_FILE: Final[str] = "agentflow.json"
 DEFAULT_PYTHON_VERSION: Final[str] = "3.13"
-DEFAULT_SERVICE_NAME: Final[str] = "pyagenity-api"
+DEFAULT_SERVICE_NAME: Final[str] = "agentflow-api"
 
 # File paths and names
 CONFIG_FILENAMES: Final[list[str]] = [
-    "pyagenity.json",
-    ".pyagenity.json",
-    "pyagenity.config.json",
+    "agentflow.json",
+    ".agentflow.json",
+    "agentflow.config.json",
 ]
 
 REQUIREMENTS_PATHS: Final[list[str]] = [

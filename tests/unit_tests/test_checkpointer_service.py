@@ -3,8 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pyagenity.checkpointer import BaseCheckpointer
-from pyagenity.state import AgentState, Message
+from agentflowcheckpointer import BaseCheckpointer
+from agentflowstate import AgentState, Message
 
 from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     MessagesListResponseSchema,

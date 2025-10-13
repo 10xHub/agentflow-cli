@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentflow-cli"
+name = "10xscale-agentflow-cli"
 version = "0.1.5"
 description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Shudipto Trafder", email = "shudiptotrafder@gmail.com"},
+    {name = "10xscale", email = "contact@10xscale"},
 ]
 maintainers = [
     {name = "Shudipto Trafder", email = "shudiptotrafder@gmail.com"},
@@ -75,7 +75,7 @@ gcloud = [
 ]
 
 [project.scripts]
-pag = "pyagenity_api.cli.main:main"
+agentflow = "agentflow-cli.cli.main:main"
 
 [tool.setuptools]
 zip-safe = false
@@ -83,8 +83,8 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pyagenity_api*"]
-exclude = ["tests*", "docs*", "__pycache__*", "pyagenity_api/tests*"]
+include = ["agentflow-cli*"]
+exclude = ["tests*", "docs*", "__pycache__*", "agentflow-cli/tests*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.yaml", "*.yml", "*.md", "*.txt"]
@@ -166,7 +166,7 @@ line-ending = "auto"
 docstring-code-format = true
 
 [tool.bandit]
-exclude_dirs = ["*/tests/*", "*/pyagenity_api/tests/*"]
+exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*"]
 skips = ["B101", "B611", "B601", "B608"]
 
 
@@ -179,7 +179,7 @@ env = [
     "ENVIRONMENT=pytest",
 ]
 testpaths = [
-    "pyagenity_api/src/tests",
+    "agentflow-cli/src/tests",
 ]
 pythonpath = [
     ".",
@@ -189,7 +189,7 @@ filterwarnings = [
 ]
 addopts = [
         # Limit coverage collection to the local project package only
-        "--cov=pyagenity_api",
+        "--cov=agentflow-cli",
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
@@ -200,7 +200,7 @@ addopts = [
 
 [tool.coverage.run]
 # Only measure the first-party project package
-source = ["pyagenity_api"]
+source = ["agentflow-cli"]
 branch = true
 omit = [
     "*/__init__.py",           # often trivial
@@ -223,8 +223,8 @@ show_missing = true
 
 [tool.coverage.paths]
 source = [
-    "pyagenity_api",
-    "*/site-packages/pyagenity_api",
+    "agentflow-cli",
+    "*/site-packages/agentflow-cli",
 ]
 
 [tool.pytest-env]

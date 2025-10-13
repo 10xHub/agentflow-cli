@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 
 class GraphConfig:
-    def __init__(self, path: str = "pyagenity.json"):
+    def __init__(self, path: str = "agentflowjson"):
         with Path(path).open() as f:
             self.data: dict = json.load(f)
 

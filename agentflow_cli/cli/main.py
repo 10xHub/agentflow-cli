@@ -151,8 +151,7 @@ def init(
         False,
         "--prod",
         help=(
-            "Initialize production-ready project (adds pyproject.toml and "
-            ".pre-commit-config.yaml)"
+            "Initialize production-ready project (adds pyproject.toml and .pre-commit-config.yaml)"
         ),
     ),
     verbose: bool = typer.Option(
@@ -168,7 +167,7 @@ def init(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Initialize default config and graph files (pyagenity.json and graph/react.py)."""
+    """Initialize default config and graph files (agentflowjson and graph/react.py)."""
     # Setup logging
     setup_cli_logging(verbose=verbose, quiet=quiet)
 
@@ -211,7 +210,7 @@ def build(
         help="Also generate docker-compose.yml and omit CMD in Dockerfile",
     ),
     service_name: str = typer.Option(
-        "pyagenity-api",
+        "agentflow-cli",
         "--service-name",
         help="Service name to use in docker-compose.yml (if generated)",
     ),

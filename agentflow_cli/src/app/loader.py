@@ -3,15 +3,15 @@ import inspect
 import logging
 
 from injectq import InjectQ
-from pyagenity.checkpointer import BaseCheckpointer
-from pyagenity.graph import CompiledGraph
-from pyagenity.store import BaseStore
+from agentflowcheckpointer import BaseCheckpointer
+from agentflowgraph import CompiledGraph
+from agentflowstore import BaseStore
 
 from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 
 
-logger = logging.getLogger("pyagenity-api.loader")
+logger = logging.getLogger("agentflow-cli.loader")
 
 
 async def load_graph(path: str) -> CompiledGraph | None:

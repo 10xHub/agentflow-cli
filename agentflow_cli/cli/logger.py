@@ -31,7 +31,7 @@ def get_logger(
     Returns:
         Configured logger instance
     """
-    logger = logging.getLogger(f"pyagenity.cli.{name}")
+    logger = logging.getLogger(f"agentflowcli.{name}")
 
     # Avoid adding multiple handlers if logger already exists
     if logger.handlers:
@@ -76,7 +76,7 @@ def setup_cli_logging(
         level = logging.DEBUG
 
     # Configure root logger for the CLI
-    root_logger = logging.getLogger("pyagenity.cli")
+    root_logger = logging.getLogger("agentflowcli")
     root_logger.setLevel(level)
 
     # Remove existing handlers

@@ -1,6 +1,6 @@
 # Store Module Integration Tests
 
-This directory contains integration tests for the pyagenity-api store module API endpoints.
+This directory contains integration tests for the agentflow-cli store module API endpoints.
 
 ## Test Coverage
 

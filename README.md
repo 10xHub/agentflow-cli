@@ -12,8 +12,8 @@ pip install agentflow-cli
 
 ### From Source
 ```bash
-git clone https://github.com/Iamsdt/pyagenity-api.git
-cd pyagenity-api
+git clone https://github.com/Iamsdt/agentflow-cli.git
+cd agentflow-cli
 pip install -e .
 ```
 
@@ -52,7 +52,7 @@ The `pag` command provides the following subcommands:
 Start the Pyagenity API server.
 
 **Options:**
-- `--config TEXT`: Path to config file (default: pyagenity.json)
+- `--config TEXT`: Path to config file (default: agentflowjson)
 - `--host TEXT`: Host to run the API on (default: 0.0.0.0)
 - `--port INTEGER`: Port to run the API on (default: 8000)
 - `--reload/--no-reload`: Enable auto-reload (default: enabled)
@@ -76,7 +76,7 @@ pag api --no-reload
 Initialize a new config file with default settings.
 
 **Options:**
-- `--output TEXT`: Output config file path (default: pyagenity.json)
+- `--output TEXT`: Output config file path (default: agentflowjson)
 - `--force`: Overwrite existing config file
 
 **Examples:**
@@ -124,7 +124,7 @@ pag build --output MyDockerfile
 
 **Features:**
 - 🔍 **Automatic requirements.txt detection**: Searches for requirements files in multiple locations
-- ⚠️ **Smart fallback**: If no requirements.txt found, installs pyagenity-api from PyPI
+- ⚠️ **Smart fallback**: If no requirements.txt found, installs agentflow-cli from PyPI
 - 🐳 **Production-ready**: Generates optimized Dockerfile with security best practices
 - 🔧 **Customizable**: Supports custom Python versions, ports, and output paths
 - 🏥 **Health checks**: Includes built-in health check endpoint
@@ -132,7 +132,7 @@ pag build --output MyDockerfile
 
 ## Configuration
 
-The configuration file (`pyagenity.json`) supports the following structure:
+The configuration file (`agentflowjson`) supports the following structure:
 
 ```json
 {
@@ -147,7 +147,7 @@ The configuration file (`pyagenity.json`) supports the following structure:
     "workers": 1
   },
   "database": {
-    "url": "sqlite://./pyagenity.db"
+    "url": "sqlite://./agentflowdb"
   },
   "redis": {
     "url": "redis://localhost:6379"
@@ -166,7 +166,7 @@ The CLI automatically finds your config file in this order:
 ## Project Structure
 
 ```
-pyagenity-api/
+agentflow-cli/
 ├── pyagenity_api/           # Main package directory
 │   ├── __init__.py         # Package initialization
 │   ├── cli.py              # CLI module
@@ -346,8 +346,8 @@ If you prefer manual setup:
 
 1. **Clone the repository:**
     ```bash
-    git clone https://github.com/Iamsdt/pyagenity-api.git
-    cd pyagenity-api
+    git clone https://github.com/Iamsdt/agentflow-cli.git
+    cd agentflow-cli
     ```
 
 2. **Create a virtual environment:**

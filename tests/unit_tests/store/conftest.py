@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from pyagenity.state import Message
-from pyagenity.store import BaseStore
-from pyagenity.store.store_schema import MemorySearchResult, MemoryType
+from agentflowstate import Message
+from agentflowstore import BaseStore
+from agentflowstore.store_schema import MemorySearchResult, MemoryType
 
 from agentflow_cli.src.app.routers.store.services.store_service import StoreService
 

@@ -40,6 +40,6 @@ def init_sentry(settings: Settings = Depends(get_settings)) -> None:
         )
         logger.debug("Sentry initialized")
     except ImportError:
-        logger.warning("sentry_sdk not installed; install 'pyagenity-api[sentry]' to enable Sentry")
+        logger.warning("sentry_sdk not installed; install 'agentflow-cli[sentry]' to enable Sentry")
     except Exception as exc:  # intentionally broad: init must not crash app
         logger.warning("Error initializing Sentry: %s", exc)

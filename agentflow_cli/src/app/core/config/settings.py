@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 
 
 IS_PRODUCTION = False
-LOGGER_NAME = os.getenv("LOGGER_NAME", "pyagenity-api")
+LOGGER_NAME = os.getenv("LOGGER_NAME", "agentflow-cli")
 
 logger = logging.getLogger(LOGGER_NAME)
 

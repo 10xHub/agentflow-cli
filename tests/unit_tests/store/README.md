@@ -1,6 +1,6 @@
 # Store Module Unit Tests
 
-This directory contains comprehensive unit tests for the pyagenity-api store module.
+This directory contains comprehensive unit tests for the agentflow-cli store module.
 
 ## Test Coverage
 

@@ -27,8 +27,8 @@ class VersionCommand(BaseCommand):
             # Get package version from pyproject.toml
             pkg_version = self._read_package_version()
 
-            self.output.success(f"pyagenity-api CLI\n  Version: {CLI_VERSION}")
-            self.output.info(f"pyagenity-api Package\n  Version: {pkg_version}")
+            self.output.success(f"agentflow-cli CLI\n  Version: {CLI_VERSION}")
+            self.output.info(f"agentflow-cli Package\n  Version: {pkg_version}")
 
             return 0
 

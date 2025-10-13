@@ -36,7 +36,7 @@ class InitCommand(BaseCommand):
         """
         try:
             # Print banner
-            subtitle = "Create pyagenity.json and graph/react.py scaffold files"
+            subtitle = "Create agentflowjson and graph/react.py scaffold files"
             if prod:
                 subtitle += " plus production config files"
             self.output.print_banner("Init", subtitle, color="magenta")
@@ -47,7 +47,7 @@ class InitCommand(BaseCommand):
             base_path.mkdir(parents=True, exist_ok=True)
 
             # Write config JSON
-            config_path = base_path / "pyagenity.json"
+            config_path = base_path / "agentflow.json"
             self._write_file(config_path, DEFAULT_CONFIG_JSON + "\n", force=force)
 
             # Write graph/react.py
@@ -78,7 +78,7 @@ class InitCommand(BaseCommand):
             # Next steps
             self.output.info("\n🚀 Next steps:")
             next_steps = [
-                "Review and customize pyagenity.json configuration",
+                "Review and customize agentflowjson configuration",
                 "Modify graph/react.py to implement your agent logic",
                 "Set up environment variables in .env file",
                 "Run the API server with: pag api",

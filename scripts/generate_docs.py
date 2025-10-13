@@ -12,10 +12,10 @@ for path in src_root.glob("**/*.py"):
             ident = "pyagenity"
         else:
             doc_path = Path("reference", rel_parent, "overview.md")
-            ident = "pyagenity." + ".".join(rel_parent.parts)
+            ident = "agentflow" + ".".join(rel_parent.parts)
     else:
         doc_path = Path("reference", path.relative_to(src_root)).with_suffix(".md")
-        ident = "pyagenity." + ".".join(path.with_suffix("").relative_to(src_root).parts)
+        ident = "agentflow" + ".".join(path.with_suffix("").relative_to(src_root).parts)
 
     with mkdocs_gen_files.open(doc_path, "w") as f:
         print("::: " + ident, file=f)

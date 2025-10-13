@@ -1,7 +1,7 @@
 import os
 from importlib.util import find_spec
 
-from pyagenity.utils.id_generator import BaseIDGenerator, IDType
+from agentflowutils.id_generator import BaseIDGenerator, IDType
 
 
 # Check if snowflakekit is available

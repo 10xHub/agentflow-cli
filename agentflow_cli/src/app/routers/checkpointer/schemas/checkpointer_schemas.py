@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pyagenity.state import Message
+from agentflowstate import Message
 from pydantic import BaseModel, Field
 
 

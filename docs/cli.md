@@ -6,7 +6,7 @@
 
 | Command | Description |
 |---------|-------------|
-| `pag init` | Create `pyagenity.json` and sample graph under `graph/` |
+| `pag init` | Create `agentflowjson` and sample graph under `graph/` |
 | `pag init --prod` | Same as init plus tooling files (`pyproject.toml`, `.pre-commit-config.yaml`) |
 | `pag api` | Run development API server (FastAPI + Uvicorn) |
 | `pag build` | Generate Dockerfile (and optional docker-compose.yml) |
@@ -18,7 +18,7 @@ Run `pag <command> --help` for option details.
 Scaffolds a runnable agent graph.
 
 ### Default Files
-* `pyagenity.json` – main configuration
+* `agentflowjson` – main configuration
 * `graph/react.py` – example agent graph (tool, routing, LiteLLM call)
 * `graph/__init__.py`
 
@@ -47,7 +47,7 @@ Starts a development server (hot reload by default).
 Key options:
 | Option | Default | Notes |
 |--------|---------|-------|
-| `--config/-c` | `pyagenity.json` | Config file path |
+| `--config/-c` | `agentflowjson` | Config file path |
 | `--host/-H` | `0.0.0.0` | Use `127.0.0.1` for local only |
 | `--port/-p` | `8000` | Port to bind |
 | `--reload/--no-reload` | reload on | Auto-reload for dev |
@@ -66,10 +66,10 @@ Options:
 | `--python-version` | `3.13` | Base image tag |
 | `--port/-p` | `8000` | Exposed container port |
 | `--docker-compose` | off | Also create `docker-compose.yml` and omit CMD |
-| `--service-name` | `pyagenity-api` | Compose service name |
+| `--service-name` | `agentflow-cli` | Compose service name |
 
 Features:
-* Auto-detects requirements file (fallback installs `pyagenity-api`).
+* Auto-detects requirements file (fallback installs `agentflow-cli`).
 * Adds health check to `/ping`.
 * Uses `gunicorn` + uvicorn worker (production pattern).
 

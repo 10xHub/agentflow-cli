@@ -4,7 +4,7 @@ import json
 from uuid import uuid4
 
 import pytest
-from pyagenity.store.store_schema import MemoryType
+from agentflowstore.store_schema import MemoryType
 
 
 class TestCreateMemoryEndpoint:
@@ -23,9 +23,7 @@ class TestCreateMemoryEndpoint:
         }
 
         # Act
-        response = client.post(
-            "/v1/store/memories", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -34,9 +32,7 @@ class TestCreateMemoryEndpoint:
         assert data["message"] == "Memory stored successfully"
         assert data["data"]["memory_id"] == memory_id
 
-    def test_create_memory_with_minimal_fields(
-        self, client, mock_store, auth_headers
-    ):
+    def test_create_memory_with_minimal_fields(self, client, mock_store, auth_headers):
         """Test memory creation with only required fields."""
         # Arrange
         memory_id = str(uuid4())
@@ -44,18 +40,14 @@ class TestCreateMemoryEndpoint:
         payload = {"content": "Minimal memory"}
 
         # Act
-        response = client.post(
-            "/v1/store/memories", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
         data = response.json()
         assert data["data"]["memory_id"] == memory_id
 
-    def test_create_memory_with_config_and_options(
-        self, client, mock_store, auth_headers
-    ):
+    def test_create_memory_with_config_and_options(self, client, mock_store, auth_headers):
         """Test memory creation with config and options."""
         # Arrange
         memory_id = str(uuid4())
@@ -67,9 +59,7 @@ class TestCreateMemoryEndpoint:
         }
 
         # Act
-        response = client.post(
-            "/v1/store/memories", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -82,9 +72,7 @@ class TestCreateMemoryEndpoint:
         payload = {"category": "general"}
 
         # Act
-        response = client.post(
-            "/v1/store/memories", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 422  # Validation error
@@ -95,9 +83,7 @@ class TestCreateMemoryEndpoint:
         payload = {"content": "Test", "memory_type": "invalid_type"}
 
         # Act
-        response = client.post(
-            "/v1/store/memories", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 422  # Validation error
@@ -106,18 +92,14 @@ class TestCreateMemoryEndpoint:
 class TestSearchMemoriesEndpoint:
     """Tests for POST /v1/store/search endpoint."""
 
-    def test_search_memories_success(
-        self, client, mock_store, auth_headers, sample_memory_results
-    ):
+    def test_search_memories_success(self, client, mock_store, auth_headers, sample_memory_results):
         """Test successful memory search."""
         # Arrange
         mock_store.asearch.return_value = sample_memory_results
         payload = {"query": "test query"}
 
         # Act
-        response = client.post(
-            "/v1/store/search", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/search", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -142,9 +124,7 @@ class TestSearchMemoriesEndpoint:
         }
 
         # Act
-        response = client.post(
-            "/v1/store/search", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/search", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -165,27 +145,21 @@ class TestSearchMemoriesEndpoint:
         }
 
         # Act
-        response = client.post(
-            "/v1/store/search", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/search", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_search_memories_empty_results(
-        self, client, mock_store, auth_headers
-    ):
+    def test_search_memories_empty_results(self, client, mock_store, auth_headers):
         """Test memory search with no results."""
         # Arrange
         mock_store.asearch.return_value = []
         payload = {"query": "nonexistent query"}
 
         # Act
-        response = client.post(
-            "/v1/store/search", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/search", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -198,9 +172,7 @@ class TestSearchMemoriesEndpoint:
         payload = {"limit": 10}
 
         # Act
-        response = client.post(
-            "/v1/store/search", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/search", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 422  # Validation error
@@ -211,9 +183,7 @@ class TestSearchMemoriesEndpoint:
         payload = {"query": "test", "limit": 0}
 
         # Act
-        response = client.post(
-            "/v1/store/search", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/search", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 422  # Validation error
@@ -230,9 +200,7 @@ class TestGetMemoryEndpoint:
         mock_store.aget.return_value = sample_memory_result
 
         # Act
-        response = client.get(
-            f"/v1/store/memories/{sample_memory_id}", headers=auth_headers
-        )
+        response = client.get(f"/v1/store/memories/{sample_memory_id}", headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -281,26 +249,20 @@ class TestGetMemoryEndpoint:
         data = response.json()
         assert data["success"] is True
 
-    def test_get_memory_not_found(
-        self, client, mock_store, auth_headers, sample_memory_id
-    ):
+    def test_get_memory_not_found(self, client, mock_store, auth_headers, sample_memory_id):
         """Test retrieving non-existent memory."""
         # Arrange
         mock_store.aget.return_value = None
 
         # Act
-        response = client.get(
-            f"/v1/store/memories/{sample_memory_id}", headers=auth_headers
-        )
+        response = client.get(f"/v1/store/memories/{sample_memory_id}", headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
         data = response.json()
         assert data["data"]["memory"] is None
 
-    def test_get_memory_invalid_json_config(
-        self, client, auth_headers, sample_memory_id
-    ):
+    def test_get_memory_invalid_json_config(self, client, auth_headers, sample_memory_id):
         """Test memory retrieval with invalid JSON config."""
         # Act
         response = client.get(
@@ -312,9 +274,7 @@ class TestGetMemoryEndpoint:
         # Assert
         assert response.status_code == 400
 
-    def test_get_memory_non_dict_config(
-        self, client, auth_headers, sample_memory_id
-    ):
+    def test_get_memory_non_dict_config(self, client, auth_headers, sample_memory_id):
         """Test memory retrieval with non-dict config."""
         # Act
         response = client.get(
@@ -330,9 +290,7 @@ class TestGetMemoryEndpoint:
 class TestListMemoriesEndpoint:
     """Tests for GET /v1/store/memories endpoint."""
 
-    def test_list_memories_success(
-        self, client, mock_store, auth_headers, sample_memory_results
-    ):
+    def test_list_memories_success(self, client, mock_store, auth_headers, sample_memory_results):
         """Test successful memory listing."""
         # Arrange
         mock_store.aget_all.return_value = sample_memory_results
@@ -355,9 +313,7 @@ class TestListMemoriesEndpoint:
         mock_store.aget_all.return_value = sample_memory_results[:1]
 
         # Act
-        response = client.get(
-            "/v1/store/memories", params={"limit": 1}, headers=auth_headers
-        )
+        response = client.get("/v1/store/memories", params={"limit": 1}, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -373,9 +329,7 @@ class TestListMemoriesEndpoint:
         config = json.dumps({"sort_order": "desc"})
 
         # Act
-        response = client.get(
-            "/v1/store/memories", params={"config": config}, headers=auth_headers
-        )
+        response = client.get("/v1/store/memories", params={"config": config}, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -416,9 +370,7 @@ class TestListMemoriesEndpoint:
     def test_list_memories_invalid_limit(self, client, auth_headers):
         """Test memory listing with invalid limit."""
         # Act
-        response = client.get(
-            "/v1/store/memories", params={"limit": 0}, headers=auth_headers
-        )
+        response = client.get("/v1/store/memories", params={"limit": 0}, headers=auth_headers)
 
         # Assert
         assert response.status_code == 422  # Validation error
@@ -427,9 +379,7 @@ class TestListMemoriesEndpoint:
 class TestUpdateMemoryEndpoint:
     """Tests for PUT /v1/store/memories/{memory_id} endpoint."""
 
-    def test_update_memory_success(
-        self, client, mock_store, auth_headers, sample_memory_id
-    ):
+    def test_update_memory_success(self, client, mock_store, auth_headers, sample_memory_id):
         """Test successful memory update."""
         # Arrange
         mock_store.aupdate.return_value = {"updated": True}
@@ -452,9 +402,7 @@ class TestUpdateMemoryEndpoint:
         assert data["message"] == "Memory updated successfully"
         assert data["data"]["success"] is True
 
-    def test_update_memory_with_config(
-        self, client, mock_store, auth_headers, sample_memory_id
-    ):
+    def test_update_memory_with_config(self, client, mock_store, auth_headers, sample_memory_id):
         """Test memory update with config."""
         # Arrange
         mock_store.aupdate.return_value = {"updated": True}
@@ -475,9 +423,7 @@ class TestUpdateMemoryEndpoint:
         data = response.json()
         assert data["success"] is True
 
-    def test_update_memory_with_options(
-        self, client, mock_store, auth_headers, sample_memory_id
-    ):
+    def test_update_memory_with_options(self, client, mock_store, auth_headers, sample_memory_id):
         """Test memory update with options."""
         # Arrange
         mock_store.aupdate.return_value = {"updated": True}
@@ -498,9 +444,7 @@ class TestUpdateMemoryEndpoint:
         data = response.json()
         assert data["success"] is True
 
-    def test_update_memory_missing_content(
-        self, client, auth_headers, sample_memory_id
-    ):
+    def test_update_memory_missing_content(self, client, auth_headers, sample_memory_id):
         """Test memory update without required content."""
         # Arrange
         payload = {"metadata": {"updated": True}}
@@ -542,17 +486,13 @@ class TestUpdateMemoryEndpoint:
 class TestDeleteMemoryEndpoint:
     """Tests for DELETE /v1/store/memories/{memory_id} endpoint."""
 
-    def test_delete_memory_success(
-        self, client, mock_store, auth_headers, sample_memory_id
-    ):
+    def test_delete_memory_success(self, client, mock_store, auth_headers, sample_memory_id):
         """Test successful memory deletion."""
         # Arrange
         mock_store.adelete.return_value = {"deleted": True}
 
         # Act
-        response = client.delete(
-            f"/v1/store/memories/{sample_memory_id}", headers=auth_headers
-        )
+        response = client.delete(f"/v1/store/memories/{sample_memory_id}", headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -561,9 +501,7 @@ class TestDeleteMemoryEndpoint:
         assert data["message"] == "Memory deleted successfully"
         assert data["data"]["success"] is True
 
-    def test_delete_memory_with_config(
-        self, client, mock_store, auth_headers, sample_memory_id
-    ):
+    def test_delete_memory_with_config(self, client, mock_store, auth_headers, sample_memory_id):
         """Test memory deletion with config."""
         # Arrange
         mock_store.adelete.return_value = {"deleted": True}
@@ -581,9 +519,7 @@ class TestDeleteMemoryEndpoint:
         data = response.json()
         assert data["success"] is True
 
-    def test_delete_memory_with_options(
-        self, client, mock_store, auth_headers, sample_memory_id
-    ):
+    def test_delete_memory_with_options(self, client, mock_store, auth_headers, sample_memory_id):
         """Test memory deletion with options."""
         # Arrange
         mock_store.adelete.return_value = {"deleted": True}
@@ -609,9 +545,7 @@ class TestDeleteMemoryEndpoint:
         mock_store.adelete.return_value = {"deleted": True}
 
         # Act
-        response = client.delete(
-            f"/v1/store/memories/{sample_memory_id}", headers=auth_headers
-        )
+        response = client.delete(f"/v1/store/memories/{sample_memory_id}", headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -622,18 +556,14 @@ class TestDeleteMemoryEndpoint:
 class TestForgetMemoryEndpoint:
     """Tests for POST /v1/store/memories/forget endpoint."""
 
-    def test_forget_memory_with_memory_type(
-        self, client, mock_store, auth_headers
-    ):
+    def test_forget_memory_with_memory_type(self, client, mock_store, auth_headers):
         """Test forgetting memories by type."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 5}
         payload = {"memory_type": "episodic"}
 
         # Act
-        response = client.post(
-            "/v1/store/memories/forget", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories/forget", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -642,27 +572,21 @@ class TestForgetMemoryEndpoint:
         assert data["message"] == "Memories removed successfully"
         assert data["data"]["success"] is True
 
-    def test_forget_memory_with_category(
-        self, client, mock_store, auth_headers
-    ):
+    def test_forget_memory_with_category(self, client, mock_store, auth_headers):
         """Test forgetting memories by category."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 3}
         payload = {"category": "work"}
 
         # Act
-        response = client.post(
-            "/v1/store/memories/forget", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories/forget", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_forget_memory_with_filters(
-        self, client, mock_store, auth_headers
-    ):
+    def test_forget_memory_with_filters(self, client, mock_store, auth_headers):
         """Test forgetting memories with filters."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 2}
@@ -673,18 +597,14 @@ class TestForgetMemoryEndpoint:
         }
 
         # Act
-        response = client.post(
-            "/v1/store/memories/forget", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories/forget", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_forget_memory_with_config_and_options(
-        self, client, mock_store, auth_headers
-    ):
+    def test_forget_memory_with_config_and_options(self, client, mock_store, auth_headers):
         """Test forgetting memories with config and options."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 1}
@@ -695,27 +615,21 @@ class TestForgetMemoryEndpoint:
         }
 
         # Act
-        response = client.post(
-            "/v1/store/memories/forget", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories/forget", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
 
-    def test_forget_memory_empty_payload(
-        self, client, mock_store, auth_headers
-    ):
+    def test_forget_memory_empty_payload(self, client, mock_store, auth_headers):
         """Test forgetting memories with empty payload."""
         # Arrange
         mock_store.aforget_memory.return_value = {"count": 0}
         payload = {}
 
         # Act
-        response = client.post(
-            "/v1/store/memories/forget", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories/forget", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 200
@@ -728,9 +642,7 @@ class TestForgetMemoryEndpoint:
         payload = {"memory_type": "invalid_type"}
 
         # Act
-        response = client.post(
-            "/v1/store/memories/forget", json=payload, headers=auth_headers
-        )
+        response = client.post("/v1/store/memories/forget", json=payload, headers=auth_headers)
 
         # Assert
         assert response.status_code == 422  # Validation error
