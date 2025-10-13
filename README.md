@@ -21,34 +21,34 @@ pip install -e .
 
 1. **Initialize a new project:**
 ```bash
-pag init
+agentflow init
 ```
 
 2. **Start the API server with default configuration:**
 ```bash
-pag api
+agentflow api
 ```
 
 3. **Start the API server with custom configuration:**
 ```bash
-pag api --config custom-config.json
+agentflow api --config custom-config.json
 ```
 
 4. **Start the API server on different host/port:**
 ```bash
-pag api --host 127.0.0.1 --port 9000
+agentflow api --host 127.0.0.1 --port 9000
 ```
 
 5. **Generate a Dockerfile for containerization:**
 ```bash
-pag build
+agentflow build
 ```
 
 ## CLI Commands
 
-The `pag` command provides the following subcommands:
+The `agentflow` command provides the following subcommands:
 
-### `pag api`
+### `agentflow api`
 Start the Pyagenity API server.
 
 **Options:**
@@ -60,19 +60,19 @@ Start the Pyagenity API server.
 **Examples:**
 ```bash
 # Start with default configuration
-pag api
+agentflow api
 
 # Start with custom config file
-pag api --config my-config.json
+agentflow api --config my-config.json
 
 # Start on localhost only, port 9000
-pag api --host 127.0.0.1 --port 9000
+agentflow api --host 127.0.0.1 --port 9000
 
 # Start without auto-reload
-pag api --no-reload
+agentflow api --no-reload
 ```
 
-### `pag init`
+### `agentflow init`
 Initialize a new config file with default settings.
 
 **Options:**
@@ -82,23 +82,23 @@ Initialize a new config file with default settings.
 **Examples:**
 ```bash
 # Create default config
-pag init
+agentflow init
 
 # Create config with custom name
-pag init --output custom-config.json
+agentflow init --output custom-config.json
 
 # Overwrite existing config
-pag init --force
+agentflow init --force
 ```
 
-### `pag version`
+### `agentflow version`
 Show the CLI version information.
 
 ```bash
-pag version
+agentflow version
 ```
 
-### `pag build`
+### `agentflow build`
 Generate a Dockerfile for the Pyagenity API application.
 
 **Options:**
@@ -110,16 +110,16 @@ Generate a Dockerfile for the Pyagenity API application.
 **Examples:**
 ```bash
 # Generate default Dockerfile
-pag build
+agentflow build
 
 # Generate with custom Python version and port
-pag build --python-version 3.12 --port 9000
+agentflow build --python-version 3.12 --port 9000
 
 # Overwrite existing Dockerfile
-pag build --force
+agentflow build --force
 
 # Generate with custom filename
-pag build --output MyDockerfile
+agentflow build --output MyDockerfile
 ```
 
 **Features:**
