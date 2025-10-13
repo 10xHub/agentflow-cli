@@ -384,7 +384,7 @@ authors = [
 maintainers = [
         {name = "Your Name", email = "you@example.com"},
 ]
-keywords = ["pyagenity", "api", "fastapi", "cli", "pag"]
+keywords = ["pyagenity", "api", "fastapi", "cli", "agentflow"]
 classifiers = [
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -401,7 +401,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pag = "agentflow_cli.cli:main"
+agentflow = "agentflow_cli.cli:main"
 
 [tool.ruff]
 line-length = 100

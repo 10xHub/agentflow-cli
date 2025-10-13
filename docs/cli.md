@@ -1,18 +1,18 @@
 # Pyagenity CLI Reference
 
-`pag` is the command-line interface for scaffolding, running, and packaging Pyagenity-based agent APIs.
+`agentflow` is the command-line interface for scaffolding, running, and packaging Pyagenity-based agent APIs.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `pag init` | Create `agentflowjson` and sample graph under `graph/` |
-| `pag init --prod` | Same as init plus tooling files (`pyproject.toml`, `.pre-commit-config.yaml`) |
-| `pag api` | Run development API server (FastAPI + Uvicorn) |
-| `pag build` | Generate Dockerfile (and optional docker-compose.yml) |
-| `pag version` | Show CLI and installed package versions |
+| `agentflow init` | Create `agentflowjson` and sample graph under `graph/` |
+| `agentflow init --prod` | Same as init plus tooling files (`pyproject.toml`, `.pre-commit-config.yaml`) |
+| `agentflow api` | Run development API server (FastAPI + Uvicorn) |
+| `agentflow build` | Generate Dockerfile (and optional docker-compose.yml) |
+| `agentflow version` | Show CLI and installed package versions |
 
-Run `pag <command> --help` for option details.
+Run `agentflow <command> --help` for option details.
 
 ## Init
 Scaffolds a runnable agent graph.
@@ -36,7 +36,7 @@ Flags:
 
 Example:
 ```
-pag init --prod --path myservice
+agentflow init --prod --path myservice
 cd myservice
 pre-commit install
 ```
@@ -93,18 +93,18 @@ Displays both the CLI internal version and the package version read from `pyproj
 
 ## Quick Reference
 ```
-pag init
-pag init --prod
-pag api --reload
-pag build --docker-compose
-pag version
+agentflow init
+agentflow init --prod
+agentflow api --reload
+agentflow build --docker-compose
+agentflow version
 ```
 
 ## Suggestions After `--prod`
 1. Edit metadata in `pyproject.toml`.
 2. Install hooks: `pre-commit install`.
 3. Run tests: `pytest`.
-4. Build image: `pag build`.
+4. Build image: `agentflow build`.
 5. Deploy container.
 
 ---

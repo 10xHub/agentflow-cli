@@ -20,7 +20,7 @@ load_dotenv()
 
 # Create the main Typer app
 app = typer.Typer(
-    name="pag",
+    name="agentflow",
     help=(
         "Pyagenity API CLI - Professional tool for managing Pyagenity API "
         "servers and configurations"

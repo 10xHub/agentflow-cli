@@ -1,4 +1,4 @@
-"""Tests for `pag init --prod` command."""
+"""Tests for `agentflow init --prod` command."""
 
 from __future__ import annotations
 
