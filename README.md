@@ -1,5 +1,5 @@
 
-# Pyagenity API
+# AgentFlow CLI
 
 A Python API framework with GraphQL support, task management, and CLI tools for building scalable web applications.
 
@@ -7,13 +7,13 @@ A Python API framework with GraphQL support, task management, and CLI tools for 
 
 ### From PyPI (Recommended)
 ```bash
-pip install pyagenity-api
+pip install agentflow-cli
 ```
 
 ### From Source
 ```bash
-git clone https://github.com/Iamsdt/pyagenity-api.git
-cd pyagenity-api
+git clone https://github.com/Iamsdt/agentflow-cli.git
+cd agentflow-cli
 pip install -e .
 ```
 
@@ -21,38 +21,38 @@ pip install -e .
 
 1. **Initialize a new project:**
 ```bash
-pag init
+agentflow init
 ```
 
 2. **Start the API server with default configuration:**
 ```bash
-pag api
+agentflow api
 ```
 
 3. **Start the API server with custom configuration:**
 ```bash
-pag api --config custom-config.json
+agentflow api --config custom-config.json
 ```
 
 4. **Start the API server on different host/port:**
 ```bash
-pag api --host 127.0.0.1 --port 9000
+agentflow api --host 127.0.0.1 --port 9000
 ```
 
 5. **Generate a Dockerfile for containerization:**
 ```bash
-pag build
+agentflow build
 ```
 
 ## CLI Commands
 
-The `pag` command provides the following subcommands:
+The `agentflow` command provides the following subcommands:
 
-### `pag api`
+### `agentflow api`
 Start the Pyagenity API server.
 
 **Options:**
-- `--config TEXT`: Path to config file (default: pyagenity.json)
+- `--config TEXT`: Path to config file (default: agentflow.json)
 - `--host TEXT`: Host to run the API on (default: 0.0.0.0)
 - `--port INTEGER`: Port to run the API on (default: 8000)
 - `--reload/--no-reload`: Enable auto-reload (default: enabled)
@@ -60,45 +60,45 @@ Start the Pyagenity API server.
 **Examples:**
 ```bash
 # Start with default configuration
-pag api
+agentflow api
 
 # Start with custom config file
-pag api --config my-config.json
+agentflow api --config my-config.json
 
 # Start on localhost only, port 9000
-pag api --host 127.0.0.1 --port 9000
+agentflow api --host 127.0.0.1 --port 9000
 
 # Start without auto-reload
-pag api --no-reload
+agentflow api --no-reload
 ```
 
-### `pag init`
+### `agentflow init`
 Initialize a new config file with default settings.
 
 **Options:**
-- `--output TEXT`: Output config file path (default: pyagenity.json)
+- `--output TEXT`: Output config file path (default: agentflow.json)
 - `--force`: Overwrite existing config file
 
 **Examples:**
 ```bash
 # Create default config
-pag init
+agentflow init
 
 # Create config with custom name
-pag init --output custom-config.json
+agentflow init --output custom-config.json
 
 # Overwrite existing config
-pag init --force
+agentflow init --force
 ```
 
-### `pag version`
+### `agentflow version`
 Show the CLI version information.
 
 ```bash
-pag version
+agentflow version
 ```
 
-### `pag build`
+### `agentflow build`
 Generate a Dockerfile for the Pyagenity API application.
 
 **Options:**
@@ -110,21 +110,21 @@ Generate a Dockerfile for the Pyagenity API application.
 **Examples:**
 ```bash
 # Generate default Dockerfile
-pag build
+agentflow build
 
 # Generate with custom Python version and port
-pag build --python-version 3.12 --port 9000
+agentflow build --python-version 3.12 --port 9000
 
 # Overwrite existing Dockerfile
-pag build --force
+agentflow build --force
 
 # Generate with custom filename
-pag build --output MyDockerfile
+agentflow build --output MyDockerfile
 ```
 
 **Features:**
 - 🔍 **Automatic requirements.txt detection**: Searches for requirements files in multiple locations
-- ⚠️ **Smart fallback**: If no requirements.txt found, installs pyagenity-api from PyPI
+- ⚠️ **Smart fallback**: If no requirements.txt found, installs agentflow-cli from PyPI
 - 🐳 **Production-ready**: Generates optimized Dockerfile with security best practices
 - 🔧 **Customizable**: Supports custom Python versions, ports, and output paths
 - 🏥 **Health checks**: Includes built-in health check endpoint
@@ -132,7 +132,7 @@ pag build --output MyDockerfile
 
 ## Configuration
 
-The configuration file (`pyagenity.json`) supports the following structure:
+The configuration file (`agentflow.json`) supports the following structure:
 
 ```json
 {
@@ -147,7 +147,7 @@ The configuration file (`pyagenity.json`) supports the following structure:
     "workers": 1
   },
   "database": {
-    "url": "sqlite://./pyagenity.db"
+    "url": "sqlite://./agentflowdb"
   },
   "redis": {
     "url": "redis://localhost:6379"
@@ -166,7 +166,7 @@ The CLI automatically finds your config file in this order:
 ## Project Structure
 
 ```
-pyagenity-api/
+agentflow-cli/
 ├── pyagenity_api/           # Main package directory
 │   ├── __init__.py         # Package initialization
 │   ├── cli.py              # CLI module
@@ -346,8 +346,8 @@ If you prefer manual setup:
 
 1. **Clone the repository:**
     ```bash
-    git clone https://github.com/Iamsdt/pyagenity-api.git
-    cd pyagenity-api
+    git clone https://github.com/Iamsdt/agentflow-cli.git
+    cd agentflow-cli
     ```
 
 2. **Create a virtual environment:**

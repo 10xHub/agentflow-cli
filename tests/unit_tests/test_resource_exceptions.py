@@ -1,4 +1,4 @@
-from pyagenity_api.src.app.core.exceptions.resources_exceptions import (
+from agentflow_cli.src.app.core.exceptions.resources_exceptions import (
     InvalidOperationError,
     ResourceDuplicationError,
     ResourceNotFoundError,

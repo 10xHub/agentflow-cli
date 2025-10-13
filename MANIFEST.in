@@ -1,12 +1,12 @@
-include pyagenity.json
+include agentflow.json
 include *.md
 include LICENSE*
 include requirements.txt
 include example_weather_agent.py
-recursive-include pyagenity_api *.json
-recursive-include pyagenity_api *.yaml
-recursive-include pyagenity_api *.yml
-recursive-include pyagenity_api *.py
+recursive-include agentflow_cli *.json
+recursive-include agentflow_cli *.yaml
+recursive-include agentflow_cli *.yml
+recursive-include agentflow_cli *.py
 recursive-include src *.json
 recursive-include src *.yaml
 recursive-include src *.yml

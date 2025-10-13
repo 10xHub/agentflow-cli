@@ -1,4 +1,4 @@
-# Makefile for PyAgenity packaging and publishing
+# Makefile for Agentflow packaging and publishing
 
 .PHONY: build publish testpublish clean test test-cov
 
@@ -29,4 +29,4 @@ docs-build:
 	mkdocs build --strict
 
 test-cov:
-	uv run pytest --cov=pyagenity --cov-report=html --cov-report=term-missing --cov-report=xml -v
+	uv run pytest --cov=agentflow-cli --cov-report=html --cov-report=term-missing --cov-report=xml -v

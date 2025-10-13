@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pyagenity_api.src.app.core.config.setup_middleware import setup_middleware
-from pyagenity_api.src.app.routers.ping.router import router as ping_router
+from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
+from agentflow_cli.src.app.routers.ping.router import router as ping_router
 
 
 HTTP_OK = 200

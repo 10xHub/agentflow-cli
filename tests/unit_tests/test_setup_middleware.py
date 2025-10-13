@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pyagenity_api.src.app.core.config.setup_middleware import setup_middleware
+from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
 
 
 HTTP_OK = 200

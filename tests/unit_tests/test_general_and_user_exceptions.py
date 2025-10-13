@@ -1,5 +1,5 @@
-from pyagenity_api.src.app.core.exceptions.general_exception import GeneralException
-from pyagenity_api.src.app.core.exceptions.user_exception import (
+from agentflow_cli.src.app.core.exceptions.general_exception import GeneralException
+from agentflow_cli.src.app.core.exceptions.user_exception import (
     UserAccountError,
     UserPermissionError,
 )

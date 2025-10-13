@@ -1367,7 +1367,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pyagenity-api"
+name = "agentflow-cli"
 version = "0.1.2"
 source = { editable = "." }
 dependencies = [

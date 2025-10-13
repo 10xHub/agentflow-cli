@@ -3,24 +3,24 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyagenity-api"
-version = "0.1.2"
-description = "CLI and API for Pyagenity"
+name = "10xscale-agentflow-cli"
+version = "0.1.5"
+description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Shudipto Trafder", email = "shudiptotrafder@gmail.com"},
+    {name = "10xscale", email = "contact@10xscale"},
 ]
 maintainers = [
     {name = "Shudipto Trafder", email = "shudiptotrafder@gmail.com"},
 ]
 keywords = [
-    "pyagenity",
+    "10xscale AgentFlow",
     "api",
     "fastapi",
     "cli",
-    "pag"
+    "agentflow"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -37,7 +37,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
-    "pyagenity>=0.3.0",
+    "10xscale-agentflow>=0.4.0",
     "fastapi",
     "gunicorn==23.0.0",
     "orjson",
@@ -51,10 +51,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Iamsdt/pyagenity-api"
-Repository = "https://github.com/Iamsdt/pyagenity-api"
-Issues = "https://github.com/Iamsdt/pyagenity-api/issues"
-Documentation = "https://pyagenity-api.readthedocs.io/"
+Homepage = "https://github.com/10xHub/agentflow-cli"
+Repository = "https://github.com/10xHub/agentflow-cli"
+Issues = "https://github.com/10xHub/agentflow-cli/issues"
+Documentation = "https://agentflow-cli.readthedocs.io/"
 
 [project.optional-dependencies]
 sentry = [
@@ -75,7 +75,7 @@ gcloud = [
 ]
 
 [project.scripts]
-pag = "pyagenity_api.cli:main"
+agentflow = "agentflow-cli.cli.main:main"
 
 [tool.setuptools]
 zip-safe = false
@@ -83,8 +83,8 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pyagenity_api*"]
-exclude = ["tests*", "docs*", "__pycache__*", "pyagenity_api/tests*"]
+include = ["agentflow-cli*"]
+exclude = ["tests*", "docs*", "__pycache__*", "agentflow-cli/tests*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.yaml", "*.yml", "*.md", "*.txt"]
@@ -166,7 +166,7 @@ line-ending = "auto"
 docstring-code-format = true
 
 [tool.bandit]
-exclude_dirs = ["*/tests/*", "*/pyagenity_api/tests/*"]
+exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*"]
 skips = ["B101", "B611", "B601", "B608"]
 
 
@@ -179,7 +179,7 @@ env = [
     "ENVIRONMENT=pytest",
 ]
 testpaths = [
-    "pyagenity_api/src/tests",
+    "agentflow-cli/src/tests",
 ]
 pythonpath = [
     ".",
@@ -188,13 +188,43 @@ filterwarnings = [
     "ignore::DeprecationWarning"
 ]
 addopts = [
-    "--cov=pyagenity",
+        # Limit coverage collection to the local project package only
+        "--cov=agentflow-cli",
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
     "--cov-fail-under=0",
     "--strict-markers",
     "-v"
+]
+
+[tool.coverage.run]
+# Only measure the first-party project package
+source = ["agentflow-cli"]
+branch = true
+omit = [
+    "*/__init__.py",           # often trivial
+    "*/tests/*",               # exclude test code
+    "*/migrations/*",
+    "*/scripts/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == '__main__':",
+    "pragma: no cover",
+    "@abc.abstractmethod",
+    "@abstractmethod",
+    "raise NotImplementedError",
+]
+show_missing = true
+
+[tool.coverage.paths]
+source = [
+    "agentflow-cli",
+    "*/site-packages/agentflow-cli",
 ]
 
 [tool.pytest-env]

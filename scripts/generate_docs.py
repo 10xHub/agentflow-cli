@@ -3,7 +3,7 @@ from pathlib import Path
 import mkdocs_gen_files
 
 
-src_root = Path("./pyagenity_api")
+src_root = Path("./agentflow_cli")
 for path in src_root.glob("**/*.py"):
     if path.stem == "__init__":
         rel_parent = path.parent.relative_to(src_root)
@@ -12,10 +12,10 @@ for path in src_root.glob("**/*.py"):
             ident = "pyagenity"
         else:
             doc_path = Path("reference", rel_parent, "overview.md")
-            ident = "pyagenity." + ".".join(rel_parent.parts)
+            ident = "agentflow" + ".".join(rel_parent.parts)
     else:
         doc_path = Path("reference", path.relative_to(src_root)).with_suffix(".md")
-        ident = "pyagenity." + ".".join(path.with_suffix("").relative_to(src_root).parts)
+        ident = "agentflow" + ".".join(path.with_suffix("").relative_to(src_root).parts)
 
     with mkdocs_gen_files.open(doc_path, "w") as f:
         print("::: " + ident, file=f)

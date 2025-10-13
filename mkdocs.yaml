@@ -1,9 +1,9 @@
-site_name: PyAgenity-API
+site_name: AgentFlow-CLI
 site_description: "A lightweight Python framework for building intelligent agents and multi-agent workflows."
 # Required for Material's instant navigation and previews
-site_url: https://iamsdt.github.io/pyagenity-api/
-repo_url: https://github.com/Iamsdt/PyAgenity-api
-repo_name: Iamsdt/PyAgenity-api
+site_url: https://10xhub.github.io/agentflow-cli/
+repo_url: https://github.com/10xhub/agentflow-cli
+repo_name: 10xhub/agentflow-cli
 
 theme:
   name: material
@@ -70,8 +70,3 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-
-# nav:
-#   - Home: index.md
-#   - Reference: reference/index.md
-#   - Changelog: https://pypi.org/project/pyagenity/
