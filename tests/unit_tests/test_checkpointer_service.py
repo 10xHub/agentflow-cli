@@ -48,6 +48,13 @@ class TestCheckpointerService:
         service.settings = MagicMock()
         return service
 
+    @pytest.fixture
+    def checkpointer_service_no_checkpointer(self):
+        """Create a CheckpointerService instance without checkpointer."""
+        service = CheckpointerService.__new__(CheckpointerService)  # Skip __init__
+        service.settings = MagicMock()
+        return service
+
     def test_config_validation(self, checkpointer_service):
         """Test _config method validates checkpointer and adds user info."""
         config = {"thread_id": "test_thread"}
@@ -58,13 +65,13 @@ class TestCheckpointerService:
         assert result["user"] == user
         assert result["thread_id"] == "test_thread"
 
-    def test_config_validation_no_checkpointer(self):
-        """Test _config method raises error when checkpointer is None."""
-        service = CheckpointerService.__new__(CheckpointerService)
-        service.settings = MagicMock()
+    def test_config_validation_no_checkpointer(self, checkpointer_service_no_checkpointer):
+        """Test _config method raises error when checkpointer is not configured."""
+        config = {"thread_id": "test_thread"}
+        user = {"user_id": "123", "username": "test_user"}
 
         with pytest.raises(ValueError, match="Checkpointer is not configured"):
-            service._config({}, {})
+            checkpointer_service_no_checkpointer._config(config, user)
 
     @pytest.mark.asyncio
     async def test_get_state_success(self, checkpointer_service, mock_checkpointer):

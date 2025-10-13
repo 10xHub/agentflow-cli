@@ -25,7 +25,7 @@ settings = get_settings()
 #     port=settings.REDIS_PORT,
 # )
 
-graph_path = os.environ.get("GRAPH_PATH", "agentflowjson")
+graph_path = os.environ.get("GRAPH_PATH", "agentflow.json")
 graph_config = GraphConfig(graph_path)
 # Load the container
 container: InjectQ = load_container(graph_config.injectq_path) or InjectQ.get_instance()

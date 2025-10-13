@@ -167,7 +167,7 @@ def init(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Initialize default config and graph files (agentflowjson and graph/react.py)."""
+    """Initialize default config and graph files (agentflow.json and graph/react.py)."""
     # Setup logging
     setup_cli_logging(verbose=verbose, quiet=quiet)
 

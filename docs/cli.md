@@ -6,7 +6,7 @@
 
 | Command | Description |
 |---------|-------------|
-| `agentflow init` | Create `agentflowjson` and sample graph under `graph/` |
+| `agentflow init` | Create `agentflow.json` and sample graph under `graph/` |
 | `agentflow init --prod` | Same as init plus tooling files (`pyproject.toml`, `.pre-commit-config.yaml`) |
 | `agentflow api` | Run development API server (FastAPI + Uvicorn) |
 | `agentflow build` | Generate Dockerfile (and optional docker-compose.yml) |
@@ -18,7 +18,7 @@ Run `agentflow <command> --help` for option details.
 Scaffolds a runnable agent graph.
 
 ### Default Files
-* `agentflowjson` – main configuration
+* `agentflow.json` – main configuration
 * `graph/react.py` – example agent graph (tool, routing, LiteLLM call)
 * `graph/__init__.py`
 
@@ -47,7 +47,7 @@ Starts a development server (hot reload by default).
 Key options:
 | Option | Default | Notes |
 |--------|---------|-------|
-| `--config/-c` | `agentflowjson` | Config file path |
+| `--config/-c` | `agentflow.json` | Config file path |
 | `--host/-H` | `0.0.0.0` | Use `127.0.0.1` for local only |
 | `--port/-p` | `8000` | Port to bind |
 | `--reload/--no-reload` | reload on | Auto-reload for dev |

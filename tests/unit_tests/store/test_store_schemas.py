@@ -1,9 +1,9 @@
 """Unit tests for store schemas."""
 
 import pytest
+from agentflow.state import Message
+from agentflow.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 from pydantic import ValidationError
-from agentflowstate import Message
-from agentflowstore.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
 from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
     DeleteMemorySchema,

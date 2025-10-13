@@ -36,7 +36,7 @@ class InitCommand(BaseCommand):
         """
         try:
             # Print banner
-            subtitle = "Create agentflowjson and graph/react.py scaffold files"
+            subtitle = "Create agentflow.json and graph/react.py scaffold files"
             if prod:
                 subtitle += " plus production config files"
             self.output.print_banner("Init", subtitle, color="magenta")
@@ -78,7 +78,7 @@ class InitCommand(BaseCommand):
             # Next steps
             self.output.info("\n🚀 Next steps:")
             next_steps = [
-                "Review and customize agentflowjson configuration",
+                "Review and customize agentflow.json configuration",
                 "Modify graph/react.py to implement your agent logic",
                 "Set up environment variables in .env file",
                 "Run the API server with: pag api",

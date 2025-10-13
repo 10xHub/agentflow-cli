@@ -91,7 +91,7 @@ def test_init_command_basic(tmp_path, silent_output):
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False, prod=False)
     assert code == 0
-    assert (tmp_path / "agentflowjson").exists()
+    assert (tmp_path / "agentflow.json").exists()
     assert (tmp_path / "graph" / "react.py").exists()
     assert (tmp_path / "graph" / "__init__.py").exists()
 
@@ -100,13 +100,13 @@ def test_init_command_prod(tmp_path, silent_output):
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False, prod=True)
     assert code == 0
-    assert (tmp_path / "agentflowjson").exists()
+    assert (tmp_path / "agentflow.json").exists()
     assert (tmp_path / ".pre-commit-config.yaml").exists()
     assert (tmp_path / "pyproject.toml").exists()
 
 
 def test_init_command_existing_without_force(tmp_path, silent_output):
-    cfg = tmp_path / "agentflowjson"
+    cfg = tmp_path / "agentflow.json"
     cfg.write_text("{}", encoding="utf-8")
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False)
@@ -154,7 +154,7 @@ def test_build_command_compose_existing_without_force(tmp_path, monkeypatch, sil
 
 def test_init_command_force_overwrite(tmp_path, silent_output):
     # Create initial files
-    cfg = tmp_path / "agentflowjson"
+    cfg = tmp_path / "agentflow.json"
     react_dir = tmp_path / "graph"
     react_dir.mkdir()
     react_file = react_dir / "react.py"

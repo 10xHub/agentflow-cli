@@ -52,7 +52,7 @@ The `agentflow` command provides the following subcommands:
 Start the Pyagenity API server.
 
 **Options:**
-- `--config TEXT`: Path to config file (default: agentflowjson)
+- `--config TEXT`: Path to config file (default: agentflow.json)
 - `--host TEXT`: Host to run the API on (default: 0.0.0.0)
 - `--port INTEGER`: Port to run the API on (default: 8000)
 - `--reload/--no-reload`: Enable auto-reload (default: enabled)
@@ -76,7 +76,7 @@ agentflow api --no-reload
 Initialize a new config file with default settings.
 
 **Options:**
-- `--output TEXT`: Output config file path (default: agentflowjson)
+- `--output TEXT`: Output config file path (default: agentflow.json)
 - `--force`: Overwrite existing config file
 
 **Examples:**
@@ -132,7 +132,7 @@ agentflow build --output MyDockerfile
 
 ## Configuration
 
-The configuration file (`agentflowjson`) supports the following structure:
+The configuration file (`agentflow.json`) supports the following structure:
 
 ```json
 {

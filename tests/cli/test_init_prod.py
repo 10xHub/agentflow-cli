@@ -19,13 +19,13 @@ def run_cli(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
 
 
 def test_init_prod_creates_extra_files(tmp_path: Path) -> None:
-    """Ensure prod init creates agentflowjson, graph files, and prod configs."""
+    """Ensure prod init creates agentflow.json, graph files, and prod configs."""
     result = run_cli(["init", "--prod"], tmp_path)
 
     assert result.returncode == 0, result.stderr or result.stdout
 
     # Core files
-    assert (tmp_path / "agentflowjson").exists()
+    assert (tmp_path / "agentflow.json").exists()
     assert (tmp_path / "graph" / "react.py").exists()
     assert (tmp_path / "graph" / "__init__.py").exists()
 
