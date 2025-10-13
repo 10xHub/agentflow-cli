@@ -8,7 +8,7 @@ from pyagenity.state import Message
 from pyagenity.store import BaseStore
 from pyagenity.store.store_schema import MemorySearchResult, MemoryType
 
-from pyagenity_api.src.app.routers.store.services.store_service import StoreService
+from agentflow_cli.src.app.routers.store.services.store_service import StoreService
 
 
 @pytest.fixture

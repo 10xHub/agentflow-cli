@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from pyagenity_api.src.app.utils.callable_helper import _is_async_callable, call_sync_or_async
+from agentflow_cli.src.app.utils.callable_helper import _is_async_callable, call_sync_or_async
 
 
 SUM_RESULT = 5

@@ -3,7 +3,7 @@ from pathlib import Path
 import mkdocs_gen_files
 
 
-src_root = Path("./pyagenity_api")
+src_root = Path("./agentflow_cli")
 for path in src_root.glob("**/*.py"):
     if path.stem == "__init__":
         rel_parent = path.parent.relative_to(src_root)

@@ -7,7 +7,7 @@ import pytest
 from pyagenity.state import Message
 from pyagenity.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
-from pyagenity_api.src.app.routers.store.schemas.store_schemas import (
+from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
     DeleteMemorySchema,
     ForgetMemorySchema,
     SearchMemorySchema,
@@ -116,7 +116,7 @@ class TestStoreMemory:
     async def test_store_memory_no_store_raises_error(self, mock_user):
         """Test storing memory when store is not configured."""
         # Arrange
-        from pyagenity_api.src.app.routers.store.services.store_service import (
+        from agentflow_cli.src.app.routers.store.services.store_service import (
             StoreService,
         )
 

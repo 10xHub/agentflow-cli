@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from pyagenity_api.src.app.core.config.graph_config import GraphConfig
+from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 
 
 def test_graph_config_reads_agent(tmp_path: Path):

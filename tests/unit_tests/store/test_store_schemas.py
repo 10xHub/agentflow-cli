@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from pyagenity.state import Message
 from pyagenity.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
-from pyagenity_api.src.app.routers.store.schemas.store_schemas import (
+from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
     DeleteMemorySchema,
     ForgetMemorySchema,
     SearchMemorySchema,

@@ -1,5 +1,5 @@
 
-# Pyagenity API
+# AgentFlow CLI
 
 A Python API framework with GraphQL support, task management, and CLI tools for building scalable web applications.
 
@@ -7,7 +7,7 @@ A Python API framework with GraphQL support, task management, and CLI tools for 
 
 ### From PyPI (Recommended)
 ```bash
-pip install pyagenity-api
+pip install agentflow-cli
 ```
 
 ### From Source

@@ -4,12 +4,12 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from pyagenity_api.src.app.core.config.settings import Settings
-from pyagenity_api.src.app.utils.parse_output import (
+from agentflow_cli.src.app.core.config.settings import Settings
+from agentflow_cli.src.app.utils.parse_output import (
     parse_message_output,
     parse_state_output,
 )
-from pyagenity_api.src.app.utils.callable_helper import call_sync_or_async
+from agentflow_cli.src.app.utils.callable_helper import call_sync_or_async
 
 
 class _StateModel(BaseModel):

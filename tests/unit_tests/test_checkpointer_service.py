@@ -6,14 +6,14 @@ import pytest
 from pyagenity.checkpointer import BaseCheckpointer
 from pyagenity.state import AgentState, Message
 
-from pyagenity_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     MessagesListResponseSchema,
     ResponseSchema,
     StateResponseSchema,
     ThreadResponseSchema,
     ThreadsListResponseSchema,
 )
-from pyagenity_api.src.app.routers.checkpointer.services.checkpointer_service import (
+from agentflow_cli.src.app.routers.checkpointer.services.checkpointer_service import (
     CheckpointerService,
 )
 
@@ -76,7 +76,7 @@ class TestCheckpointerService:
 
         # Mock parse_state_output to return a simple dict
         with patch(
-            "pyagenity_api.src.app.routers.checkpointer.services.checkpointer_service.parse_state_output"
+            "agentflow_cli.src.app.routers.checkpointer.services.checkpointer_service.parse_state_output"
         ) as mock_parse:
             mock_parse.return_value = {"test": "data"}
 

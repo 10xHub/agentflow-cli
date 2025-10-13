@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 from pyagenity.store import BaseStore
 from pyagenity.store.store_schema import MemorySearchResult, MemoryType
 
-from pyagenity_api.src.app.core.config.setup_middleware import setup_middleware
-from pyagenity_api.src.app.routers.store.router import router as store_router
+from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
+from agentflow_cli.src.app.routers.store.router import router as store_router
 
 
 @pytest.fixture
@@ -37,8 +37,8 @@ def app(mock_store, mock_auth_user):
     app.include_router(store_router)
 
     # Mock the dependency injection for StoreService
-    with patch("pyagenity_api.src.app.routers.store.router.InjectAPI") as mock_inject:
-        from pyagenity_api.src.app.routers.store.services.store_service import (
+    with patch("agentflow_cli.src.app.routers.store.router.InjectAPI") as mock_inject:
+        from agentflow_cli.src.app.routers.store.services.store_service import (
             StoreService,
         )
 
@@ -48,7 +48,7 @@ def app(mock_store, mock_auth_user):
 
         # Mock authentication
         with patch(
-            "pyagenity_api.src.app.routers.store.router.verify_current_user",
+            "agentflow_cli.src.app.routers.store.router.verify_current_user",
             return_value=mock_auth_user,
         ):
             yield app

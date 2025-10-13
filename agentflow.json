@@ -1,0 +1,10 @@
+{
+  "graphs": {
+    "agent": "graph.react:app",
+    "injectq": null
+  },
+  "env": ".env",
+  "auth": null,
+  "thread_model_name": "gemini/gemini-2.0-flash",
+  "generate_thread_name": false
+}
