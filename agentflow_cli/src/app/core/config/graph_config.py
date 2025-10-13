@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 
 class GraphConfig:
-    def __init__(self, path: str = "agentflowjson"):
+    def __init__(self, path: str = "agentflow.json"):
         with Path(path).open() as f:
             self.data: dict = json.load(f)
 

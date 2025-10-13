@@ -1,11 +1,11 @@
 import os
 
+from agentflow.graph import CompiledGraph
 from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import ORJSONResponse
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
-from agentflowgraph import CompiledGraph
 
 # from tortoise import Tortoise
 from agentflow_cli.src.app.core import (

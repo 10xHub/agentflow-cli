@@ -4,10 +4,9 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
+from agentflow.store import BaseStore, MemorySearchResult, MemoryType
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from agentflowstore import BaseStore
-from agentflowstore.store_schema import MemorySearchResult, MemoryType
 
 from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
 from agentflow_cli.src.app.routers.store.router import router as store_router

@@ -3,9 +3,6 @@
 import json
 from uuid import uuid4
 
-import pytest
-from agentflowstore.store_schema import MemoryType
-
 
 class TestCreateMemoryEndpoint:
     """Tests for POST /v1/store/memories endpoint."""

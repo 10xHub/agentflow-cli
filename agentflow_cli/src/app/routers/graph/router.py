@@ -151,7 +151,7 @@ async def state_schema(
     "/v1/graph/stop",
     summary="Stop graph execution",
     description="Stop the currently running graph execution for a specific thread",
-    responses=generate_swagger_responses(dict),
+    responses=generate_swagger_responses(dict),  # type: ignore
     openapi_extra={},
 )
 async def stop_graph(

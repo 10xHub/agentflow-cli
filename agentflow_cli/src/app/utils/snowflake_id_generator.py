@@ -1,11 +1,11 @@
 import os
 from importlib.util import find_spec
 
-from agentflowutils.id_generator import BaseIDGenerator, IDType
+from agentflow.utils.id_generator import BaseIDGenerator, IDType
 
 
 # Check if snowflakekit is available
-HAS_SNKOWFLAKE = find_spec("snowflakekit") is not None
+HAS_SNOWFLAKE = find_spec("snowflakekit") is not None
 
 
 class SnowFlakeIdGenerator(BaseIDGenerator):
@@ -21,7 +21,7 @@ class SnowFlakeIdGenerator(BaseIDGenerator):
     ):
         # IF all these are None then try to read from env
         config = None
-        if not HAS_SNKOWFLAKE:
+        if not HAS_SNOWFLAKE:
             raise ImportError(
                 "snowflakekit is not installed. Please install it to use SnowFlakeIdGenerator."
             )

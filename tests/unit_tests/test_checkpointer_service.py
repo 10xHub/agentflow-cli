@@ -3,8 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from agentflowcheckpointer import BaseCheckpointer
-from agentflowstate import AgentState, Message
+from agentflow.checkpointer import BaseCheckpointer
+from agentflow.state import AgentState, Message
 
 from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     MessagesListResponseSchema,
@@ -61,7 +61,6 @@ class TestCheckpointerService:
     def test_config_validation_no_checkpointer(self):
         """Test _config method raises error when checkpointer is None."""
         service = CheckpointerService.__new__(CheckpointerService)
-        service.checkpointer = None
         service.settings = MagicMock()
 
         with pytest.raises(ValueError, match="Checkpointer is not configured"):

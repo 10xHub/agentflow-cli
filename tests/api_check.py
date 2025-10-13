@@ -1,6 +1,7 @@
-import requests
 from datetime import datetime
 from typing import Any
+
+import requests
 
 
 BASE_URL = "http://localhost:8000"
