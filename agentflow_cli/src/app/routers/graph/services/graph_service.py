@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from agentflow.checkpointer import BaseCheckpointer
 from agentflow.graph import CompiledGraph
-from agentflow.state import Message
+from agentflow.state import AgentState, Message
 from agentflow.utils.thread_info import ThreadInfo
 from fastapi import BackgroundTasks, HTTPException
 from injectq import InjectQ, inject, singleton
@@ -99,38 +99,6 @@ class GraphService:
             converted_messages.append(converted_msg)
 
         return converted_messages
-
-    def _process_state_and_messages(
-        self, graph_input: GraphInputSchema, raw_state, messages: list[Message]
-    ) -> tuple[dict[str, Any] | None, list[Message]]:
-        """Process state and messages based on include_raw parameter."""
-        if graph_input.include_raw:
-            # Include everything when include_raw is True
-            state_dict = raw_state.model_dump() if raw_state is not None else raw_state
-            return state_dict, messages
-
-        # Filter out execution_meta from state and raw from messages
-        # when include_raw is False
-        if raw_state is not None:
-            state_dict = raw_state.model_dump()
-            # Remove execution_meta if present
-            if "execution_meta" in state_dict:
-                del state_dict["execution_meta"]
-        else:
-            state_dict = raw_state
-
-        # Filter raw data from messages
-        filtered_messages = []
-        for msg in messages:
-            msg_dict = msg.model_dump()
-            # Remove raw field if present
-            if "raw" in msg_dict:
-                del msg_dict["raw"]
-            # Create filtered message
-            filtered_msg = Message.model_validate(msg_dict)
-            filtered_messages.append(filtered_msg)
-
-        return state_dict, filtered_messages
 
     def _extract_context_info(
         self, raw_state, result: dict[str, Any]
@@ -281,7 +249,7 @@ class GraphService:
 
             # Extract messages and state from result
             messages: list[Message] = result.get("messages", [])
-            raw_state = result.get("state", None)
+            raw_state: AgentState | None = result.get("state", None)
 
             # Extract context information using helper method
             context, context_summary = self._extract_context_info(raw_state, result)
@@ -296,14 +264,9 @@ class GraphService:
                     config["thread_id"],
                 )
 
-            # Process state and messages based on include_raw parameter
-            state_dict, processed_messages = self._process_state_and_messages(
-                graph_input, raw_state, messages
-            )
-
             return GraphInvokeOutputSchema(
-                messages=processed_messages,
-                state=state_dict,
+                messages=messages,
+                state=raw_state.model_dump() if raw_state else None,
                 context=context,
                 summary=context_summary,
                 meta=meta,
