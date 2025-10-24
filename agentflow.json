@@ -1,7 +1,6 @@
 {
   "graphs": {
-    "agent": "graph.react:app",
-    "injectq": null
+    "agent": "graph.react:app"
   },
   "env": ".env",
   "auth": null,

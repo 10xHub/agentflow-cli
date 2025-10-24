@@ -9,10 +9,7 @@ from typing import Final
 # Default configuration template
 DEFAULT_CONFIG_JSON: Final[str] = json.dumps(
     {
-        "graphs": {
-            "agent": "graph.react:app",
-            "container": None,
-        },
+        "graphs": {"agent": "graph.react:app"},
         "env": ".env",
         "auth": None,
         "thread_model_name": "gemini/gemini-2.0-flash",
@@ -57,21 +54,19 @@ Dependencies:
 - Python logging: For debug and info messages
 """
 
-import asyncio
 import logging
 from typing import Any
 
+from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
+from agentflow.checkpointer import InMemoryCheckpointer
+from agentflow.graph import StateGraph, ToolNode
+from agentflow.state.agent_state import AgentState
+from agentflow.utils.callbacks import CallbackManager
+from agentflow.utils.constants import END
+from agentflow.utils.converter import convert_messages
 from dotenv import load_dotenv
 from injectq import Inject
 from litellm import acompletion
-from agentflowadapters.llm.model_response_converter import ModelResponseConverter
-from agentflowcheckpointer import InMemoryCheckpointer
-from agentflowgraph import StateGraph, ToolNode
-from agentflowstate.agent_state import AgentState
-from agentflowutils import Message
-from agentflowutils.callbacks import CallbackManager
-from agentflowutils.constants import END
-from agentflowutils.converter import convert_messages
 
 
 # Configure logging for the module
@@ -134,7 +129,7 @@ def get_weather(
     tool_call_id: str,
     state: AgentState,
     checkpointer: InMemoryCheckpointer = Inject[InMemoryCheckpointer],
-) -> Message:
+) -> str:
     """Retrieve current weather information for a specified location."""
     # Demonstrate access to injected parameters
     logger.debug("***** Checkpointer instance: %s", checkpointer)
@@ -178,11 +173,11 @@ async def main_agent(
     2. Otherwise, generate a response with available tools for potential tool usage
     """
     # System prompt defining the agent's role and capabilities
-    system_prompt = \"\"\"
+    system_prompt = """
         You are a helpful assistant.
         Your task is to assist the user in finding information and answering questions.
         You have access to various tools that can help you provide accurate information.
-    \"\"\"
+    """
 
     # Convert state messages to the format expected by the AI model
     messages = convert_messages(
@@ -208,12 +203,7 @@ async def main_agent(
     is_stream = config.get("is_stream", False)
 
     # Determine response strategy based on conversation context
-    if (
-        state.context
-        and len(state.context) > 0
-        and state.context[-1].role == "tool"
-        and state.context[-1].tool_call_id is not None
-    ):
+    if state.context and len(state.context) > 0 and state.context[-1].role == "tool":
         # Last message was a tool result - generate final response without tools
         logger.info("Generating final response after tool execution")
         response = await acompletion(
@@ -308,6 +298,8 @@ graph.set_entry_point("MAIN")
 app = graph.compile(
     checkpointer=checkpointer,
 )
+
+
 
 '''
 
