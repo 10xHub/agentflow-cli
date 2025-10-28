@@ -1,9 +1,6 @@
 {
-  "graphs": {
-    "agent": "graph.react:app"
-  },
+  "agent": "graph.react:app",
+  "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "env": ".env",
-  "auth": null,
-  "thread_model_name": "gemini/gemini-2.0-flash",
-  "generate_thread_name": false
+  "auth": null
 }

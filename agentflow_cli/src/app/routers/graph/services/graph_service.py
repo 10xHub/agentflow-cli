@@ -1,11 +1,10 @@
 from collections.abc import AsyncIterable
-from inspect import isawaitable
 from typing import Any
 from uuid import uuid4
 
 from agentflow.checkpointer import BaseCheckpointer
 from agentflow.graph import CompiledGraph
-from agentflow.state import AgentState, Message
+from agentflow.state import AgentState, Message, StreamChunk, StreamEvent
 from agentflow.utils.thread_info import ThreadInfo
 from fastapi import BackgroundTasks, HTTPException
 from injectq import InjectQ, inject, singleton
@@ -20,6 +19,7 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphSchema,
     MessageSchema,
 )
+from agentflow_cli.src.app.utils import DummyThreadNameGenerator, ThreadNameGenerator
 
 
 @singleton
@@ -37,6 +37,7 @@ class GraphService:
         graph: CompiledGraph,
         checkpointer: BaseCheckpointer,
         config: GraphConfig,
+        thread_name_generator: ThreadNameGenerator | None = None,
     ):
         """
         Initializes the GraphService with a CompiledGraph instance.
@@ -48,18 +49,32 @@ class GraphService:
         self._graph = graph
         self.config = config
         self.checkpointer = checkpointer
+        self.thread_name_generator = thread_name_generator
 
-    async def _save_thread_name(self, config: dict[str, Any], thread_id: int):
+    async def _save_thread_name(
+        self,
+        config: dict[str, Any],
+        thread_id: int,
+        messages: list[str],
+    ) -> str:
         """
         Save the generated thread name to the database.
         """
-        thread_name = InjectQ.get_instance().get("generated_thread_name")
-        if isawaitable(thread_name):
-            thread_name = await thread_name
-        return await self.checkpointer.aput_thread(
+        if not self.thread_name_generator:
+            thread_name = await DummyThreadNameGenerator().generate_name([])
+            logger.debug("No thread name generator configured, using dummy thread name generator.")
+            return thread_name
+
+        thread_name = await self.thread_name_generator.generate_name(messages)
+
+        res = await self.checkpointer.aput_thread(
             config,
             ThreadInfo(thread_id=thread_id, thread_name=thread_name),
         )
+        if res:
+            logger.info(f"Generated thread name: {thread_name} for thread_id: {thread_id}")
+
+        return thread_name
 
     async def _save_thread(self, config: dict[str, Any], thread_id: int):
         """
@@ -193,12 +208,13 @@ class GraphService:
         config["recursion_limit"] = graph_input.recursion_limit or 25
 
         # Prepare the input for the graph
-        input_data = {
+        input_data: dict = {
             "messages": self._convert_messages(
                 graph_input.messages,
             ),
-            "state": graph_input.initial_state or {},
         }
+        if graph_input.initial_state:
+            input_data["state"] = graph_input.initial_state
 
         return (
             input_data,
@@ -213,7 +229,6 @@ class GraphService:
         self,
         graph_input: GraphInputSchema,
         user: dict[str, Any],
-        background_tasks: BackgroundTasks,
     ) -> GraphInvokeOutputSchema:
         """
         Invokes the graph with the provided input and returns the final result.
@@ -254,15 +269,12 @@ class GraphService:
             # Extract context information using helper method
             context, context_summary = self._extract_context_info(raw_state, result)
 
-            # Generate background thread name
-            # background_tasks.add_task(self._generate_background_thread_name, thread_id)
-
-            if meta["is_new_thread"] and self.config.generate_thread_name:
-                background_tasks.add_task(
-                    self._save_thread_name,
-                    config,
-                    config["thread_id"],
+            if meta["is_new_thread"] and self.config.thread_name_generator_path:
+                messages_str = [msg.text() for msg in messages]
+                thread_name = await self._save_thread_name(
+                    config, config["thread_id"], messages_str
                 )
+                meta["thread_name"] = thread_name
 
             return GraphInvokeOutputSchema(
                 messages=messages,
@@ -280,7 +292,6 @@ class GraphService:
         self,
         graph_input: GraphInputSchema,
         user: dict[str, Any],
-        background_tasks: BackgroundTasks,
     ) -> AsyncIterable[Content]:
         """
         Streams the graph execution with the provided input.
@@ -304,6 +315,8 @@ class GraphService:
             config["user"] = user
             await self._save_thread(config, config["thread_id"])
 
+            messages_str = []
+
             # Stream the graph execution
             async for chunk in self._graph.astream(
                 input_data,
@@ -314,15 +327,29 @@ class GraphService:
                 mt.update(meta)
                 chunk.metadata = mt
                 yield chunk.model_dump_json()
+                if (
+                    self.config.thread_name_generator_path
+                    and meta["is_new_thread"]
+                    and chunk.event == StreamEvent.MESSAGE
+                    and chunk.message
+                    and not chunk.message.delta
+                ):
+                    messages_str.append(chunk.message.text())
 
             logger.info("Graph streaming completed successfully")
 
-            if meta["is_new_thread"] and self.config.generate_thread_name:
-                background_tasks.add_task(
-                    self._save_thread_name,
-                    config,
-                    config["thread_id"],
+            if meta["is_new_thread"] and self.config.thread_name_generator_path:
+                messages_str = [msg.text() for msg in messages_str]
+                thread_name = await self._save_thread_name(
+                    config, config["thread_id"], messages_str
                 )
+                meta["thread_name"] = thread_name
+
+                yield StreamChunk(
+                    event=StreamEvent.UPDATES,
+                    data={"status": "completed"},
+                    metadata=meta,
+                ).model_dump_json()
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")

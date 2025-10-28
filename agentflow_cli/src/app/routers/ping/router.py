@@ -10,7 +10,7 @@ router = APIRouter(
 
 
 @router.get(
-    "/v1/ping",
+    "/ping",
     summary="Ping the server",
     responses=generate_swagger_responses(str),  # type: ignore
     description="Check the server's health",
