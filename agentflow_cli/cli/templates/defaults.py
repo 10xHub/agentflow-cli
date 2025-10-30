@@ -9,11 +9,9 @@ from typing import Final
 # Default configuration template
 DEFAULT_CONFIG_JSON: Final[str] = json.dumps(
     {
-        "graphs": {"agent": "graph.react:app"},
+        "agent": "graph.react:app",
         "env": ".env",
         "auth": None,
-        "thread_model_name": "gemini/gemini-2.0-flash",
-        "generate_thread_name": False,
     },
     indent=2,
 )

@@ -166,22 +166,15 @@ class Validator:
             raise ValidationError("Configuration must be a dictionary")
 
         # Required fields
-        required_fields = ["graphs"]
+        required_fields = ["agent"]
         for field in required_fields:
             if field not in config:
                 raise ValidationError(f"Missing required field: {field}")
 
-        # Validate graphs section
-        graphs = config["graphs"]
-        if not isinstance(graphs, dict):
-            raise ValidationError("Field 'graphs' must be a dictionary")
-
-        # Validate individual graph entries
-        for graph_name, graph_value in graphs.items():
-            if graph_value is not None and not isinstance(graph_value, str):
-                raise ValidationError(
-                    f"Graph '{graph_name}' must be a string or null", field=f"graphs.{graph_name}"
-                )
+        # Validate agent field
+        agent = config["agent"]
+        if not isinstance(agent, str):
+            raise ValidationError("Field 'agent' must be a string")
 
         return config
 
