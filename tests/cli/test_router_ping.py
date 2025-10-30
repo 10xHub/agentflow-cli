@@ -7,7 +7,7 @@ HTTP_OK = 200
 
 def test_ping_endpoint_returns_pong():
     client = TestClient(app)
-    resp = client.get("/v1/ping")
+    resp = client.get("/ping")
     assert resp.status_code == HTTP_OK
     data = resp.json()
     assert data["data"] == "pong"
