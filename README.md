@@ -1,409 +1,428 @@
 
+````markdown
+
 # AgentFlow CLI
 
-A Python API framework with GraphQL support, task management, and CLI tools for building scalable web applications.
+A professional Python API framework for building agent-based applications with FastAPI, state graph orchestration, and comprehensive CLI tools.
 
-## Installation
+## 📚 Documentation
 
-### From PyPI (Recommended)
-```bash
-pip install agentflow-cli
-```
-
-### From Source
-```bash
-git clone https://github.com/Iamsdt/agentflow-cli.git
-cd agentflow-cli
-pip install -e .
-```
+- **[CLI Guide](./docs/cli-guide.md)** - Complete command-line interface reference
+- **[Configuration Guide](./docs/configuration.md)** - All configuration options explained
+- **[Deployment Guide](./docs/deployment.md)** - Docker, Kubernetes, and cloud deployment
+- **[Authentication Guide](./docs/authentication.md)** - JWT and custom authentication
+- **[ID Generation Guide](./docs/id-generation.md)** - Snowflake ID generation
+- **[Thread Name Generator Guide](./docs/thread-name-generator.md)** - Thread naming strategies
 
 ## Quick Start
 
-1. **Initialize a new project:**
+### Installation
+
 ```bash
-agentflow init
+pip install 10xscale-agentflow-cli
 ```
 
-2. **Start the API server with default configuration:**
+### Initialize a New Project
+
+```bash
+# Create project structure
+agentflow init
+
+# Or with production config
+agentflow init --prod
+```
+
+### Start Development Server
+
 ```bash
 agentflow api
 ```
 
-3. **Start the API server with custom configuration:**
+### Generate Docker Files
+
 ```bash
-agentflow api --config custom-config.json
+agentflow build --docker-compose
 ```
 
-4. **Start the API server on different host/port:**
-```bash
-agentflow api --host 127.0.0.1 --port 9000
-```
+## Key Features
 
-5. **Generate a Dockerfile for containerization:**
-```bash
-agentflow build
-```
+- ✅ **CLI Tools** - Professional command-line interface for scaffolding and deployment
+- ✅ **State Graph Orchestration** - Build complex agent workflows with LangGraph
+- ✅ **FastAPI Backend** - High-performance async web framework
+- ✅ **Authentication** - Built-in JWT auth and custom authentication support
+- ✅ **ID Generation** - Distributed Snowflake ID generation
+- ✅ **Thread Management** - Intelligent thread naming and conversation management
+- ✅ **Docker Ready** - Generate production-ready Docker files
+- ✅ **Dependency Injection** - InjectQ for clean dependency management
+- ✅ **Development Tools** - Hot-reload, pre-commit hooks, testing
 
 ## CLI Commands
 
-The `agentflow` command provides the following subcommands:
-
-### `agentflow api`
-Start the Pyagenity API server.
-
-**Options:**
-- `--config TEXT`: Path to config file (default: agentflow.json)
-- `--host TEXT`: Host to run the API on (default: 0.0.0.0)
-- `--port INTEGER`: Port to run the API on (default: 8000)
-- `--reload/--no-reload`: Enable auto-reload (default: enabled)
-
-**Examples:**
-```bash
-# Start with default configuration
-agentflow api
-
-# Start with custom config file
-agentflow api --config my-config.json
-
-# Start on localhost only, port 9000
-agentflow api --host 127.0.0.1 --port 9000
-
-# Start without auto-reload
-agentflow api --no-reload
-```
+For detailed command documentation, see the [CLI Guide](./docs/cli-guide.md).
 
 ### `agentflow init`
-Initialize a new config file with default settings.
 
-**Options:**
-- `--output TEXT`: Output config file path (default: agentflow.json)
-- `--force`: Overwrite existing config file
+Initialize a new project with configuration and sample graph.
 
-**Examples:**
 ```bash
-# Create default config
+# Basic initialization
 agentflow init
 
-# Create config with custom name
-agentflow init --output custom-config.json
+# With production config (pyproject.toml, pre-commit hooks)
+agentflow init --prod
 
-# Overwrite existing config
+# Custom directory
+agentflow init --path ./my-project
+
+# Force overwrite existing files
 agentflow init --force
 ```
 
+### `agentflow api`
+
+Start the development API server.
+
+```bash
+# Start with defaults (localhost:8000)
+agentflow api
+
+# Custom host and port
+agentflow api --host 127.0.0.1 --port 9000
+
+# Custom config file
+agentflow api --config production.json
+
+# Disable auto-reload
+agentflow api --no-reload
+
+# Verbose logging
+agentflow api --verbose
+```
+
+### `agentflow build`
+
+Generate production Docker files.
+
+```bash
+# Generate Dockerfile
+agentflow build
+
+# Generate Dockerfile and docker-compose.yml
+agentflow build --docker-compose
+
+# Custom Python version and port
+agentflow build --python-version 3.12 --port 9000
+
+# Force overwrite
+agentflow build --force
+```
+
 ### `agentflow version`
-Show the CLI version information.
+
+Display version information.
 
 ```bash
 agentflow version
 ```
 
-### `agentflow build`
-Generate a Dockerfile for the Pyagenity API application.
-
-**Options:**
-- `--output TEXT`: Output Dockerfile path (default: Dockerfile)
-- `--force/--no-force`: Overwrite existing Dockerfile (default: no-force)
-- `--python-version TEXT`: Python version to use (default: 3.11)
-- `--port INTEGER`: Port to expose in the container (default: 8000)
-
-**Examples:**
-```bash
-# Generate default Dockerfile
-agentflow build
-
-# Generate with custom Python version and port
-agentflow build --python-version 3.12 --port 9000
-
-# Overwrite existing Dockerfile
-agentflow build --force
-
-# Generate with custom filename
-agentflow build --output MyDockerfile
-```
-
-**Features:**
-- 🔍 **Automatic requirements.txt detection**: Searches for requirements files in multiple locations
-- ⚠️ **Smart fallback**: If no requirements.txt found, installs agentflow-cli from PyPI
-- 🐳 **Production-ready**: Generates optimized Dockerfile with security best practices
-- 🔧 **Customizable**: Supports custom Python versions, ports, and output paths
-- 🏥 **Health checks**: Includes built-in health check endpoint
-- 👤 **Non-root user**: Runs container as non-root for security
-
 ## Configuration
 
-The configuration file (`agentflow.json`) supports the following structure:
+The configuration file (`agentflow.json`) defines your agent, authentication, and infrastructure settings:
 
 ```json
 {
-  "app": {
-    "name": "Pyagenity API",
-    "version": "1.0.0",
-    "debug": true
-  },
-  "server": {
-    "host": "0.0.0.0",
-    "port": 8000,
-    "workers": 1
-  },
-  "database": {
-    "url": "sqlite://./agentflowdb"
-  },
-  "redis": {
-    "url": "redis://localhost:6379"
+  "agent": "graph.react:app",
+  "env": ".env",
+  "auth": null,
+  "checkpointer": null,
+  "injectq": null,
+  "store": null,
+  "redis": null,
+  "thread_name_generator": null
+}
+```
+
+### Configuration Options
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `agent` | string | Path to your compiled agent graph (required) |
+| `env` | string | Path to environment variables file |
+| `auth` | null\|"jwt"\|object | Authentication configuration |
+| `checkpointer` | string\|null | Path to custom checkpointer |
+| `injectq` | string\|null | Path to InjectQ container |
+| `store` | string\|null | Path to data store |
+| `redis` | string\|null | Redis connection URL |
+| `thread_name_generator` | string\|null | Path to custom thread name generator |
+
+See the [Configuration Guide](./docs/configuration.md) for complete details.
+
+## Authentication
+
+AgentFlow supports multiple authentication strategies. See the [Authentication Guide](./docs/authentication.md) for complete details.
+
+### No Authentication
+
+```json
+{
+  "auth": null
+}
+```
+
+### JWT Authentication
+
+**agentflow.json:**
+```json
+{
+  "auth": "jwt"
+}
+```
+
+**.env:**
+```bash
+JWT_SECRET_KEY=your-super-secret-key
+JWT_ALGORITHM=HS256
+```
+
+### Custom Authentication
+
+**agentflow.json:**
+```json
+{
+  "auth": {
+    "method": "custom",
+    "path": "auth.custom:MyAuthBackend"
   }
 }
 ```
 
-## File Resolution
+**auth/custom.py:**
+```python
+from agentflow_cli import BaseAuth
+from fastapi import Response, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 
-The CLI automatically finds your config file in this order:
-1. Absolute path (if provided with `--config`)
-2. Current working directory
-3. Relative to script location (for development)
-4. Package installation directory (fallback)
+class MyAuthBackend(BaseAuth):
+    def authenticate(
+        self,
+        res: Response,
+        credential: HTTPAuthorizationCredentials
+    ) -> dict[str, any] | None:
+        # Your authentication logic
+        token = credential.credentials
+        user = verify_token(token)
+        
+        if not user:
+            raise HTTPException(401, "Invalid token")
+        
+        return {
+            "user_id": user.id,
+            "username": user.username,
+            "email": user.email
+        }
+```
+
+## ID Generation
+
+AgentFlow includes Snowflake ID generation for distributed, time-sortable unique IDs.
+
+```bash
+pip install "10xscale-agentflow-cli[snowflakekit]"
+```
+
+**Usage:**
+```python
+from agentflow_cli import SnowFlakeIdGenerator
+
+# Initialize
+generator = SnowFlakeIdGenerator(
+    snowflake_epoch=1704067200000,  # Jan 1, 2024
+    snowflake_node_id=1,
+    snowflake_worker_id=1
+)
+
+# Generate ID
+id = await generator.generate()
+print(f"Generated ID: {id}")
+```
+
+**Environment Configuration:**
+```bash
+SNOWFLAKE_EPOCH=1704067200000
+SNOWFLAKE_NODE_ID=1
+SNOWFLAKE_WORKER_ID=1
+SNOWFLAKE_TIME_BITS=39
+SNOWFLAKE_NODE_BITS=5
+SNOWFLAKE_WORKER_BITS=8
+```
+
+See the [ID Generation Guide](./docs/id-generation.md) for more details.
+
+## Thread Name Generation
+
+Generate human-friendly names for conversation threads.
+
+```python
+from agentflow_cli.src.app.utils.thread_name_generator import AIThreadNameGenerator
+
+generator = AIThreadNameGenerator()
+name = generator.generate_name()
+# Output: "thoughtful-dialogue", "exploring-ideas", etc.
+```
+
+See the [Thread Name Generator Guide](./docs/thread-name-generator.md) for custom implementations.
+## Deployment
+
+See the [Deployment Guide](./docs/deployment.md) for complete deployment instructions.
+
+### Docker Deployment
+
+```bash
+# Generate Docker files
+agentflow build --docker-compose
+
+# Build and run
+docker compose up --build -d
+
+# Check logs
+docker compose logs -f
+```
+
+### Kubernetes
+
+See [Deployment Guide - Kubernetes](./docs/deployment.md#kubernetes) for complete manifests.
+
+### Cloud Platforms
+
+- [AWS ECS](./docs/deployment.md#aws-ecs)
+- [Google Cloud Run](./docs/deployment.md#google-cloud-run)
+- [Azure Container Instances](./docs/deployment.md#azure-container-instances)
+- [Heroku](./docs/deployment.md#heroku)
 
 ## Project Structure
 
 ```
 agentflow-cli/
-├── pyagenity_api/           # Main package directory
-│   ├── __init__.py         # Package initialization
-│   ├── cli.py              # CLI module
-│   └── src/                # Source code
-│       └── app/            # FastAPI application
-│           ├── main.py     # FastAPI app entry point
-│           ├── core/       # Core functionality
-│           ├── routers/    # API routes
-│           └── tasks/      # Background tasks
-├── graph/                  # Graph implementation
-├── migrations/             # Database migrations
-├── scripts/               # Utility scripts
+├── agentflow_cli/          # Main package
+│   ├── __init__.py        # Package exports
+│   ├── cli/               # CLI commands
+│   │   ├── main.py       # CLI entry point
+│   │   └── commands/     # Command implementations
+│   └── src/              # Application source
+│       └── app/          # FastAPI application
+│           ├── main.py   # App entry point
+│           ├── core/     # Core functionality
+│           ├── routers/  # API routes
+│           └── utils/    # Utilities
+├── graph/                 # Agent graphs
+│   ├── __init__.py
+│   └── react.py          # Sample React agent
 ├── docs/                  # Documentation
-├── pyproject.toml         # Project configuration
-├── requirements.txt       # Dependencies
-├── Makefile              # Development commands
-├── MANIFEST.in           # Package manifest
+├── tests/                 # Test suite
+├── agentflow.json        # Configuration
+├── pyproject.toml        # Project metadata
 └── README.md             # This file
 ```
 
-## Features
-
-- **FastAPI Backend**: High-performance async web framework
-- **GraphQL Support**: Built-in GraphQL API with Strawberry
-- **Task Management**: Background task processing with Taskiq
-- **CLI Tools**: Command-line interface for easy management
-- **Database Integration**: Support for multiple databases via Tortoise ORM
-- **Redis Integration**: Caching and session management
-- **Authentication**: Firebase authentication support
-- **Development Tools**: Pre-commit hooks, linting, testing
-- **Docker Support**: Container deployment ready
-
-## Setup
-
-### Prerequisites
-- Python 3.x
-- pip
-- [Any other prerequisites]
-
-### Installation
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/10XScale-in/backend-base.git
-    ```
-
-2. Create a virtual environment and activate:
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    ```
-
-3. Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Database
-
-### Database Configuration
-The database configuration is located in `src/app/db/setup_database.py`.
-
-### Database Migration
-We use Aerich for database migrations. Follow these steps to manage your database:
-
-1. Initialize the database initially:
-    ```bash
-    aerich init -t src.app.db.setup_database.TORTOISE_ORM
-    ```
-
-2. Create initial database schema:
-    ```bash
-    aerich init-db
-    ```
-
-3. Generate migration files:
-    ```bash
-    aerich migrate
-    ```
-
-4. Apply migrations:
-    ```bash
-    aerich upgrade
-    ```
-
-5. Revert migrations (if needed):
-    ```bash
-    aerich downgrade
-    ```
-
-## Running the Application
-
-### Command Line
-To run the FastAPI application using Uvicorn:
-1. Start the application:
-    ```bash
-    uvicorn src.app.main:app --reload
-    ```
-
-2. You can also run the debugger.
-
-### VS Code
-Add the following configuration to your `.vscode/launch.json` file:
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python: FastAPI",
-            "type": "python",
-            "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "src.app.main:app",
-                "--host",
-                "localhost",
-                "--port",
-                "8880"
-            ],
-            "jinja": true,
-            "justMyCode": true
-        }
-    ]
-}
-```
-Then you can run and debug the application using the VS Code debugger.
-### Run the Broker
-1. Run the taskiq worker
-```taskiq worker src.app.worker:broker -fsd -tp 'src/**/*_tasks.py' --reload
-```
 ## Development
+
+### Setup
+
+```bash
+# Clone repository
+git clone https://github.com/10xHub/agentflow-cli.git
+cd agentflow-cli
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Install pre-commit hooks
+pre-commit install
+```
+
+### Testing
+
+```bash
+# Run all tests
+pytest
+
+# With coverage
+pytest --cov=agentflow_cli --cov-report=html
+
+# Run specific test file
+pytest tests/test_cli.py -v
+```
+
+### Code Quality
+
+```bash
+# Format code
+ruff format .
+
+# Lint code
+ruff check .
+
+# Fix auto-fixable issues
+ruff check --fix .
+```
 
 ### Using the Makefile
 
-The project includes a comprehensive Makefile for development tasks:
-
 ```bash
-# Show all available commands
+# Show available commands
 make help
 
-# Install package in development mode
+# Install development dependencies
 make dev-install
 
 # Run tests
 make test
 
-# Test CLI installation
-make test-cli
-
-# Format code
+# Format and lint
 make format
-
-# Run linting
 make lint
-
-# Run all checks (lint + test)
-make check
-
-# Clean build artifacts
-make clean
 
 # Build package
 make build
 
-# Publish to TestPyPI
-make publish-test
-
-# Publish to PyPI
-make publish
-
-# Complete release workflow
-make release
+# Clean build artifacts
+make clean
 ```
 
-### Manual Development Setup
+## Contributing
 
-If you prefer manual setup:
+Contributions are welcome! Please follow these steps:
 
-1. **Clone the repository:**
-    ```bash
-    git clone https://github.com/Iamsdt/agentflow-cli.git
-    cd agentflow-cli
-    ```
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests and linting
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
-2. **Create a virtual environment:**
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-    ```
+## License
 
-3. **Install in development mode:**
-    ```bash
-    pip install -e .
-    ```
+MIT License - see LICENSE file for details.
 
-4. **Install development dependencies:**
-    ```bash
-    pip install pytest pytest-cov ruff mypy pre-commit
-    ```
+## Support
 
-5. **Set up pre-commit hooks:**
-    ```bash
-    pre-commit install
-    ```
+- **Documentation:** [Complete Documentation](./docs/)
+- **Issues:** [GitHub Issues](https://github.com/10xHub/agentflow-cli/issues)
+- **Repository:** [GitHub](https://github.com/10xHub/agentflow-cli)
 
-### Testing
+## Credits
 
-Run tests using pytest:
-```bash
-pytest src/tests/ -v --cov=pyagenity_api
+Developed by [10xScale](https://10xscale.ai) and maintained by the community.
+
+---
+
+**Made with ❤️ for the AI agent development community**
+
+````
 ```
-
-Or use the Makefile:
-```bash
-make test
-```
-
-### Publishing to PyPI
-
-1. **Test your package locally:**
-    ```bash
-    make test-cli
-    ```
-
-2. **Publish to TestPyPI first:**
-    ```bash
-    make publish-test
-    ```
-
-3. **If everything works, publish to PyPI:**
-    ```bash
-    make publish
-    ```
-
-
-# Resources
-https://keda.sh/
-Get all the fixers
-pytest --fixtures
-https://www.tutorialspoint.com/pytest/pytest_run_tests_in_parallel.html
 

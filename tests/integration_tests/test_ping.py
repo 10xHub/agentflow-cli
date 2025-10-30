@@ -13,6 +13,6 @@ def test_ping_route_success():
     setup_middleware(app)
     app.include_router(ping_router)
     client = TestClient(app)
-    r = client.get("/v1/ping")
+    r = client.get("/ping")
     assert r.status_code == HTTP_OK
     assert r.json()["data"] == "pong"

@@ -92,10 +92,8 @@ class CheckpointerService:
         messages: list[Message],
         metadata: dict[str, Any] | None = None,
     ) -> ResponseSchema:
-        # For message operations tests expect only a minimal config containing user
         cfg = self._config(config, user)
-        minimal_cfg = {"user": cfg["user"]}
-        res = await self.checkpointer.aput_messages(minimal_cfg, messages, metadata)
+        res = await self.checkpointer.aput_messages(cfg, messages, metadata)
         return ResponseSchema(success=True, message="Messages put successfully", data=res)
 
     async def get_message(
@@ -105,8 +103,7 @@ class CheckpointerService:
         message_id: Any,
     ) -> Message:
         cfg = self._config(config, user)
-        minimal_cfg = {"user": cfg["user"]}
-        return await self.checkpointer.aget_message(minimal_cfg, message_id)
+        return await self.checkpointer.aget_message(cfg, message_id)
 
     async def get_messages(
         self,
@@ -117,8 +114,7 @@ class CheckpointerService:
         limit: int | None = None,
     ) -> MessagesListResponseSchema:
         cfg = self._config(config, user)
-        minimal_cfg = {"user": cfg["user"]}
-        res = await self.checkpointer.alist_messages(minimal_cfg, search, offset, limit)
+        res = await self.checkpointer.alist_messages(cfg, search, offset, limit)
         return MessagesListResponseSchema(messages=res)
 
     async def delete_message(
@@ -128,14 +124,13 @@ class CheckpointerService:
         message_id: Any,
     ) -> ResponseSchema:
         cfg = self._config(config, user)
-        minimal_cfg = {"user": cfg["user"]}
-        res = await self.checkpointer.adelete_message(minimal_cfg, message_id)
+        res = await self.checkpointer.adelete_message(cfg, message_id)
         return ResponseSchema(success=True, message="Message deleted successfully", data=res)
 
     # Threads
     async def get_thread(self, config: dict[str, Any], user: dict) -> ThreadResponseSchema:
         cfg = self._config(config, user)
-        logger.debug(f"User info: {user} and")
+        logger.debug(f"User info: {user} and thread config: {cfg}")
         res = await self.checkpointer.aget_thread(cfg)
         return ThreadResponseSchema(thread=res.model_dump() if res else None)
 

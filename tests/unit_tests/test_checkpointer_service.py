@@ -53,6 +53,8 @@ class TestCheckpointerService:
         """Create a CheckpointerService instance without checkpointer."""
         service = CheckpointerService.__new__(CheckpointerService)  # Skip __init__
         service.settings = MagicMock()
+        # Set checkpointer to None to simulate missing checkpointer
+        service.checkpointer = None
         return service
 
     def test_config_validation(self, checkpointer_service):
@@ -129,8 +131,9 @@ class TestCheckpointerService:
         assert isinstance(result, ResponseSchema)
         assert result.success is True
         assert "put successfully" in result.message
+        # The config should include user, user_id keys after _config processing
         mock_checkpointer.aput_messages.assert_called_once_with(
-            {"user": {"user_id": "123"}}, messages, metadata
+            {"user": {"user_id": "123"}, "user_id": "123"}, messages, metadata
         )
 
     @pytest.mark.asyncio
@@ -145,8 +148,9 @@ class TestCheckpointerService:
 
         assert isinstance(result, MessagesListResponseSchema)
         assert result.messages == mock_messages
+        # The config should include user, user_id keys after _config processing
         mock_checkpointer.alist_messages.assert_called_once_with(
-            {"user": {"user_id": "123"}}, "test", 0, 10
+            {"user": {"user_id": "123"}, "user_id": "123"}, "test", 0, 10
         )
 
     @pytest.mark.asyncio

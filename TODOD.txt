@@ -1,0 +1,5 @@
+# TODO: 1. Add fix api, in-case we have anytool call and its crash we need to cleanup tool call
+So we can create a new api called fix_broken_graph
+
+# TODO: 2. And setup api to register frontend tools
+

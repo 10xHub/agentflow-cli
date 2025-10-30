@@ -15,7 +15,7 @@ def test_init_routes_includes_ping_only():
     init_routes(app)
     client = TestClient(app)
 
-    r = client.get("/v1/ping")
+    r = client.get("/ping")
     assert r.status_code == HTTP_OK
     assert r.json()["data"] == "pong"
 

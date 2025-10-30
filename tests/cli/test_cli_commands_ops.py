@@ -7,6 +7,7 @@ from agentflow_cli.cli.commands.build import BuildCommand
 from agentflow_cli.cli.commands.init import InitCommand
 from agentflow_cli.cli.core.output import OutputFormatter
 
+
 TEST_PORT = 1234
 
 
@@ -167,7 +168,7 @@ def test_init_command_force_overwrite(tmp_path, silent_output):
     # Confirm file content overwritten (no longer the initial minimal JSON '{}')
     new_content = cfg.read_text(encoding="utf-8")
     assert new_content.strip() != "{}"
-    assert '"graphs"' in new_content
+    assert '"agent"' in new_content
 
 
 def test_build_command_multiple_requirements(tmp_path, monkeypatch, silent_output):

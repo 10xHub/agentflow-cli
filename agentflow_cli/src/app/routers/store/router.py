@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, Depends, Request, status
 from injectq.integrations import InjectAPI
 
 from agentflow_cli.src.app.core import logger
@@ -16,6 +15,8 @@ from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_response
 from .schemas.store_schemas import (
     DeleteMemorySchema,
     ForgetMemorySchema,
+    GetMemorySchema,
+    ListMemoriesSchema,
     MemoryCreateResponseSchema,
     MemoryItemResponseSchema,
     MemoryListResponseSchema,
@@ -29,32 +30,6 @@ from .services.store_service import StoreService
 
 
 router = APIRouter(tags=["store"])
-
-
-def _parse_optional_json(param_name: str, raw_value: str | None) -> dict[str, Any] | None:
-    """Parse optional JSON query parameters into dictionaries."""
-
-    if raw_value is None:
-        return None
-
-    try:
-        parsed = json.loads(raw_value)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid JSON supplied for '{param_name}'.",
-        ) from exc
-
-    if parsed is None:
-        return None
-
-    if not isinstance(parsed, dict):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Parameter '{param_name}' must decode to an object (dict).",
-        )
-
-    return parsed
 
 
 @router.post(
@@ -97,7 +72,7 @@ async def search_memories(
     return success_response(result, request)
 
 
-@router.get(
+@router.post(
     "/v1/store/memories/{memory_id}",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(MemoryItemResponseSchema),
@@ -107,13 +82,9 @@ async def search_memories(
 async def get_memory(
     request: Request,
     memory_id: str,
-    config: str | None = Query(
+    payload: GetMemorySchema | None = Body(
         default=None,
-        description="JSON-encoded configuration overrides forwarded to the store backend.",
-    ),
-    options: str | None = Query(
-        default=None,
-        description="JSON-encoded options forwarded to the store backend.",
+        description="Optional configuration and options for retrieving the memory.",
     ),
     service: StoreService = InjectAPI(StoreService),
     user: dict[str, Any] = Depends(verify_current_user),
@@ -121,14 +92,14 @@ async def get_memory(
     """Get a memory by ID."""
 
     logger.debug("User info: %s", user)
-    cfg = _parse_optional_json("config", config) or {}
-    opts = _parse_optional_json("options", options)
+    cfg = payload.config if payload else {}
+    opts = payload.options if payload else None
     result = await service.get_memory(memory_id, cfg, user, options=opts)
     return success_response(result, request)
 
 
-@router.get(
-    "/v1/store/memories",
+@router.post(
+    "/v1/store/memories/list",
     status_code=status.HTTP_200_OK,
     responses=generate_swagger_responses(MemoryListResponseSchema),
     summary="List memories",
@@ -136,14 +107,9 @@ async def get_memory(
 )
 async def list_memories(
     request: Request,
-    limit: int = Query(100, gt=0, description="Maximum number of memories to return."),
-    config: str | None = Query(
+    payload: ListMemoriesSchema | None = Body(
         default=None,
-        description="JSON-encoded configuration overrides forwarded to the store backend.",
-    ),
-    options: str | None = Query(
-        default=None,
-        description="JSON-encoded options forwarded to the store backend.",
+        description="Optional configuration, limit, and options for listing memories.",
     ),
     service: StoreService = InjectAPI(StoreService),
     user: dict[str, Any] = Depends(verify_current_user),
@@ -151,9 +117,11 @@ async def list_memories(
     """List stored memories."""
 
     logger.debug("User info: %s", user)
-    cfg = _parse_optional_json("config", config) or {}
-    opts = _parse_optional_json("options", options)
-    result = await service.list_memories(cfg, user, limit=limit, options=opts)
+    if payload is None:
+        payload = ListMemoriesSchema()
+    cfg = payload.config or {}
+    opts = payload.options
+    result = await service.list_memories(cfg, user, limit=payload.limit, options=opts)
     return success_response(result, request)
 
 

@@ -135,6 +135,13 @@ class ConfigManager:
                 config_path=str(actual_path),
             ) from e
 
+        # Ensure config data was loaded
+        if self._config_data is None:
+            raise ConfigurationError(
+                "Failed to load configuration data",
+                config_path=str(actual_path),
+            )
+
         # Validate configuration
         self._validate_config(self._config_data)
 
@@ -152,7 +159,7 @@ class ConfigManager:
         Raises:
             ConfigurationError: If validation fails
         """
-        required_fields = ["graphs"]
+        required_fields = ["agent"]
 
         for field in required_fields:
             if field not in config_data:
@@ -161,32 +168,13 @@ class ConfigManager:
                     config_path=self.config_path,
                 )
 
-        # Validate graphs section
-        graphs = config_data["graphs"]
-        if not isinstance(graphs, dict):
+        # Validate agent field
+        agent = config_data["agent"]
+        if not isinstance(agent, str):
             raise ConfigurationError(
-                "Field 'graphs' must be a dictionary",
+                "Field 'agent' must be a string",
                 config_path=self.config_path,
             )
-
-        # Additional validation can be added here
-        self._validate_graphs_config(graphs)
-
-    def _validate_graphs_config(self, graphs: dict[str, Any]) -> None:
-        """Validate graphs configuration section.
-
-        Args:
-            graphs: Graphs configuration to validate
-
-        Raises:
-            ConfigurationError: If validation fails
-        """
-        for graph_name, graph_config in graphs.items():
-            if graph_config is not None and not isinstance(graph_config, str):
-                raise ConfigurationError(
-                    f"Graph '{graph_name}' configuration must be a string or null",
-                    config_path=self.config_path,
-                )
 
     def get_config(self) -> dict[str, Any]:
         """Get loaded configuration data.
