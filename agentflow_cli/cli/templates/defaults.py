@@ -12,6 +12,10 @@ DEFAULT_CONFIG_JSON: Final[str] = json.dumps(
         "agent": "graph.react:app",
         "env": ".env",
         "auth": None,
+        "checkpointer": None,
+        "injectq": None,
+        "store": None,
+        "thread_name_generator": None,
     },
     indent=2,
 )

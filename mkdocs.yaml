@@ -70,3 +70,17 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - CLI Guide: cli-guide.md
+      - Configuration: configuration.md
+  - Features:
+      - Authentication: authentication.md
+      - ID Generation: id-generation.md
+      - Thread Name Generator: thread-name-generator.md
+  - Deployment:
+      - Deployment Guide: deployment.md
+  - Reference:
+      - CLI Reference: cli.md

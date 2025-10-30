@@ -62,10 +62,11 @@ app = FastAPI(
     version=settings.APP_VERSION,
     debug=settings.MODE == "DEVELOPMENT",
     summary=settings.SUMMARY,
-    docs_url="/docs",
-    redoc_url="/redocs",
+    docs_url=settings.DOCS_PATH if settings.DOCS_PATH else None,
+    redoc_url=settings.REDOCS_PATH if settings.REDOCS_PATH else None,
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
+    root_path=settings.ROOT_PATH,
 )
 
 setup_middleware(app)
