@@ -1,6 +1,3 @@
-
-````markdown
-
 # AgentFlow CLI
 
 A professional Python API framework for building agent-based applications with FastAPI, state graph orchestration, and comprehensive CLI tools.
@@ -422,7 +419,4 @@ Developed by [10xScale](https://10xscale.ai) and maintained by the community.
 ---
 
 **Made with ❤️ for the AI agent development community**
-
-````
-```
 
