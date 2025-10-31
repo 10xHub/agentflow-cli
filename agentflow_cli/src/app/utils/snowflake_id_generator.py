@@ -1,16 +1,7 @@
 import os
-from enum import Enum
 from importlib.util import find_spec
 
-
-class IDType(Enum):
-    BIGINT = "bigint"
-
-
-class BaseIDGenerator:
-    @property
-    def id_type(self) -> IDType:
-        raise NotImplementedError
+from agentflow.utils.id_generator import BaseIDGenerator, IDType
 
 
 # Check if snowflakekit is available
