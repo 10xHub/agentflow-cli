@@ -10,6 +10,7 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
+    GraphSetupSchema,
     GraphStopSchema,
     GraphStreamChunkSchema,
 )
@@ -33,7 +34,6 @@ router = APIRouter(
 async def invoke_graph(
     request: Request,
     graph_input: GraphInputSchema,
-    background_tasks: BackgroundTasks,
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -46,7 +46,6 @@ async def invoke_graph(
     result: GraphInvokeOutputSchema = await service.invoke_graph(
         graph_input,
         user,
-        background_tasks,
     )
 
     logger.info("Graph invoke completed successfully")
@@ -67,7 +66,6 @@ async def invoke_graph(
 async def stream_graph(
     request: Request,
     graph_input: GraphInputSchema,
-    background_tasks: BackgroundTasks,
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(verify_current_user),
 ):
@@ -79,7 +77,6 @@ async def stream_graph(
     result = service.stream_graph(
         graph_input,
         user,
-        background_tasks,
     )
 
     return StreamingResponse(
@@ -180,3 +177,38 @@ async def stop_graph(
         result,
         request,
     )
+
+
+# @router.post(
+#     "/v1/graph/stop",
+#     summary="Setup Remote Tool to the Graph Execution",
+#     description="Stop the currently running graph execution for a specific thread",
+#     responses=generate_swagger_responses(dict),  # type: ignore
+#     openapi_extra={},
+# )
+# async def setup_graph(
+#     request: Request,
+#     setup_request: GraphSetupSchema,
+#     service: GraphService = InjectAPI(GraphService),
+#     user: dict[str, Any] = Depends(verify_current_user),
+# ):
+#     """
+#     Setup the graph execution for a specific thread.
+
+#     Args:
+#         setup_request: Request containing thread_id and optional config
+
+#     Returns:
+#         Status information about the setup operation
+#     """
+#     logger.info(f"Graph setup request received for thread: {setup_request.thread_id}")
+#     logger.debug(f"User info: {user}")
+
+#     result = await service.setup_graph(setup_request.thread_id, user, setup_request.config)
+
+#     logger.info(f"Graph setup completed for thread {setup_request.thread_id}")
+
+#     return success_response(
+#         result,
+#         request,
+#     )

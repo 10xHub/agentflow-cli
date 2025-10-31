@@ -57,9 +57,9 @@ class Settings(BaseSettings):
     #################################
     ###### Paths ####################
     #################################
-    ROOT_PATH: str = ""
-    DOCS_PATH: str = ""
-    REDOCS_PATH: str = ""
+    ROOT_PATH: str = "/"
+    DOCS_PATH: str = "/docs"
+    REDOCS_PATH: str = "/redocs"
 
     #################################
     ###### REDIS Config ##########

@@ -208,10 +208,10 @@ class MyAuthBackend(BaseAuth):
         # Your authentication logic
         token = credential.credentials
         user = verify_token(token)
-        
+
         if not user:
             raise HTTPException(401, "Invalid token")
-        
+
         return {
             "user_id": user.id,
             "username": user.username,

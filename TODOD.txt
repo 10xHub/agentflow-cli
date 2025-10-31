@@ -3,3 +3,18 @@ So we can create a new api called fix_broken_graph
 
 # TODO: 2. And setup api to register frontend tools
 
+Unique Features to highlight:
+3. Single command to run with api, production ready api (Fastapi), async first api design,
+uvicorn based  with proper logger, health checks, swagger/redocs docs ready,
+prometheus metrics ready, using best practices. Using env for control
+5. Single command to generate docker image, can be deployable
+anywhere, no vendor locked-in, no platform cost, deploy where you
+want
+7. Easy to connect Authentication with the platform settings, JWT by default,
+Can be extend with any auth provider, just provide the class path we will setup.
+8. Control Over generated ID, UUID are 128 bit, but if you can control and use
+smaller ids, you can save a lot of space in DBs and indexes.
+9. All the class like state, message, tool calls are Pydantic models, easily
+json serializable, easy to debug, log and store.
+10. Sentry Integration ready, just provide the DSN in the settings, all the exceptions
+will be sent to sentry with proper context.

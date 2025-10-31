@@ -6,7 +6,7 @@ from agentflow.checkpointer import BaseCheckpointer
 from agentflow.graph import CompiledGraph
 from agentflow.state import AgentState, Message, StreamChunk, StreamEvent
 from agentflow.utils.thread_info import ThreadInfo
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import HTTPException
 from injectq import InjectQ, inject, singleton
 from pydantic import BaseModel
 from starlette.responses import Content

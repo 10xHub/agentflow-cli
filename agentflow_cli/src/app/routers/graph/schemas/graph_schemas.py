@@ -123,3 +123,20 @@ class GraphStopSchema(BaseModel):
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the stop operation"
     )
+
+
+class RemoteToolSchema(BaseModel):
+    """Schema for remote tool execution."""
+
+    node_name: str = Field(..., description="Name of the node representing the tool")
+    name: str = Field(..., description="Name of the tool to execute")
+    description: str = Field(..., description="Description of the tool")
+    parameters: dict[str, Any] = Field(..., description="Parameters for the tool")
+
+
+class GraphSetupSchema(BaseModel):
+    """Schema for setting up graph execution."""
+
+    tools: list[RemoteToolSchema] = Field(
+        ..., description="List of remote tools available for the graph"
+    )

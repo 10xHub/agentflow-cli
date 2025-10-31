@@ -1,14 +1,6 @@
-from typing import TYPE_CHECKING
-
 from fastapi import Depends
 
 from agentflow_cli.src.app.core import Settings, get_settings, logger
-
-
-if TYPE_CHECKING:  # pragma: no cover - only for type hints
-    import sentry_sdk  # noqa: F401
-    from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: F401
-    from sentry_sdk.integrations.starlette import StarletteIntegration  # noqa: F401
 
 
 def init_sentry(settings: Settings = Depends(get_settings)) -> None:
@@ -18,6 +10,24 @@ def init_sentry(settings: Settings = Depends(get_settings)) -> None:
     unexpected error occurs, the application continues to run and a warning is
     logged instead of failing hard.
     """
+    environment = settings.MODE.upper() if settings.MODE else ""
+
+    if not settings.SENTRY_DSN:
+        logger.warning(
+            "Sentry is not configured. Sentry DSN is not set or running in local environment."
+        )
+        return
+
+    allowed_environments = ["PRODUCTION", "STAGING", "DEVELOPMENT"]
+    if environment not in allowed_environments:
+        logger.warning(
+            f"Sentry is not configured for this environment: {environment}. "
+            "Allowed environments are: {allowed_environments}"
+        )
+        return
+
+    logger.info(f"Sentry is configured for environment: {environment}")
+
     try:
         import sentry_sdk
         from sentry_sdk.integrations.fastapi import FastApiIntegration
