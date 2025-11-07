@@ -1,6 +1,7 @@
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from agentflow.state import StreamChunk
+from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
 from injectq.integrations import InjectAPI
@@ -12,7 +13,6 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphSchema,
     GraphSetupSchema,
     GraphStopSchema,
-    GraphStreamChunkSchema,
 )
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
 from agentflow_cli.src.app.utils import success_response
@@ -60,11 +60,10 @@ async def invoke_graph(
     "/v1/graph/stream",
     summary="Stream graph execution",
     description="Execute the graph with streaming output for real-time results",
-    responses=generate_swagger_responses(GraphStreamChunkSchema),
+    responses=generate_swagger_responses(StreamChunk),
     openapi_extra={},
 )
 async def stream_graph(
-    request: Request,
     graph_input: GraphInputSchema,
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(verify_current_user),
@@ -179,36 +178,36 @@ async def stop_graph(
     )
 
 
-# @router.post(
-#     "/v1/graph/stop",
-#     summary="Setup Remote Tool to the Graph Execution",
-#     description="Stop the currently running graph execution for a specific thread",
-#     responses=generate_swagger_responses(dict),  # type: ignore
-#     openapi_extra={},
-# )
-# async def setup_graph(
-#     request: Request,
-#     setup_request: GraphSetupSchema,
-#     service: GraphService = InjectAPI(GraphService),
-#     user: dict[str, Any] = Depends(verify_current_user),
-# ):
-#     """
-#     Setup the graph execution for a specific thread.
+@router.post(
+    "/v1/graph/setup",
+    summary="Setup Remote Tool to the Graph Execution",
+    description="Stop the currently running graph execution for a specific thread",
+    responses=generate_swagger_responses(dict),  # type: ignore
+    openapi_extra={},
+)
+async def setup_graph(
+    request: Request,
+    setup_request: GraphSetupSchema,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """
+    Setup the graph execution for a specific thread.
 
-#     Args:
-#         setup_request: Request containing thread_id and optional config
+    Args:
+        setup_request: Request containing thread_id and optional config
 
-#     Returns:
-#         Status information about the setup operation
-#     """
-#     logger.info(f"Graph setup request received for thread: {setup_request.thread_id}")
-#     logger.debug(f"User info: {user}")
+    Returns:
+        Status information about the setup operation
+    """
+    logger.info("Graph setup request received")
+    logger.debug(f"User info: {user}")
 
-#     result = await service.setup_graph(setup_request.thread_id, user, setup_request.config)
+    result = await service.setup(setup_request)
 
-#     logger.info(f"Graph setup completed for thread {setup_request.thread_id}")
+    logger.info("Graph setup completed")
 
-#     return success_response(
-#         result,
-#         request,
-#     )
+    return success_response(
+        result,
+        request,
+    )

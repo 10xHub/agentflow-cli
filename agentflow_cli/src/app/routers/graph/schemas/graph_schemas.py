@@ -5,20 +5,12 @@ from agentflow.utils import ResponseGranularity
 from pydantic import BaseModel, Field
 
 
-class MessageSchema(BaseModel):
-    message_id: int | None = Field(None, description="Unique identifier for the message")
-    role: str = Field(
-        default="user", description="Role of the message sender (user, assistant, etc.)"
-    )
-    content: str = Field(..., description="Content of the message")
-
-
 class GraphInputSchema(BaseModel):
     """
     Schema for graph input including messages and configuration.
     """
 
-    messages: list[MessageSchema] = Field(
+    messages: list[Message] = Field(
         ..., description="List of messages to process through the graph"
     )
     initial_state: dict[str, Any] | None = Field(
@@ -66,13 +58,13 @@ class GraphInvokeOutputSchema(BaseModel):
     )
 
 
-class GraphStreamChunkSchema(BaseModel):
-    """
-    Schema for individual stream chunks from graph execution.
-    """
+# class GraphStreamChunkSchema(BaseModel):
+#     """
+#     Schema for individual stream chunks from graph execution.
+#     """
 
-    data: dict[str, Any] = Field(..., description="Chunk data")
-    metadata: dict[str, Any] | None = Field(default=None, description="Chunk metadata")
+#     data: dict[str, Any] = Field(..., description="Chunk data")
+#     metadata: dict[str, Any] | None = Field(default=None, description="Chunk metadata")
 
 
 class NodeSchema(BaseModel):

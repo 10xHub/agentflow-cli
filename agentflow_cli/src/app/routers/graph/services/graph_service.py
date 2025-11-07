@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import AsyncIterable
 from typing import Any
 from uuid import uuid4
@@ -17,7 +18,7 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
-    MessageSchema,
+    GraphSetupSchema,
 )
 from agentflow_cli.src.app.utils import DummyThreadNameGenerator, ThreadNameGenerator
 
@@ -84,36 +85,6 @@ class GraphService:
             config,
             ThreadInfo(thread_id=thread_id),
         )
-
-    def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
-        """
-        Convert dictionary messages to PyAgenity Message objects.
-
-        Args:
-            messages: List of dictionary messages
-
-        Returns:
-            List of PyAgenity Message objects
-        """
-        converted_messages = []
-        allowed_roles = {"user", "assistant", "tool"}
-        for msg in messages:
-            if msg.role == "system":
-                raise Exception("System role is not allowed for safety reasons")
-
-            if msg.role not in allowed_roles:
-                logger.warning(f"Invalid role '{msg.role}' in message, defaulting to 'user'")
-
-            # Cast role to the expected Literal type for type checking
-            # System role are not allowed for safety reasons
-            # Fixme: Fix message id
-            converted_msg = Message.text_message(
-                content=msg.content,
-                message_id=msg.message_id,  # type: ignore
-            )
-            converted_messages.append(converted_msg)
-
-        return converted_messages
 
     def _extract_context_info(
         self, raw_state, result: dict[str, Any]
@@ -209,9 +180,7 @@ class GraphService:
 
         # Prepare the input for the graph
         input_data: dict = {
-            "messages": self._convert_messages(
-                graph_input.messages,
-            ),
+            "messages": graph_input.messages,
         }
         if graph_input.initial_state:
             input_data["state"] = graph_input.initial_state
@@ -374,3 +343,27 @@ class GraphService:
         except Exception as e:
             logger.error(f"Failed to get state schema: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get state schema: {e!s}")
+
+    async def setup(self, data: GraphSetupSchema) -> dict:
+        # lets create tools
+        remote_tools = defaultdict(list)
+        for tool in data.tools:
+            remote_tools[tool.node_name].append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    },
+                }
+            )
+
+        # Now call setup on graph
+        for node_name, tool in remote_tools.items():
+            self._graph.attach_remote_tools(tool, node_name)
+
+        return {
+            "status": "success",
+            "details": f"Added tools to nodes: {list(remote_tools.keys())}",
+        }
