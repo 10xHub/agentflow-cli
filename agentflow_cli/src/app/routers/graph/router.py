@@ -8,6 +8,7 @@ from injectq.integrations import InjectAPI
 
 from agentflow_cli.src.app.core.auth.auth_backend import verify_current_user
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
+    FixGraphRequestSchema,
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
@@ -206,6 +207,64 @@ async def setup_graph(
     result = await service.setup(setup_request)
 
     logger.info("Graph setup completed")
+
+    return success_response(
+        result,
+        request,
+    )
+
+
+@router.post(
+    "/v1/graph/fix",
+    summary="Fix graph state by removing messages with empty tool calls",
+    description=(
+        "Fix the graph state by identifying and removing messages that have tool "
+        "calls with empty content. This is useful for cleaning up incomplete "
+        "tool call messages that may have failed or been interrupted."
+    ),
+    responses=generate_swagger_responses(dict),  # type: ignore
+    openapi_extra={},
+)
+async def fix_graph(
+    request: Request,
+    fix_request: FixGraphRequestSchema,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """
+    Fix the graph execution state for a specific thread.
+
+    This endpoint removes messages with empty tool call content from the state.
+    Tool calls with empty content typically indicate interrupted or failed tool
+    executions that should be cleaned up.
+
+    Args:
+        request: HTTP request object
+        fix_request: Request containing thread_id and optional config
+        service: Injected GraphService instance
+        user: Current authenticated user
+
+    Returns:
+        Status information about the fix operation, including:
+        - success: Whether the operation was successful
+        - message: Descriptive message about the operation
+        - removed_count: Number of messages that were removed
+        - state: Updated state after fixing (or original if no changes)
+
+    Raises:
+        HTTPException: If the fix operation fails or if no state is found
+            for the given thread_id
+    """
+    logger.info(f"Graph fix request received for thread: {fix_request.thread_id}")
+    logger.debug(f"User info: {user}")
+
+    result = await service.fix_graph(
+        fix_request.thread_id,
+        user,
+        fix_request.config,
+    )
+
+    logger.info(f"Graph fix completed for thread {fix_request.thread_id}")
 
     return success_response(
         result,

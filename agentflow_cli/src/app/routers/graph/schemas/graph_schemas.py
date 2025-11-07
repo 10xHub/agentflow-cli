@@ -132,3 +132,25 @@ class GraphSetupSchema(BaseModel):
     tools: list[RemoteToolSchema] = Field(
         ..., description="List of remote tools available for the graph"
     )
+
+
+class FixGraphRequestSchema(BaseModel):
+    """Schema for fixing graph state by removing messages with empty tool call content."""
+
+    thread_id: str = Field(..., description="Thread ID to fix the graph state for")
+    config: dict[str, Any] | None = Field(
+        default=None, description="Optional configuration for the fix operation"
+    )
+
+
+class FixGraphResponseSchema(BaseModel):
+    """Schema for the fix graph operation response."""
+
+    success: bool = Field(..., description="Whether the fix operation was successful")
+    message: str = Field(..., description="Status message from the fix operation")
+    removed_count: int = Field(
+        default=0, description="Number of messages with empty tool calls that were removed"
+    )
+    state: dict[str, Any] | None = Field(
+        default=None, description="Updated state after fixing the graph"
+    )
