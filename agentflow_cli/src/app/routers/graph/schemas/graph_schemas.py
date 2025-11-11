@@ -154,3 +154,33 @@ class FixGraphResponseSchema(BaseModel):
     state: dict[str, Any] | None = Field(
         default=None, description="Updated state after fixing the graph"
     )
+
+
+class GraphInputWithFilesSchema(BaseModel):
+    """
+    Schema for graph input with file upload support.
+    """
+
+    messages: list[Message] = Field(
+        ..., description="List of messages to process through the graph"
+    )
+    initial_state: dict[str, Any] | None = Field(
+        default=None,
+        description="Initial state for the graph execution",
+    )
+    config: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional configuration for graph execution",
+    )
+    recursion_limit: int = Field(
+        default=25,
+        description="Maximum recursion limit for graph execution",
+    )
+    response_granularity: ResponseGranularity = Field(
+        default=ResponseGranularity.LOW,
+        description="Granularity of the response (full, partial, low)",
+    )
+    extract_text: bool = Field(
+        default=False,
+        description="Whether to extract text from documents (requires textxtract library)",
+    )

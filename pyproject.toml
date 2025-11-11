@@ -70,6 +70,12 @@ redis = [
 gcloud = [
     "google-cloud-logging",
 ]
+textxtract = [
+    "textxtract>=0.2.3",
+]
+textxtract-all = [
+    "textxtract[all]>=0.2.3",
+]
 
 [project.scripts]
 agentflow = "agentflow_cli.cli.main:main"

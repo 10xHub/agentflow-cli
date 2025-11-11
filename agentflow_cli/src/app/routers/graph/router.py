@@ -1,7 +1,9 @@
+import json
 from typing import Any
 
-from agentflow.state import StreamChunk
-from fastapi import APIRouter, Depends, Request
+from agentflow.state import Message, StreamChunk
+from agentflow.utils import ResponseGranularity
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
 from injectq.integrations import InjectAPI
@@ -17,6 +19,7 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
 )
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
 from agentflow_cli.src.app.utils import success_response
+from agentflow_cli.src.app.utils.file_processor import FileProcessor
 from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_responses
 
 
@@ -269,4 +272,239 @@ async def fix_graph(
     return success_response(
         result,
         request,
+    )
+
+
+@router.post(
+    "/v1/graph/invoke-with-files",
+    summary="Invoke graph execution with file uploads",
+    responses=generate_swagger_responses(GraphInvokeOutputSchema),
+    description=(
+        "Execute the graph with file uploads and text input. "
+        "Files will be processed and included in messages."
+    ),
+    openapi_extra={},
+)
+async def invoke_graph_with_files(
+    request: Request,
+    messages_json: str = Form(..., description="JSON string of messages"),
+    initial_state: str | None = Form(None, description="JSON string of initial state"),
+    config: str | None = Form(None, description="JSON string of configuration"),
+    recursion_limit: int = Form(25, description="Maximum recursion limit"),
+    response_granularity: str = Form("low", description="Response granularity (low/partial/full)"),
+    extract_text: bool = Form(
+        False,
+        description="Whether to extract text from documents (requires textxtract library)",
+    ),
+    files: list[UploadFile] = File(
+        default=[], description="Files to upload and include in messages"
+    ),
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """
+    Invoke the graph with file uploads and return the final result.
+
+    This endpoint allows uploading files along with messages. Files will be processed
+    and converted into appropriate ContentBlock types (TextBlock, ImageBlock, DocumentBlock)
+    based on their type and the extract_text flag.
+
+    Args:
+        request: HTTP request
+        messages_json: JSON string of Message objects
+        initial_state: Optional JSON string of initial state
+        config: Optional JSON string of configuration
+        recursion_limit: Maximum recursion limit for graph execution
+        response_granularity: Granularity of response
+        extract_text: Whether to extract text from documents (requires textxtract[all])
+        files: List of files to upload
+        service: Injected GraphService
+        user: Authenticated user info
+
+    Returns:
+        Graph execution result with processed messages including file content
+    """
+    logger.info(
+        f"Graph invoke with files request received. "
+        f"Files: {len(files)}, Extract text: {extract_text}"
+    )
+
+    # Parse JSON inputs
+    try:
+        messages_list = json.loads(messages_json)
+        messages = [Message(**msg) if isinstance(msg, dict) else msg for msg in messages_list]
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.error(f"Failed to parse messages JSON: {e}")
+        raise ValueError(f"Invalid messages JSON: {e}") from e
+
+    initial_state_dict = None
+    if initial_state:
+        try:
+            initial_state_dict = json.loads(initial_state)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse initial_state JSON: {e}")
+            raise ValueError(f"Invalid initial_state JSON: {e}") from e
+
+    config_dict = None
+    if config:
+        try:
+            config_dict = json.loads(config)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse config JSON: {e}")
+            raise ValueError(f"Invalid config JSON: {e}") from e
+
+    # Process uploaded files
+    file_processor = FileProcessor()
+    content_blocks = []
+
+    if files:
+        content_blocks = await file_processor.process_multiple_files(files, extract_text)
+        logger.info(f"Processed {len(content_blocks)} file(s) into content blocks")
+
+    # Add content blocks to messages
+    if content_blocks:
+        # Add files to the last user message if it exists, otherwise create a new message
+        if messages and messages[-1].role == "user":
+            # Append to last user message's content
+            messages[-1].content.extend(content_blocks)
+        else:
+            # Create a new user message with file content blocks
+            file_message = Message(
+                role="user",
+                content=content_blocks,
+            )
+            messages.append(file_message)
+
+    # Create GraphInputSchema
+    graph_input = GraphInputSchema(
+        messages=messages,
+        initial_state=initial_state_dict,
+        config=config_dict,
+        recursion_limit=recursion_limit,
+        response_granularity=ResponseGranularity(response_granularity.upper()),
+    )
+
+    # Execute graph
+    result: GraphInvokeOutputSchema = await service.invoke_graph(graph_input, user)
+
+    logger.info("Graph invoke with files completed successfully")
+
+    return success_response(result, request)
+
+
+@router.post(
+    "/v1/graph/stream-with-files",
+    summary="Stream graph execution with file uploads",
+    description="Execute the graph with file uploads and streaming output for real-time results",
+    responses=generate_swagger_responses(StreamChunk),
+    openapi_extra={},
+)
+async def stream_graph_with_files(
+    messages_json: str = Form(..., description="JSON string of messages"),
+    initial_state: str | None = Form(None, description="JSON string of initial state"),
+    config: str | None = Form(None, description="JSON string of configuration"),
+    recursion_limit: int = Form(25, description="Maximum recursion limit"),
+    response_granularity: str = Form("low", description="Response granularity (low/partial/full)"),
+    extract_text: bool = Form(
+        False,
+        description="Whether to extract text from documents (requires textxtract library)",
+    ),
+    files: list[UploadFile] = File(
+        default=[], description="Files to upload and include in messages"
+    ),
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(verify_current_user),
+):
+    """
+    Stream the graph execution with file uploads and real-time output.
+
+    This endpoint allows uploading files along with messages and streams the execution
+    results in real-time. Files will be processed and converted into appropriate
+    ContentBlock types based on their type and the extract_text flag.
+
+    Args:
+        messages_json: JSON string of Message objects
+        initial_state: Optional JSON string of initial state
+        config: Optional JSON string of configuration
+        recursion_limit: Maximum recursion limit for graph execution
+        response_granularity: Granularity of response
+        extract_text: Whether to extract text from documents (requires textxtract[all])
+        files: List of files to upload
+        service: Injected GraphService
+        user: Authenticated user info
+
+    Returns:
+        Streaming response with graph execution chunks
+    """
+    logger.info(
+        f"Graph stream with files request received. "
+        f"Files: {len(files)}, Extract text: {extract_text}"
+    )
+
+    # Parse JSON inputs
+    try:
+        messages_list = json.loads(messages_json)
+        messages = [Message(**msg) if isinstance(msg, dict) else msg for msg in messages_list]
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.error(f"Failed to parse messages JSON: {e}")
+        raise ValueError(f"Invalid messages JSON: {e}") from e
+
+    initial_state_dict = None
+    if initial_state:
+        try:
+            initial_state_dict = json.loads(initial_state)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse initial_state JSON: {e}")
+            raise ValueError(f"Invalid initial_state JSON: {e}") from e
+
+    config_dict = None
+    if config:
+        try:
+            config_dict = json.loads(config)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse config JSON: {e}")
+            raise ValueError(f"Invalid config JSON: {e}") from e
+
+    # Process uploaded files
+    file_processor = FileProcessor()
+    content_blocks = []
+
+    if files:
+        content_blocks = await file_processor.process_multiple_files(files, extract_text)
+        logger.info(f"Processed {len(content_blocks)} file(s) into content blocks")
+
+    # Add content blocks to messages
+    if content_blocks:
+        # Add files to the last user message if it exists, otherwise create a new message
+        if messages and messages[-1].role == "user":
+            # Append to last user message's content
+            messages[-1].content.extend(content_blocks)
+        else:
+            # Create a new user message with file content blocks
+            file_message = Message(
+                role="user",
+                content=content_blocks,
+            )
+            messages.append(file_message)
+
+    # Create GraphInputSchema
+    graph_input = GraphInputSchema(
+        messages=messages,
+        initial_state=initial_state_dict,
+        config=config_dict,
+        recursion_limit=recursion_limit,
+        response_granularity=ResponseGranularity(response_granularity.upper()),
+    )
+
+    # Stream graph execution
+    result = service.stream_graph(graph_input, user)
+
+    return StreamingResponse(
+        result,
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
     )
