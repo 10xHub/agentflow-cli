@@ -7,6 +7,8 @@ from fastapi.responses import ORJSONResponse
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
 
+# # Prometheus Instrumentator import
+# from prometheus_fastapi_instrumentator import Instrumentator
 # from tortoise import Tortoise
 from agentflow_cli.src.app.core import (
     get_settings,
@@ -81,3 +83,6 @@ init_errors_handler(app)
 
 # init routes
 init_routes(app)
+
+# instrumentator = Instrumentator().instrument(app)  # Instrument first
+# instrumentator.expose(app)  # Then expose

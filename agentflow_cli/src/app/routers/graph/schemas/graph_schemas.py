@@ -5,20 +5,12 @@ from agentflow.utils import ResponseGranularity
 from pydantic import BaseModel, Field
 
 
-class MessageSchema(BaseModel):
-    message_id: int | None = Field(None, description="Unique identifier for the message")
-    role: str = Field(
-        default="user", description="Role of the message sender (user, assistant, etc.)"
-    )
-    content: str = Field(..., description="Content of the message")
-
-
 class GraphInputSchema(BaseModel):
     """
     Schema for graph input including messages and configuration.
     """
 
-    messages: list[MessageSchema] = Field(
+    messages: list[Message] = Field(
         ..., description="List of messages to process through the graph"
     )
     initial_state: dict[str, Any] | None = Field(
@@ -66,13 +58,13 @@ class GraphInvokeOutputSchema(BaseModel):
     )
 
 
-class GraphStreamChunkSchema(BaseModel):
-    """
-    Schema for individual stream chunks from graph execution.
-    """
+# class GraphStreamChunkSchema(BaseModel):
+#     """
+#     Schema for individual stream chunks from graph execution.
+#     """
 
-    data: dict[str, Any] = Field(..., description="Chunk data")
-    metadata: dict[str, Any] | None = Field(default=None, description="Chunk metadata")
+#     data: dict[str, Any] = Field(..., description="Chunk data")
+#     metadata: dict[str, Any] | None = Field(default=None, description="Chunk metadata")
 
 
 class NodeSchema(BaseModel):
@@ -122,4 +114,43 @@ class GraphStopSchema(BaseModel):
     thread_id: str = Field(..., description="Thread ID to stop execution for")
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the stop operation"
+    )
+
+
+class RemoteToolSchema(BaseModel):
+    """Schema for remote tool execution."""
+
+    node_name: str = Field(..., description="Name of the node representing the tool")
+    name: str = Field(..., description="Name of the tool to execute")
+    description: str = Field(..., description="Description of the tool")
+    parameters: dict[str, Any] = Field(..., description="Parameters for the tool")
+
+
+class GraphSetupSchema(BaseModel):
+    """Schema for setting up graph execution."""
+
+    tools: list[RemoteToolSchema] = Field(
+        ..., description="List of remote tools available for the graph"
+    )
+
+
+class FixGraphRequestSchema(BaseModel):
+    """Schema for fixing graph state by removing messages with empty tool call content."""
+
+    thread_id: str = Field(..., description="Thread ID to fix the graph state for")
+    config: dict[str, Any] | None = Field(
+        default=None, description="Optional configuration for the fix operation"
+    )
+
+
+class FixGraphResponseSchema(BaseModel):
+    """Schema for the fix graph operation response."""
+
+    success: bool = Field(..., description="Whether the fix operation was successful")
+    message: str = Field(..., description="Status message from the fix operation")
+    removed_count: int = Field(
+        default=0, description="Number of messages with empty tool calls that were removed"
+    )
+    state: dict[str, Any] | None = Field(
+        default=None, description="Updated state after fixing the graph"
     )

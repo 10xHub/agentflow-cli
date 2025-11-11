@@ -1,3 +1,16 @@
+# Handle all exceptions of agentflow here
+from agentflow.exceptions import (
+    GraphError,
+    GraphRecursionError,
+    MetricsError,
+    NodeError,
+    ResourceNotFoundError,
+    SchemaVersionError,
+    SerializationError,
+    StorageError,
+    TransientStorageError,
+)
+from agentflow.utils.validators import ValidationError
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
@@ -7,14 +20,11 @@ from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.utils import error_response
 from agentflow_cli.src.app.utils.schemas import ErrorSchemas
 
-from .resources_exceptions import ResourceNotFoundError
+from .resources_exceptions import ResourceNotFoundError as APIResourceNotFoundError
 from .user_exception import (
     UserAccountError,
     UserPermissionError,
 )
-
-
-# Handle all exceptions of agentflow here
 
 
 def init_errors_handler(app: FastAPI):
@@ -88,12 +98,126 @@ def init_errors_handler(app: FastAPI):
             status_code=exc.status_code,
         )
 
-    @app.exception_handler(ResourceNotFoundError)
-    async def resource_not_found_exception_handler(request: Request, exc: ResourceNotFoundError):
+    @app.exception_handler(APIResourceNotFoundError)
+    async def resource_not_found_exception_handler(request: Request, exc: APIResourceNotFoundError):
         logger.error(f"ResourceNotFoundError: url: {request.base_url}", exc_info=exc)
         return error_response(
             request,
             error_code=exc.error_code,
             message=exc.message,
             status_code=exc.status_code,
+        )
+
+    ## Need to handle agentflow specific exceptions here
+    @app.exception_handler(ValidationError)
+    async def agentflow_validation_exception_handler(request: Request, exc: ValidationError):
+        logger.error(f"AgentFlow ValidationError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code="AGENTFLOW_VALIDATION_ERROR",
+            message=str(exc),
+            status_code=422,
+        )
+
+    @app.exception_handler(GraphError)
+    async def graph_error_exception_handler(request: Request, exc: GraphError):
+        logger.error(f"GraphError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "GRAPH_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=500,
+        )
+
+    @app.exception_handler(NodeError)
+    async def node_error_exception_handler(request: Request, exc: NodeError):
+        logger.error(f"NodeError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "NODE_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=500,
+        )
+
+    @app.exception_handler(GraphRecursionError)
+    async def graph_recursion_error_exception_handler(request: Request, exc: GraphRecursionError):
+        logger.error(f"GraphRecursionError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "GRAPH_RECURSION_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=500,
+        )
+
+    @app.exception_handler(MetricsError)
+    async def metrics_error_exception_handler(request: Request, exc: MetricsError):
+        logger.error(f"MetricsError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "METRICS_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=500,
+        )
+
+    @app.exception_handler(SchemaVersionError)
+    async def schema_version_error_exception_handler(request: Request, exc: SchemaVersionError):
+        logger.error(f"SchemaVersionError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "SCHEMA_VERSION_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=422,
+        )
+
+    @app.exception_handler(SerializationError)
+    async def serialization_error_exception_handler(request: Request, exc: SerializationError):
+        logger.error(f"SerializationError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "SERIALIZATION_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=500,
+        )
+
+    @app.exception_handler(StorageError)
+    async def storage_error_exception_handler(request: Request, exc: StorageError):
+        logger.error(f"StorageError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "STORAGE_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=500,
+        )
+
+    @app.exception_handler(TransientStorageError)
+    async def transient_storage_error_exception_handler(
+        request: Request, exc: TransientStorageError
+    ):
+        logger.error(f"TransientStorageError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "TRANSIENT_STORAGE_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=503,
+        )
+
+    @app.exception_handler(ResourceNotFoundError)
+    async def resource_not_found_storage_exception_handler(
+        request: Request, exc: ResourceNotFoundError
+    ):
+        logger.error(f"ResourceNotFoundError: url: {request.base_url}", exc_info=exc)
+        return error_response(
+            request,
+            error_code=getattr(exc, "error_code", "RESOURCE_NOT_FOUND_000"),
+            message=getattr(exc, "message", str(exc)),
+            details=getattr(exc, "context", None),
+            status_code=404,
         )
