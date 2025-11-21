@@ -295,7 +295,8 @@ class GraphService:
                 mt = chunk.metadata or {}
                 mt.update(meta)
                 chunk.metadata = mt
-                yield chunk.model_dump_json()
+                # Add newline delimiter and encode to bytes for proper chunk-by-chunk streaming
+                yield (chunk.model_dump_json() + "\n")
                 if (
                     self.config.thread_name_generator_path
                     and meta["is_new_thread"]
@@ -303,22 +304,32 @@ class GraphService:
                     and chunk.message
                     and not chunk.message.delta
                 ):
-                    messages_str.append(chunk.message.text())
+                    # Safely extract text - handle both string and Message object
+                    msg_text = (
+                        chunk.message.text()
+                        if hasattr(chunk.message, "text") and callable(chunk.message.text)
+                        else str(chunk.message)
+                    )
+                    messages_str.append(msg_text)
 
             logger.info("Graph streaming completed successfully")
 
             if meta["is_new_thread"] and self.config.thread_name_generator_path:
-                messages_str = [msg.text() for msg in messages_str]
+                # messages_str already contains text strings, no need to call .text() again
                 thread_name = await self._save_thread_name(
                     config, config["thread_id"], messages_str
                 )
                 meta["thread_name"] = thread_name
 
-                yield StreamChunk(
-                    event=StreamEvent.UPDATES,
-                    data={"status": "completed"},
-                    metadata=meta,
-                ).model_dump_json()
+                # Add newline delimiter and encode to bytes for proper chunk-by-chunk streaming
+                yield (
+                    StreamChunk(
+                        event=StreamEvent.UPDATES,
+                        data={"status": "completed"},
+                        metadata=meta,
+                    ).model_dump_json()
+                    + "\n"
+                )
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
