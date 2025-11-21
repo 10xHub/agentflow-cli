@@ -308,7 +308,6 @@ class GraphService:
             logger.info("Graph streaming completed successfully")
 
             if meta["is_new_thread"] and self.config.thread_name_generator_path:
-                messages_str = [msg.text() for msg in messages_str]
                 thread_name = await self._save_thread_name(
                     config, config["thread_id"], messages_str
                 )
