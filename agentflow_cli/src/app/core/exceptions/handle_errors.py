@@ -4,7 +4,6 @@ from agentflow.exceptions import (
     GraphRecursionError,
     MetricsError,
     NodeError,
-    ResourceNotFoundError,
     SchemaVersionError,
     SerializationError,
     StorageError,
@@ -40,7 +39,7 @@ def init_errors_handler(app: FastAPI):
         ValueError: Handles value errors.
         UserAccountError: Handles custom user account errors.
         UserPermissionError: Handles custom user permission errors.
-        ResourceNotFoundError: Handles custom resource not found errors.
+        APIResourceNotFoundError: Handles custom API resource not found errors.
     """
 
     @app.exception_handler(HTTPException)
@@ -207,17 +206,4 @@ def init_errors_handler(app: FastAPI):
             message=getattr(exc, "message", str(exc)),
             details=getattr(exc, "context", None),
             status_code=503,
-        )
-
-    @app.exception_handler(ResourceNotFoundError)
-    async def resource_not_found_storage_exception_handler(
-        request: Request, exc: ResourceNotFoundError
-    ):
-        logger.error(f"ResourceNotFoundError: url: {request.base_url}", exc_info=exc)
-        return error_response(
-            request,
-            error_code=getattr(exc, "error_code", "RESOURCE_NOT_FOUND_000"),
-            message=getattr(exc, "message", str(exc)),
-            details=getattr(exc, "context", None),
-            status_code=404,
         )
