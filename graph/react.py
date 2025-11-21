@@ -70,44 +70,41 @@ class MyAgentState(AgentState):
 checkpointer = InMemoryCheckpointer[MyAgentState]()
 
 
-"""
-Note: The docstring below will be used as the tool description and it will be
-passed to the AI model for tool selection, so keep it relevant and concise.
-This function will be converted to a tool with the following schema:
-[
-        {
-            'type': 'function',
-            'function': {
-                'name': 'get_weather',
-                'description': 'Retrieve current weather information for a specified location.',
-                'parameters': {
-                    'type': 'object',
-                    'properties': {
-                        'location': {'type': 'string'}
-                    },
-                    'required': ['location']
-                }
-            }
-        }
-    ]
-
-Parameters like tool_call_id, state, and checkpointer are injected automatically
-by InjectQ when the tool is called by the agent.
-Available injected parameters:
-The following parameters are automatically injected by InjectQ when the tool is called,
-but need to keep them as same name and type for proper injection:
-- tool_call_id: Unique ID for the tool call
-- state: Current AgentState containing conversation context
-- config: Configuration dictionary passed during graph invocation
-
-Below fields need to be used with Inject[] to get the instances:
-- context_manager: ContextManager instance for managing context, like trimming
-- publisher: Publisher instance for publishing events and logs
-- checkpointer: InMemoryCheckpointer instance for state management
-- store: InMemoryStore instance for temporary data storage
-- callback: CallbackManager instance for handling callbacks
-
-"""
+# Note: The docstring below will be used as the tool description and it will be
+# passed to the AI model for tool selection, so keep it relevant and concise.
+# This function will be converted to a tool with the following schema:
+# [
+#         {
+#             'type': 'function',
+#             'function': {
+#                 'name': 'get_weather',
+#                 'description': 'Retrieve current weather information for a specified location.',
+#                 'parameters': {
+#                     'type': 'object',
+#                     'properties': {
+#                         'location': {'type': 'string'}
+#                     },
+#                     'required': ['location']
+#                 }
+#             }
+#         }
+#     ]
+#
+# Parameters like tool_call_id, state, and checkpointer are injected automatically
+# by InjectQ when the tool is called by the agent.
+# Available injected parameters:
+# The following parameters are automatically injected by InjectQ when the tool is called,
+# but need to keep them as same name and type for proper injection:
+# - tool_call_id: Unique ID for the tool call
+# - state: Current AgentState containing conversation context
+# - config: Configuration dictionary passed during graph invocation
+#
+# Below fields need to be used with Inject[] to get the instances:
+# - context_manager: ContextManager instance for managing context, like trimming
+# - publisher: Publisher instance for publishing events and logs
+# - checkpointer: InMemoryCheckpointer instance for state management
+# - store: InMemoryStore instance for temporary data storage
+# - callback: CallbackManager instance for handling callbacks
 
 
 def get_weather(

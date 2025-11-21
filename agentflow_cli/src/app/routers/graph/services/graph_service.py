@@ -432,10 +432,10 @@ class GraphService:
                 "removed_count": 1,
                 "state": state.model_dump_json(),
             }
-        else:
-            logger.warning(
-                "Last message is not an assistant message with tool calls, skipping it from checks."
-            )
+
+        logger.warning(
+            "Last message is not an assistant message with tool calls, skipping it from checks."
+        )
 
         return {
             "success": True,
