@@ -343,6 +343,25 @@ class GraphService:
             logger.error(f"Failed to get state schema: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get state schema: {e!s}")
 
+    def _has_empty_tool_call(self, msg: Message) -> bool:
+        """Return True if any tool call on the message has empty content.
+
+        A tool call is considered empty if its ``content`` attribute/key is ``None`` or
+        an empty string. Tool calls may be dict-like or objects with a ``content`` attribute.
+        """
+        tool_calls = getattr(msg, "tools_calls", None)
+        if not tool_calls:
+            return False
+        for tool_call in tool_calls:
+            content = (
+                tool_call.get("content")
+                if isinstance(tool_call, dict)
+                else getattr(tool_call, "content", None)
+            )
+            if content in (None, ""):
+                return True
+        return False
+
     async def fix_graph(
         self,
         thread_id: str,
@@ -375,18 +394,12 @@ class GraphService:
             logger.info(f"Starting fix graph operation for thread: {thread_id}")
             logger.debug(f"User info: {user}")
 
-            fix_config = {
-                "thread_id": thread_id,
-                "user": user,
-            }
-
-            # Merge additional config if provided
+            fix_config = {"thread_id": thread_id, "user": user}
             if config:
                 fix_config.update(config)
 
             logger.debug("Fetching current state from checkpointer")
             state: AgentState | None = await self.checkpointer.aget_state(fix_config)
-
             if not state:
                 logger.warning(f"No state found for thread: {thread_id}")
                 return {
@@ -396,11 +409,9 @@ class GraphService:
                     "state": None,
                 }
 
-            messages: list[Message] = state.context
+            messages: list[Message] = list(state.context or [])
             logger.debug(f"Found {len(messages)} messages in state")
-
             if not messages:
-                logger.info("No messages found in state, nothing to fix")
                 return {
                     "success": True,
                     "message": "No messages found in state",
@@ -408,45 +419,22 @@ class GraphService:
                     "state": state.model_dump_json(),
                 }
 
-            new_messages = []
-            removed_count = 0
+            filtered = [m for m in messages if not self._has_empty_tool_call(m)]
+            removed_count = len(messages) - len(filtered)
 
-            for msg in messages:
-                should_remove = False
-                if msg.tools_calls:
-                    for tool_call in msg.tools_calls:
-                        content = None
-                        if isinstance(tool_call, dict):
-                            content = tool_call.get("content")
-                        else:
-                            content = getattr(tool_call, "content", None)
-
-                        if content is None or content == "":
-                            should_remove = True
-                            break
-
-                if should_remove:
-                    removed_count += 1
-                else:
-                    new_messages.append(msg)
-
-            if removed_count > 0:
-                state.context = new_messages
+            if removed_count:
+                state.context = filtered
                 await self.checkpointer.aput_state(fix_config, state)
-                return {
-                    "success": True,
-                    "message": f"Successfully removed {removed_count} message(s)",
-                    "removed_count": removed_count,
-                    "state": state.model_dump_json(),
-                }
+                message = f"Successfully removed {removed_count} message(s)"
+            else:
+                message = "No messages with empty tool calls found"
 
             return {
                 "success": True,
-                "message": "No messages with empty tool calls found",
-                "removed_count": 0,
+                "message": message,
+                "removed_count": removed_count,
                 "state": state.model_dump_json(),
             }
-
         except Exception as e:
             logger.error(f"Fix graph operation failed: {e}")
             raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")
