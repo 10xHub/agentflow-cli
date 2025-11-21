@@ -308,7 +308,6 @@ class GraphService:
             logger.info("Graph streaming completed successfully")
 
             if meta["is_new_thread"] and self.config.thread_name_generator_path:
-                messages_str = [msg.text() for msg in messages_str]
                 thread_name = await self._save_thread_name(
                     config, config["thread_id"], messages_str
                 )
@@ -344,6 +343,25 @@ class GraphService:
             logger.error(f"Failed to get state schema: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get state schema: {e!s}")
 
+    def _has_empty_tool_call(self, msg: Message) -> bool:
+        """Return True if any tool call on the message has empty content.
+
+        A tool call is considered empty if its ``content`` attribute/key is ``None`` or
+        an empty string. Tool calls may be dict-like or objects with a ``content`` attribute.
+        """
+        tool_calls = getattr(msg, "tools_calls", None)
+        if not tool_calls:
+            return False
+        for tool_call in tool_calls:
+            content = (
+                tool_call.get("content")
+                if isinstance(tool_call, dict)
+                else getattr(tool_call, "content", None)
+            )
+            if content in (None, ""):
+                return True
+        return False
+
     async def fix_graph(
         self,
         thread_id: str,
@@ -372,66 +390,54 @@ class GraphService:
         Raises:
             HTTPException: If the operation fails
         """
+        try:
+            logger.info(f"Starting fix graph operation for thread: {thread_id}")
+            logger.debug(f"User info: {user}")
 
-        logger.info(f"Starting fix graph operation for thread: {thread_id}")
-        logger.debug(f"User info: {user}")
+            fix_config = {"thread_id": thread_id, "user": user}
+            if config:
+                fix_config.update(config)
 
-        fix_config = {
-            "thread_id": thread_id,
-            "user": user,
-        }
+            logger.debug("Fetching current state from checkpointer")
+            state: AgentState | None = await self.checkpointer.aget_state(fix_config)
+            if not state:
+                logger.warning(f"No state found for thread: {thread_id}")
+                return {
+                    "success": False,
+                    "message": f"No state found for thread: {thread_id}",
+                    "removed_count": 0,
+                    "state": None,
+                }
 
-        # Merge additional config if provided
-        if config:
-            fix_config.update(config)
+            messages: list[Message] = list(state.context or [])
+            logger.debug(f"Found {len(messages)} messages in state")
+            if not messages:
+                return {
+                    "success": True,
+                    "message": "No messages found in state",
+                    "removed_count": 0,
+                    "state": state.model_dump_json(),
+                }
 
-        logger.debug("Fetching current state from checkpointer")
-        state: AgentState | None = await self.checkpointer.aget_state(fix_config)
+            filtered = [m for m in messages if not self._has_empty_tool_call(m)]
+            removed_count = len(messages) - len(filtered)
 
-        if not state:
-            logger.warning(f"No state found for thread: {thread_id}")
-            return {
-                "success": False,
-                "message": f"No state found for thread: {thread_id}",
-                "removed_count": 0,
-                "state": None,
-            }
+            if removed_count:
+                state.context = filtered
+                await self.checkpointer.aput_state(fix_config, state)
+                message = f"Successfully removed {removed_count} message(s)"
+            else:
+                message = "No messages with empty tool calls found"
 
-        messages: list[Message] = state.context
-        logger.debug(f"Found {len(messages)} messages in state")
-
-        if not messages:
-            logger.info("No messages found in state, nothing to fix")
-            return {
-                "success": True,
-                "message": "No messages found in state",
-                "removed_count": 0,
-                "state": state.model_dump_json(),
-            }
-
-        last_message = messages[-1]
-        updated_context = []
-        if last_message.role == "assistant" and last_message.tools_calls:
-            updated_context = messages[:-1]
-            state.context = updated_context
-            await self.checkpointer.aput_state(fix_config, state)
             return {
                 "success": True,
-                "message": "Removed last assistant message with empty tool calls",
-                "removed_count": 1,
+                "message": message,
+                "removed_count": removed_count,
                 "state": state.model_dump_json(),
             }
-        else:
-            logger.warning(
-                "Last message is not an assistant message with tool calls, skipping it from checks."
-            )
-
-        return {
-            "success": True,
-            "message": "No messages with empty tool calls found",
-            "removed_count": 0,
-            "state": state.model_dump_json(),
-        }
+        except Exception as e:
+            logger.error(f"Fix graph operation failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")
 
     async def setup(self, data: GraphSetupSchema) -> dict:
         # lets create tools

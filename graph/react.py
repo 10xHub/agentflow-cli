@@ -1,37 +1,3 @@
-"""
-Graph-based React Agent Implementation
-
-This module implements a reactive agent system using PyAgenity's StateGraph.
-The agent can interact with tools (like weather checking) and maintain conversation
-state through a checkpointer. The graph orchestrates the flow between the main
-agent logic and tool execution.
-
-Key Components:
-- Weather tool: Demonstrates tool calling with dependency injection
-- Main agent: AI-powered assistant that can use tools
-- Graph flow: Conditional routing based on tool usage
-- Checkpointer: Maintains conversation state across interactions
-
-Architecture:
-The system uses a state graph with two main nodes:
-1. MAIN: Processes user input and generates AI responses
-2. TOOL: Executes tool calls when requested by the AI
-
-The graph conditionally routes between these nodes based on whether
-the AI response contains tool calls. Conversation history is maintained
-through the checkpointer, allowing for multi-turn conversations.
-
-Tools are defined as functions with JSON schema docstrings that describe
-their interface for the AI model. The ToolNode automatically extracts
-these schemas for tool selection.
-
-Dependencies:
-- PyAgenity: For graph and state management
-- LiteLLM: For AI model interactions
-- InjectQ: For dependency injection
-- Python logging: For debug and info messages
-"""
-
 import logging
 from typing import Any
 
@@ -68,46 +34,6 @@ class MyAgentState(AgentState):
 
 # Initialize in-memory checkpointer for maintaining conversation state
 checkpointer = InMemoryCheckpointer[MyAgentState]()
-
-
-"""
-Note: The docstring below will be used as the tool description and it will be
-passed to the AI model for tool selection, so keep it relevant and concise.
-This function will be converted to a tool with the following schema:
-[
-        {
-            'type': 'function',
-            'function': {
-                'name': 'get_weather',
-                'description': 'Retrieve current weather information for a specified location.',
-                'parameters': {
-                    'type': 'object',
-                    'properties': {
-                        'location': {'type': 'string'}
-                    },
-                    'required': ['location']
-                }
-            }
-        }
-    ]
-
-Parameters like tool_call_id, state, and checkpointer are injected automatically
-by InjectQ when the tool is called by the agent.
-Available injected parameters:
-The following parameters are automatically injected by InjectQ when the tool is called,
-but need to keep them as same name and type for proper injection:
-- tool_call_id: Unique ID for the tool call
-- state: Current AgentState containing conversation context
-- config: Configuration dictionary passed during graph invocation
-
-Below fields need to be used with Inject[] to get the instances:
-- context_manager: ContextManager instance for managing context, like trimming
-- publisher: Publisher instance for publishing events and logs
-- checkpointer: InMemoryCheckpointer instance for state management
-- store: InMemoryStore instance for temporary data storage
-- callback: CallbackManager instance for handling callbacks
-
-"""
 
 
 def get_weather(
