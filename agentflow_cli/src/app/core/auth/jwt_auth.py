@@ -44,6 +44,11 @@ class JwtAuth(BaseAuth):
         jwt_secret_key = os.environ.get("JWT_SECRET_KEY", None)
         jwt_algorithm = os.environ.get("JWT_ALGORITHM", None)
 
+        # check bearer token then remove barer prefix
+        token = credential.credentials
+        if token.lower().startswith("bearer "):
+            token = token[7:]
+
         if jwt_secret_key is None or jwt_algorithm is None:
             raise UserAccountError(
                 message="JWT settings are not configured",
@@ -52,7 +57,7 @@ class JwtAuth(BaseAuth):
 
         try:
             decoded_token = jwt.decode(
-                credential.credentials,
+                token,
                 jwt_secret_key,  # type: ignore
                 algorithms=[jwt_algorithm],  # type: ignore
             )
