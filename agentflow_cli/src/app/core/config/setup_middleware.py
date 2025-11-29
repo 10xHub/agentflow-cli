@@ -7,9 +7,36 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .sentry_config import init_sentry
 from .settings import get_settings, logger
+
+
+# Paths that should be excluded from GZip compression (streaming endpoints)
+GZIP_EXCLUDED_PATHS = frozenset({"/v1/graph/stream"})
+
+
+class SelectiveGZipMiddleware:
+    """
+    GZip middleware that excludes certain paths from compression.
+
+    This is necessary because streaming endpoints need to send data
+    immediately without buffering, but GZipMiddleware buffers the
+    entire response before compressing.
+    """
+
+    def __init__(self, app: ASGIApp, minimum_size: int = 1000):
+        self.app = app
+        self.gzip_app = GZipMiddleware(app, minimum_size=minimum_size)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope["path"] in GZIP_EXCLUDED_PATHS:
+            # Skip GZip for excluded paths - pass through directly
+            await self.app(scope, receive, send)
+        else:
+            # Apply GZip for all other paths
+            await self.gzip_app(scope, receive, send)
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -74,7 +101,7 @@ def setup_middleware(app: FastAPI):
     Middleware:
         - CORS: Configured based on settings.ORIGINS.
         - TrustedHost: Configured with allowed hosts from settings.ALLOWED_HOST.
-        - GZip: Applied with a minimum size of 1000 bytes.
+        - GZip: Applied with a minimum size of 1000 bytes (excludes streaming endpoints).
     """
     settings = get_settings()
     # init cors
@@ -90,8 +117,9 @@ def setup_middleware(app: FastAPI):
 
     app.add_middleware(RequestIDMiddleware)
 
-    # Note: If you need streaming responses, you should not use GZipMiddleware.
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    # Use SelectiveGZipMiddleware to exclude streaming endpoints from compression
+    # Streaming endpoints need immediate data transmission without buffering
+    app.add_middleware(SelectiveGZipMiddleware, minimum_size=1000)
     logger.debug("Middleware set up")
 
     # Initialize Sentry

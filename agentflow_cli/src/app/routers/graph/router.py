@@ -81,11 +81,12 @@ async def stream_graph(
 
     return StreamingResponse(
         result,
-        media_type="text/plain",
+        media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "Content-Encoding": "identity",  # Disable any content encoding (bypasses GZip)
         },
     )
 
