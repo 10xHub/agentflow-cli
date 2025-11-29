@@ -28,10 +28,7 @@ def test_parse_state_output(is_debug: bool):
     settings = Settings(IS_DEBUG=is_debug)
     model = _StateModel(a=1, b="x", execution_meta={"duration": 123})
     out = parse_state_output(settings, model)
-    if is_debug:
-        assert "execution_meta" not in out
-    else:
-        assert out["execution_meta"] == {"duration": 123}
+    assert out["execution_meta"] == {"duration": 123}
     assert out["a"] == 1 and out["b"] == "x"
 
 
@@ -40,10 +37,7 @@ def test_parse_message_output(is_debug: bool):
     settings = Settings(IS_DEBUG=is_debug)
     model = _MessageModel(content="hello", raw={"tokens": 5})
     out = parse_message_output(settings, model)
-    if is_debug:
-        assert "raw" not in out
-    else:
-        assert out["raw"] == {"tokens": 5}
+    assert out["raw"] == {"tokens": 5}
     assert out["content"] == "hello"
 
 

@@ -9,11 +9,9 @@ from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 def test_graph_config_reads_agent(tmp_path: Path):
     cfg_path = tmp_path / "cfg.json"
     data = {
-        "graphs": {
-            "agent": "mod:func",
-            "checkpointer": "ckpt:fn",
-            "store": "store.mod:store",
-        }
+        "agent": "mod:func",
+        "checkpointer": "ckpt:fn",
+        "store": "store.mod:store",
     }
     cfg_path.write_text(json.dumps(data))
 
@@ -25,7 +23,7 @@ def test_graph_config_reads_agent(tmp_path: Path):
 
 def test_graph_config_missing_agent_raises(tmp_path: Path):
     cfg_path = tmp_path / "cfg.json"
-    data = {"graphs": {}}
+    data = {}
     cfg_path.write_text(json.dumps(data))
 
     with pytest.raises(ValueError):

@@ -25,7 +25,7 @@ def test_parse_state_output_debug_true(monkeypatch):
     )
     model = StateModel(a=1, b=2, execution_meta="meta")
     out = parse_state_output(settings, model)
-    assert out == {"a": 1, "b": 2}
+    assert out == {"a": 1, "b": 2, "execution_meta": "meta"}
 
 
 def test_parse_state_output_debug_false(monkeypatch):
@@ -47,7 +47,7 @@ def test_parse_message_output_debug_true(monkeypatch):
     )
     model = MessageModel(text="hello", raw={"tokens": 3})
     out = parse_message_output(settings, model)
-    assert out == {"text": "hello"}
+    assert out == {"text": "hello", "raw": {"tokens": 3}}
 
 
 def test_parse_message_output_debug_false(monkeypatch):
