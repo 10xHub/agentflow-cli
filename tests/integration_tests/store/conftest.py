@@ -35,7 +35,7 @@ def app(mock_store, mock_auth_user):
     """FastAPI test app with store router."""
     # Import early before binding
     from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
-    
+
     app = FastAPI()
     setup_middleware(app)
 
@@ -48,7 +48,7 @@ def app(mock_store, mock_auth_user):
             return None
 
     container.bind_instance(GraphConfig, _NoAuthConfig())
-    
+
     # Create a mock BaseAuth instance
     mock_auth = MagicMock(spec=BaseAuth)
     mock_auth.authenticate.return_value = mock_auth_user
@@ -65,14 +65,16 @@ def app(mock_store, mock_auth_user):
         from agentflow_cli.src.app.routers.store.router import router as store_router
 
         app.include_router(store_router)
-        
+
         # Debug: Check OpenAPI
         openapi = app.openapi()
         if "/v1/store/memories" in openapi.get("paths", {}):
             endpoint = openapi["paths"]["/v1/store/memories"]["post"]
             print(f"DEBUG: /v1/store/memories parameters: {endpoint.get('parameters', [])}")
-        
+
         yield app
+
+
 @pytest.fixture
 def client(app):
     """Test client for making requests."""

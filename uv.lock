@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -8,21 +8,21 @@ resolution-markers = [
 
 [[package]]
 name = "10xscale-agentflow"
-version = "0.4.4"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "injectq" },
     { name = "pydantic" },
     { name = "python-dotenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/1f/6852cf4c8c52b11c70f7b7758d27043069e5fe778357a3055a68faf35ff8/10xscale_agentflow-0.4.4.tar.gz", hash = "sha256:baedbd6314744bcbd0a75235c69aa399b5128952331fbaa45739ba5883e1d17c", size = 158927, upload-time = "2025-10-15T16:17:52.252Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/86/e5/38e25c34c08e4fde4e79d4b9e0547dcafa4df4b1b3b0d4ae39e1d07f4db5/10xscale_agentflow-0.5.2.tar.gz", hash = "sha256:418a70662d742427ff8a6dd86d2ea4b294701a9d5210315427f7e054a015c2a8", size = 181272, upload-time = "2025-11-20T16:02:25.668Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/e6/dc838c1de7d7bb62634e73e6272b63a19aee905805cf6dd5e8e66fe91deb/10xscale_agentflow-0.4.4-py3-none-any.whl", hash = "sha256:5d4346d076b32e3f3d1268773606af2b00946195995010aec106ba6de3ec29cf", size = 182364, upload-time = "2025-10-15T16:17:46.063Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/56/6b9a0ce4b3288ec078157942d74ffab83aab7e4d39a391b742bebf52d122/10xscale_agentflow-0.5.2-py3-none-any.whl", hash = "sha256:9e6d30e3022857e429fac5b48fb5c8f0d78f892dd73bf16d56999775d2f6cdfb", size = 196284, upload-time = "2025-11-20T16:02:23.051Z" },
 ]
 
 [[package]]
 name = "10xscale-agentflow-cli"
-version = "0.1.7"
+version = "0.1.9"
 source = { editable = "." }
 dependencies = [
     { name = "10xscale-agentflow" },
@@ -77,23 +77,23 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "10xscale-agentflow", specifier = ">=0.4.0" },
+    { name = "10xscale-agentflow", specifier = ">=0.5.0" },
     { name = "fastapi" },
-    { name = "firebase-admin", marker = "extra == 'firebase'", specifier = "==6.5.0" },
+    { name = "firebase-admin", marker = "extra == 'firebase'", specifier = ">=6.5.0" },
     { name = "google-cloud-logging", marker = "extra == 'gcloud'" },
-    { name = "gunicorn", specifier = "==23.0.0" },
-    { name = "oauth2client", marker = "extra == 'firebase'", specifier = "==4.1.3" },
+    { name = "gunicorn" },
+    { name = "oauth2client", marker = "extra == 'firebase'", specifier = ">=4.1.3" },
     { name = "orjson" },
-    { name = "pydantic", specifier = ">=2.8.2" },
-    { name = "pydantic-settings", specifier = ">=2.3.4" },
-    { name = "pyjwt", specifier = ">=2.8.0" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "pyjwt" },
     { name = "python-dotenv" },
-    { name = "python-multipart", specifier = ">=0.0.19" },
-    { name = "redis", marker = "extra == 'redis'", specifier = "==5.0.7" },
-    { name = "sentry-sdk", marker = "extra == 'sentry'", specifier = "==2.10.0" },
+    { name = "python-multipart" },
+    { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.7" },
+    { name = "sentry-sdk", marker = "extra == 'sentry'", specifier = ">=2.10.0" },
     { name = "snowflakekit", marker = "extra == 'snowflakekit'" },
     { name = "typer" },
-    { name = "uvicorn", specifier = ">=0.30.1" },
+    { name = "uvicorn" },
 ]
 provides-extras = ["sentry", "firebase", "snowflakekit", "redis", "gcloud"]
 

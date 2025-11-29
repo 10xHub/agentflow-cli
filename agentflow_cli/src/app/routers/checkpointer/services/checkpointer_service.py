@@ -174,7 +174,8 @@ class CheckpointerService:
         base: dict[str, Any] = {}
         if old_state is not None:
             # Keep full dump so we can preserve existing fields
-            base = old_state.model_dump()
+            # Use serialize_as_any=True to include subclass fields
+            base = old_state.model_dump(serialize_as_any=True)
 
         merged: dict[str, Any] = {**base}
 
