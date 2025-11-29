@@ -202,6 +202,14 @@ async def attach_all_modules(
                 path,
             )
             container.bind_instance(BaseAuth, auth_backend)
+        elif method == "jwt":
+            from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+
+            jwt_auth = JwtAuth()
+            container.bind_instance(BaseAuth, jwt_auth)
+
+        elif method == "none":
+            container.bind_instance(BaseAuth, None, allow_none=True)
     else:
         # bind None
         container.bind_instance(BaseAuth, None, allow_none=True)
