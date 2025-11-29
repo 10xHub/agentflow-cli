@@ -1,13 +1,13 @@
+from collections import defaultdict
 from collections.abc import AsyncIterable
-from inspect import isawaitable
 from typing import Any
 from uuid import uuid4
 
 from agentflow.checkpointer import BaseCheckpointer
 from agentflow.graph import CompiledGraph
-from agentflow.state import Message
+from agentflow.state import AgentState, Message, StreamChunk, StreamEvent
 from agentflow.utils.thread_info import ThreadInfo
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import HTTPException
 from injectq import InjectQ, inject, singleton
 from pydantic import BaseModel
 from starlette.responses import Content
@@ -18,8 +18,9 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
-    MessageSchema,
+    GraphSetupSchema,
 )
+from agentflow_cli.src.app.utils import DummyThreadNameGenerator, ThreadNameGenerator
 
 
 @singleton
@@ -37,6 +38,7 @@ class GraphService:
         graph: CompiledGraph,
         checkpointer: BaseCheckpointer,
         config: GraphConfig,
+        thread_name_generator: ThreadNameGenerator | None = None,
     ):
         """
         Initializes the GraphService with a CompiledGraph instance.
@@ -48,18 +50,32 @@ class GraphService:
         self._graph = graph
         self.config = config
         self.checkpointer = checkpointer
+        self.thread_name_generator = thread_name_generator
 
-    async def _save_thread_name(self, config: dict[str, Any], thread_id: int):
+    async def _save_thread_name(
+        self,
+        config: dict[str, Any],
+        thread_id: int,
+        messages: list[str],
+    ) -> str:
         """
         Save the generated thread name to the database.
         """
-        thread_name = InjectQ.get_instance().get("generated_thread_name")
-        if isawaitable(thread_name):
-            thread_name = await thread_name
-        return await self.checkpointer.aput_thread(
+        if not self.thread_name_generator:
+            thread_name = await DummyThreadNameGenerator().generate_name([])
+            logger.debug("No thread name generator configured, using dummy thread name generator.")
+            return thread_name
+
+        thread_name = await self.thread_name_generator.generate_name(messages)
+
+        res = await self.checkpointer.aput_thread(
             config,
             ThreadInfo(thread_id=thread_id, thread_name=thread_name),
         )
+        if res:
+            logger.info(f"Generated thread name: {thread_name} for thread_id: {thread_id}")
+
+        return thread_name
 
     async def _save_thread(self, config: dict[str, Any], thread_id: int):
         """
@@ -69,68 +85,6 @@ class GraphService:
             config,
             ThreadInfo(thread_id=thread_id),
         )
-
-    def _convert_messages(self, messages: list[MessageSchema]) -> list[Message]:
-        """
-        Convert dictionary messages to PyAgenity Message objects.
-
-        Args:
-            messages: List of dictionary messages
-
-        Returns:
-            List of PyAgenity Message objects
-        """
-        converted_messages = []
-        allowed_roles = {"user", "assistant", "tool"}
-        for msg in messages:
-            if msg.role == "system":
-                raise Exception("System role is not allowed for safety reasons")
-
-            if msg.role not in allowed_roles:
-                logger.warning(f"Invalid role '{msg.role}' in message, defaulting to 'user'")
-
-            # Cast role to the expected Literal type for type checking
-            # System role are not allowed for safety reasons
-            # Fixme: Fix message id
-            converted_msg = Message.text_message(
-                content=msg.content,
-                message_id=msg.message_id,  # type: ignore
-            )
-            converted_messages.append(converted_msg)
-
-        return converted_messages
-
-    def _process_state_and_messages(
-        self, graph_input: GraphInputSchema, raw_state, messages: list[Message]
-    ) -> tuple[dict[str, Any] | None, list[Message]]:
-        """Process state and messages based on include_raw parameter."""
-        if graph_input.include_raw:
-            # Include everything when include_raw is True
-            state_dict = raw_state.model_dump() if raw_state is not None else raw_state
-            return state_dict, messages
-
-        # Filter out execution_meta from state and raw from messages
-        # when include_raw is False
-        if raw_state is not None:
-            state_dict = raw_state.model_dump()
-            # Remove execution_meta if present
-            if "execution_meta" in state_dict:
-                del state_dict["execution_meta"]
-        else:
-            state_dict = raw_state
-
-        # Filter raw data from messages
-        filtered_messages = []
-        for msg in messages:
-            msg_dict = msg.model_dump()
-            # Remove raw field if present
-            if "raw" in msg_dict:
-                del msg_dict["raw"]
-            # Create filtered message
-            filtered_msg = Message.model_validate(msg_dict)
-            filtered_messages.append(filtered_msg)
-
-        return state_dict, filtered_messages
 
     def _extract_context_info(
         self, raw_state, result: dict[str, Any]
@@ -225,12 +179,11 @@ class GraphService:
         config["recursion_limit"] = graph_input.recursion_limit or 25
 
         # Prepare the input for the graph
-        input_data = {
-            "messages": self._convert_messages(
-                graph_input.messages,
-            ),
-            "state": graph_input.initial_state or {},
+        input_data: dict = {
+            "messages": graph_input.messages,
         }
+        if graph_input.initial_state:
+            input_data["state"] = graph_input.initial_state
 
         return (
             input_data,
@@ -245,7 +198,6 @@ class GraphService:
         self,
         graph_input: GraphInputSchema,
         user: dict[str, Any],
-        background_tasks: BackgroundTasks,
     ) -> GraphInvokeOutputSchema:
         """
         Invokes the graph with the provided input and returns the final result.
@@ -281,29 +233,21 @@ class GraphService:
 
             # Extract messages and state from result
             messages: list[Message] = result.get("messages", [])
-            raw_state = result.get("state", None)
+            raw_state: AgentState | None = result.get("state", None)
 
             # Extract context information using helper method
             context, context_summary = self._extract_context_info(raw_state, result)
 
-            # Generate background thread name
-            # background_tasks.add_task(self._generate_background_thread_name, thread_id)
-
-            if meta["is_new_thread"] and self.config.generate_thread_name:
-                background_tasks.add_task(
-                    self._save_thread_name,
-                    config,
-                    config["thread_id"],
+            if meta["is_new_thread"] and self.config.thread_name_generator_path:
+                messages_str = [msg.text() for msg in messages]
+                thread_name = await self._save_thread_name(
+                    config, config["thread_id"], messages_str
                 )
-
-            # Process state and messages based on include_raw parameter
-            state_dict, processed_messages = self._process_state_and_messages(
-                graph_input, raw_state, messages
-            )
+                meta["thread_name"] = thread_name
 
             return GraphInvokeOutputSchema(
-                messages=processed_messages,
-                state=state_dict,
+                messages=messages,
+                state=raw_state.model_dump() if raw_state else None,
                 context=context,
                 summary=context_summary,
                 meta=meta,
@@ -317,7 +261,6 @@ class GraphService:
         self,
         graph_input: GraphInputSchema,
         user: dict[str, Any],
-        background_tasks: BackgroundTasks,
     ) -> AsyncIterable[Content]:
         """
         Streams the graph execution with the provided input.
@@ -341,6 +284,8 @@ class GraphService:
             config["user"] = user
             await self._save_thread(config, config["thread_id"])
 
+            messages_str = []
+
             # Stream the graph execution
             async for chunk in self._graph.astream(
                 input_data,
@@ -351,15 +296,28 @@ class GraphService:
                 mt.update(meta)
                 chunk.metadata = mt
                 yield chunk.model_dump_json()
+                if (
+                    self.config.thread_name_generator_path
+                    and meta["is_new_thread"]
+                    and chunk.event == StreamEvent.MESSAGE
+                    and chunk.message
+                    and not chunk.message.delta
+                ):
+                    messages_str.append(chunk.message.text())
 
             logger.info("Graph streaming completed successfully")
 
-            if meta["is_new_thread"] and self.config.generate_thread_name:
-                background_tasks.add_task(
-                    self._save_thread_name,
-                    config,
-                    config["thread_id"],
+            if meta["is_new_thread"] and self.config.thread_name_generator_path:
+                thread_name = await self._save_thread_name(
+                    config, config["thread_id"], messages_str
                 )
+                meta["thread_name"] = thread_name
+
+                yield StreamChunk(
+                    event=StreamEvent.UPDATES,
+                    data={"status": "completed"},
+                    metadata=meta,
+                ).model_dump_json()
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
@@ -384,3 +342,123 @@ class GraphService:
         except Exception as e:
             logger.error(f"Failed to get state schema: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get state schema: {e!s}")
+
+    def _has_empty_tool_call(self, msg: Message) -> bool:
+        """Return True if any tool call on the message has empty content.
+
+        A tool call is considered empty if its ``content`` attribute/key is ``None`` or
+        an empty string. Tool calls may be dict-like or objects with a ``content`` attribute.
+        """
+        tool_calls = getattr(msg, "tools_calls", None)
+        if not tool_calls:
+            return False
+        for tool_call in tool_calls:
+            content = (
+                tool_call.get("content")
+                if isinstance(tool_call, dict)
+                else getattr(tool_call, "content", None)
+            )
+            if content in (None, ""):
+                return True
+        return False
+
+    async def fix_graph(
+        self,
+        thread_id: str,
+        user: dict[str, Any],
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Fix graph state by removing messages with empty tool call content.
+
+        This method retrieves the current state from the checkpointer, identifies messages
+        with tool calls that have empty content, removes those messages, and updates the
+        state.
+
+        Args:
+            thread_id (str): The thread ID to fix the graph state for
+            user (dict): User information for context
+            config (dict, optional): Additional configuration for the operation
+
+        Returns:
+            dict: Result dictionary containing:
+                - success (bool): Whether the operation was successful
+                - message (str): Status message
+                - removed_count (int): Number of messages removed
+                - state (dict): Updated state after fixing
+
+        Raises:
+            HTTPException: If the operation fails
+        """
+        try:
+            logger.info(f"Starting fix graph operation for thread: {thread_id}")
+            logger.debug(f"User info: {user}")
+
+            fix_config = {"thread_id": thread_id, "user": user}
+            if config:
+                fix_config.update(config)
+
+            logger.debug("Fetching current state from checkpointer")
+            state: AgentState | None = await self.checkpointer.aget_state(fix_config)
+            if not state:
+                logger.warning(f"No state found for thread: {thread_id}")
+                return {
+                    "success": False,
+                    "message": f"No state found for thread: {thread_id}",
+                    "removed_count": 0,
+                    "state": None,
+                }
+
+            messages: list[Message] = list(state.context or [])
+            logger.debug(f"Found {len(messages)} messages in state")
+            if not messages:
+                return {
+                    "success": True,
+                    "message": "No messages found in state",
+                    "removed_count": 0,
+                    "state": state.model_dump_json(),
+                }
+
+            filtered = [m for m in messages if not self._has_empty_tool_call(m)]
+            removed_count = len(messages) - len(filtered)
+
+            if removed_count:
+                state.context = filtered
+                await self.checkpointer.aput_state(fix_config, state)
+                message = f"Successfully removed {removed_count} message(s)"
+            else:
+                message = "No messages with empty tool calls found"
+
+            return {
+                "success": True,
+                "message": message,
+                "removed_count": removed_count,
+                "state": state.model_dump_json(),
+            }
+        except Exception as e:
+            logger.error(f"Fix graph operation failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")
+
+    async def setup(self, data: GraphSetupSchema) -> dict:
+        # lets create tools
+        remote_tools = defaultdict(list)
+        for tool in data.tools:
+            remote_tools[tool.node_name].append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    },
+                }
+            )
+
+        # Now call setup on graph
+        for node_name, tool in remote_tools.items():
+            self._graph.attach_remote_tools(tool, node_name)
+
+        return {
+            "status": "success",
+            "details": f"Added tools to nodes: {list(remote_tools.keys())}",
+        }

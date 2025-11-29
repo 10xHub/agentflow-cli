@@ -7,6 +7,8 @@ from fastapi.responses import ORJSONResponse
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
 
+# # Prometheus Instrumentator import
+# from prometheus_fastapi_instrumentator import Instrumentator
 # from tortoise import Tortoise
 from agentflow_cli.src.app.core import (
     get_settings,
@@ -62,10 +64,11 @@ app = FastAPI(
     version=settings.APP_VERSION,
     debug=settings.MODE == "DEVELOPMENT",
     summary=settings.SUMMARY,
-    docs_url="/docs",
-    redoc_url="/redocs",
+    docs_url=settings.DOCS_PATH if settings.DOCS_PATH else None,
+    redoc_url=settings.REDOCS_PATH if settings.REDOCS_PATH else None,
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
+    root_path=settings.ROOT_PATH,
 )
 
 setup_middleware(app)
@@ -80,3 +83,6 @@ init_errors_handler(app)
 
 # init routes
 init_routes(app)
+
+# instrumentator = Instrumentator().instrument(app)  # Instrument first
+# instrumentator.expose(app)  # Then expose

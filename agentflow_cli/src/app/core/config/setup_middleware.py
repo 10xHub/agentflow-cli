@@ -8,6 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 
+from .sentry_config import init_sentry
 from .settings import get_settings, logger
 
 
@@ -92,3 +93,6 @@ def setup_middleware(app: FastAPI):
     # Note: If you need streaming responses, you should not use GZipMiddleware.
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     logger.debug("Middleware set up")
+
+    # Initialize Sentry
+    init_sentry(settings)

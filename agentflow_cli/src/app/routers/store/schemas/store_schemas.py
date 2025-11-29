@@ -93,6 +93,16 @@ class DeleteMemorySchema(BaseConfigSchema):
     """Schema for deleting a memory."""
 
 
+class GetMemorySchema(BaseConfigSchema):
+    """Schema for retrieving a single memory."""
+
+
+class ListMemoriesSchema(BaseConfigSchema):
+    """Schema for listing memories."""
+
+    limit: int = Field(default=100, gt=0, description="Maximum number of memories to return.")
+
+
 class ForgetMemorySchema(BaseConfigSchema):
     """Schema for forgetting memories based on filters."""
 
@@ -155,6 +165,8 @@ __all__ = [
     "DeleteMemorySchema",
     "DistanceMetric",
     "ForgetMemorySchema",
+    "GetMemorySchema",
+    "ListMemoriesSchema",
     "MemoryCreateResponseSchema",
     "MemoryItemResponseSchema",
     "MemoryListResponseSchema",

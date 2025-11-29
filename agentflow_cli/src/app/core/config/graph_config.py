@@ -17,36 +17,31 @@ class GraphConfig:
 
     @property
     def graph_path(self) -> str:
-        graphs = self.data.get("graphs", {})
-        if "agent" in graphs:
-            return graphs["agent"]
+        agent = self.data.get("agent")
+        if agent:
+            return agent
 
         raise ValueError("Agent graph not found")
 
     @property
     def checkpointer_path(self) -> str | None:
-        graphs = self.data.get("graphs", {})
-        if "checkpointer" in graphs:
-            return graphs["checkpointer"]
-        return None
+        return self.data.get("checkpointer", None)
 
     @property
     def injectq_path(self) -> str | None:
-        graphs = self.data.get("graphs", {})
-        if "injectq" in graphs:
-            return graphs["injectq"]
-        return None
+        return self.data.get("injectq", None)
 
     @property
     def store_path(self) -> str | None:
-        graphs = self.data.get("graphs", {})
-        if "store" in graphs:
-            return graphs["store"]
-        return None
+        return self.data.get("store", None)
 
     @property
     def redis_url(self) -> str | None:
         return self.data.get("redis", None)
+
+    @property
+    def thread_name_generator_path(self) -> str | None:
+        return self.data.get("thread_name_generator", None)
 
     def auth_config(self) -> dict | None:
         res = self.data.get("auth", None)
@@ -78,11 +73,3 @@ class GraphConfig:
                 }
 
         raise ValueError(f"Unsupported auth method: {res}")
-
-    @property
-    def generate_thread_name(self) -> bool:
-        return self.data.get("generate_thread_name", False)
-
-    @property
-    def thread_model_name(self) -> str | None:
-        return self.data.get("thread_model_name", None)

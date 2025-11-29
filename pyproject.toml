@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.1.6"
+version = "0.1.9"
 description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     {name = "10xscale", email = "contact@10xscale.ai"},
 ]
@@ -28,16 +28,13 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
-    "10xscale-agentflow>=0.4.0",
+    "10xscale-agentflow>=0.5.0",
     "fastapi",
     "gunicorn",
     "orjson",
@@ -83,7 +80,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agentflow-cli*"]
+include = ["agentflow_cli*"]
 exclude = ["tests*", "docs*", "__pycache__*", "agentflow-cli/tests*"]
 
 [tool.setuptools.package-data]

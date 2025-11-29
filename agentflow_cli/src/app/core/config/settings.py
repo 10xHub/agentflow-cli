@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     ALLOWED_HOST: str = "*"
 
     #################################
+    ###### Paths ####################
+    #################################
+    ROOT_PATH: str = "/"
+    DOCS_PATH: str = "/docs"
+    REDOCS_PATH: str = "/redocs"
+
+    #################################
     ###### REDIS Config ##########
     #################################
     REDIS_URL: str | None = None

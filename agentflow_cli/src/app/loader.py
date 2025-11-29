@@ -9,6 +9,7 @@ from injectq import InjectQ
 
 from agentflow_cli import BaseAuth
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 
 logger = logging.getLogger("agentflow-cli.loader")
@@ -149,6 +150,32 @@ def load_auth(path: str | None) -> BaseAuth | None:
     return auth
 
 
+def load_thread_name_generator(path: str | None) -> ThreadNameGenerator | None:
+    if not path:
+        return None
+
+    module_name_importable, function_name = path.split(":")
+
+    try:
+        module = importlib.import_module(module_name_importable)
+        entry_point_obj = getattr(module, function_name)
+
+        # If it's a class, instantiate it; if it's an instance, use as is
+        if inspect.isclass(entry_point_obj) and issubclass(entry_point_obj, ThreadNameGenerator):
+            thread_name_generator = entry_point_obj()
+        elif isinstance(entry_point_obj, ThreadNameGenerator):
+            thread_name_generator = entry_point_obj
+        else:
+            raise TypeError("Loaded object is not a subclass or instance of ThreadNameGenerator.")
+
+        logger.info(f"Successfully loaded ThreadNameGenerator '{function_name}' from {path}.")
+    except Exception as e:
+        logger.error(f"Error loading ThreadNameGenerator from {path}: {e}")
+        raise Exception(f"Failed to load ThreadNameGenerator from {path}: {e}")
+
+    return thread_name_generator
+
+
 async def attach_all_modules(
     config: GraphConfig,
     container: InjectQ,
@@ -178,6 +205,15 @@ async def attach_all_modules(
     else:
         # bind None
         container.bind_instance(BaseAuth, None, allow_none=True)
+
+    # load thread name generator
+    thread_name_generator_path = config.thread_name_generator_path
+    if thread_name_generator_path:
+        thread_name_generator = load_thread_name_generator(thread_name_generator_path)
+        container.bind_instance(ThreadNameGenerator, thread_name_generator)
+    else:
+        # bind None if not configured
+        container.bind_instance(ThreadNameGenerator, None, allow_none=True)
 
     logger.info("Container loaded successfully")
     logger.debug(f"Container dependency graph: {container.get_dependency_graph()}")

@@ -7,6 +7,7 @@ from agentflow_cli.cli.commands.build import BuildCommand
 from agentflow_cli.cli.commands.init import InitCommand
 from agentflow_cli.cli.core.output import OutputFormatter
 
+
 TEST_PORT = 1234
 
 
