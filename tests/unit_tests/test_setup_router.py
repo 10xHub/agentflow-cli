@@ -21,5 +21,5 @@ def test_init_routes_includes_ping_only():
 
     # Graph and checkpointer routers are present but actual endpoints may be complex.
     # Just verify that non-existent path returns 404 to execute include_router lines.
-    r2 = client.get("/v1/non-existent")
+    r2 = client.get("/non-existent")
     assert r2.status_code == HTTP_NOT_FOUND

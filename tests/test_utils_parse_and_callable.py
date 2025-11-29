@@ -28,9 +28,7 @@ def test_parse_state_output(is_debug: bool):
     settings = Settings(IS_DEBUG=is_debug)
     model = _StateModel(a=1, b="x", execution_meta={"duration": 123})
     out = parse_state_output(settings, model)
-    # execution_meta excluded only in debug mode per implementation
-    # Since parse_state_output doesn't filter execution_meta (commented out),
-    # it should always be present regardless of debug mode
+    # Current implementation always includes execution_meta regardless of debug
     assert out["execution_meta"] == {"duration": 123}
     assert out["a"] == 1 and out["b"] == "x"
 
@@ -40,8 +38,7 @@ def test_parse_message_output(is_debug: bool):
     settings = Settings(IS_DEBUG=is_debug)
     model = _MessageModel(content="hello", raw={"tokens": 5})
     out = parse_message_output(settings, model)
-    # Since parse_message_output doesn't filter raw (commented out),
-    # it should always be present regardless of debug mode
+    # Current implementation always includes raw regardless of debug
     assert out["raw"] == {"tokens": 5}
     assert out["content"] == "hello"
 

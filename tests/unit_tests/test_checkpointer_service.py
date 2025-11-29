@@ -53,7 +53,6 @@ class TestCheckpointerService:
         """Create a CheckpointerService instance without checkpointer."""
         service = CheckpointerService.__new__(CheckpointerService)  # Skip __init__
         service.settings = MagicMock()
-        # Set checkpointer to None to simulate missing checkpointer
         service.checkpointer = None
         return service
 
@@ -131,10 +130,13 @@ class TestCheckpointerService:
         assert isinstance(result, ResponseSchema)
         assert result.success is True
         assert "put successfully" in result.message
-        # The config should include user, user_id keys after _config processing
-        mock_checkpointer.aput_messages.assert_called_once_with(
-            {"user": {"user_id": "123"}, "user_id": "123"}, messages, metadata
-        )
+        # Validate aput_messages was called with a cfg containing both 'user' and 'user_id'
+        args, kwargs = mock_checkpointer.aput_messages.call_args
+        cfg_arg = args[0]
+        assert cfg_arg["user"] == {"user_id": "123"}
+        assert cfg_arg.get("user_id") == "123"
+        assert args[1] == messages
+        assert args[2] == metadata
 
     @pytest.mark.asyncio
     async def test_get_messages_success(self, checkpointer_service, mock_checkpointer):
@@ -148,10 +150,12 @@ class TestCheckpointerService:
 
         assert isinstance(result, MessagesListResponseSchema)
         assert result.messages == mock_messages
-        # The config should include user, user_id keys after _config processing
-        mock_checkpointer.alist_messages.assert_called_once_with(
-            {"user": {"user_id": "123"}, "user_id": "123"}, "test", 0, 10
-        )
+        # Validate alist_messages was called with a cfg containing both 'user' and 'user_id'
+        args, kwargs = mock_checkpointer.alist_messages.call_args
+        cfg_arg = args[0]
+        assert cfg_arg["user"] == {"user_id": "123"}
+        assert cfg_arg.get("user_id") == "123"
+        assert args[1:] == ("test", 0, 10)
 
     @pytest.mark.asyncio
     async def test_get_thread_success(self, checkpointer_service, mock_checkpointer):

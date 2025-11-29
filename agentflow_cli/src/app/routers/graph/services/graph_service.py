@@ -247,7 +247,7 @@ class GraphService:
 
             return GraphInvokeOutputSchema(
                 messages=messages,
-                state=raw_state.model_dump() if raw_state else None,
+                state=raw_state.model_dump(serialize_as_any=True) if raw_state else None,
                 context=context,
                 summary=context_summary,
                 meta=meta,
@@ -295,7 +295,7 @@ class GraphService:
                 mt = chunk.metadata or {}
                 mt.update(meta)
                 chunk.metadata = mt
-                yield chunk.model_dump_json()
+                yield chunk.model_dump_json(serialize_as_any=True)
                 if (
                     self.config.thread_name_generator_path
                     and meta["is_new_thread"]
@@ -317,7 +317,7 @@ class GraphService:
                     event=StreamEvent.UPDATES,
                     data={"status": "completed"},
                     metadata=meta,
-                ).model_dump_json()
+                ).model_dump_json(serialize_as_any=True)
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
@@ -416,7 +416,7 @@ class GraphService:
                     "success": True,
                     "message": "No messages found in state",
                     "removed_count": 0,
-                    "state": state.model_dump_json(),
+                    "state": state.model_dump_json(serialize_as_any=True),
                 }
 
             filtered = [m for m in messages if not self._has_empty_tool_call(m)]
@@ -433,7 +433,7 @@ class GraphService:
                 "success": True,
                 "message": message,
                 "removed_count": removed_count,
-                "state": state.model_dump_json(),
+                "state": state.model_dump_json(serialize_as_any=True),
             }
         except Exception as e:
             logger.error(f"Fix graph operation failed: {e}")

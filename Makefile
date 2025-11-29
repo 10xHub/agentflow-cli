@@ -29,4 +29,6 @@ docs-build:
 	mkdocs build --strict
 
 test-cov:
-	uv run pytest --cov=agentflow-cli --cov-report=html --cov-report=term-missing --cov-report=xml -v
+	# Ensure pytest-cov is available
+	uv pip install pytest-cov
+	uv run pytest --cov=agentflow_cli --cov-report=html --cov-report=term-missing --cov-report=xml -v
