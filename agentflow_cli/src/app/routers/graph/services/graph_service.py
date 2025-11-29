@@ -311,11 +311,14 @@ class GraphService:
                 )
                 meta["thread_name"] = thread_name
 
-                yield StreamChunk(
-                    event=StreamEvent.UPDATES,
-                    data={"status": "completed"},
-                    metadata=meta,
-                ).model_dump_json(serialize_as_any=True) + "\n"
+                yield (
+                    StreamChunk(
+                        event=StreamEvent.UPDATES,
+                        data={"status": "completed"},
+                        metadata=meta,
+                    ).model_dump_json(serialize_as_any=True)
+                    + "\n"
+                )
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
