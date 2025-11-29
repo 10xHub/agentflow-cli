@@ -10,7 +10,6 @@ from agentflow.utils.thread_info import ThreadInfo
 from fastapi import HTTPException
 from injectq import InjectQ, inject, singleton
 from pydantic import BaseModel
-from starlette.responses import Content
 
 from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
@@ -261,7 +260,7 @@ class GraphService:
         self,
         graph_input: GraphInputSchema,
         user: dict[str, Any],
-    ) -> AsyncIterable[Content]:
+    ) -> AsyncIterable[str]:
         """
         Streams the graph execution with the provided input.
 
@@ -270,7 +269,7 @@ class GraphService:
             stream_mode (str): The stream mode ("values", "updates", "messages", etc.).
 
         Yields:
-            GraphStreamChunkSchema: Individual chunks from graph execution.
+            str: Individual JSON chunks from graph execution with newline delimiters.
 
         Raises:
             HTTPException: If graph streaming fails.
@@ -295,7 +294,7 @@ class GraphService:
                 mt = chunk.metadata or {}
                 mt.update(meta)
                 chunk.metadata = mt
-                yield chunk.model_dump_json(serialize_as_any=True)
+                yield chunk.model_dump_json(serialize_as_any=True) + "\n"
                 if (
                     self.config.thread_name_generator_path
                     and meta["is_new_thread"]
@@ -313,11 +312,14 @@ class GraphService:
                 )
                 meta["thread_name"] = thread_name
 
-                yield StreamChunk(
-                    event=StreamEvent.UPDATES,
-                    data={"status": "completed"},
-                    metadata=meta,
-                ).model_dump_json(serialize_as_any=True)
+                yield (
+                    StreamChunk(
+                        event=StreamEvent.UPDATES,
+                        data={"status": "completed"},
+                        metadata=meta,
+                    ).model_dump_json(serialize_as_any=True)
+                    + "\n"
+                )
 
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")

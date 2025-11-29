@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 from typing import Any
 
 from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
@@ -51,6 +52,7 @@ def get_weather(
         logger.debug("Number of messages in context: %d", len(state.context))
 
     # Mock weather response - in production, this would call a real weather API
+    sleep(1)  # Simulate network delay
     return f"The weather in {location} is sunny"
 
 
