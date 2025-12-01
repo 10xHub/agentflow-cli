@@ -9,7 +9,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import Response
+from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
 from agentflow_cli.src.app.core.auth.auth_backend import verify_current_user
@@ -25,7 +25,7 @@ class MockBaseAuth(BaseAuth):
         self._raise_exception = raise_exception
 
     def authenticate(
-        self, res: Response, credential: HTTPAuthorizationCredentials
+        self, request: Request | None, res: Response, credential: HTTPAuthorizationCredentials
     ) -> dict[str, Any] | None:
         if self._raise_exception:
             raise ValueError("Authentication failed")
@@ -69,7 +69,8 @@ class TestVerifyCurrentUser:
         mock_auth_backend = MockBaseAuth(return_value={"user_id": "123"})
 
         result = verify_current_user(
-            res=mock_response,
+            request=None,
+            response=mock_response,
             credential=mock_credentials,
             config=mock_graph_config_no_auth,
             auth_backend=mock_auth_backend,
@@ -86,7 +87,8 @@ class TestVerifyCurrentUser:
         """Test that empty dict is returned when auth_backend is None."""
         with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
-                res=mock_response,
+                request=None,
+                response=mock_response,
                 credential=mock_credentials,
                 config=mock_graph_config_jwt_auth,
                 auth_backend=None,
@@ -110,7 +112,8 @@ class TestVerifyCurrentUser:
         mock_auth_backend = MockBaseAuth(return_value=expected_user)
 
         result = verify_current_user(
-            res=mock_response,
+            request=None,
+            response=mock_response,
             credential=mock_credentials,
             config=mock_graph_config_jwt_auth,
             auth_backend=mock_auth_backend,
@@ -129,7 +132,8 @@ class TestVerifyCurrentUser:
         mock_auth_backend = MockBaseAuth(return_value=None)
 
         result = verify_current_user(
-            res=mock_response,
+            request=None,
+            response=mock_response,
             credential=mock_credentials,
             config=mock_graph_config_jwt_auth,
             auth_backend=mock_auth_backend,
@@ -149,7 +153,8 @@ class TestVerifyCurrentUser:
 
         with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
-                res=mock_response,
+                request=None,
+                response=mock_response,
                 credential=mock_credentials,
                 config=mock_graph_config_jwt_auth,
                 auth_backend=mock_auth_backend,
@@ -173,7 +178,8 @@ class TestVerifyCurrentUser:
 
         with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
-                res=mock_response,
+                request=None,
+                response=mock_response,
                 credential=mock_credentials,
                 config=mock_graph_config_jwt_auth,
                 auth_backend=mock_auth_backend,
@@ -193,7 +199,8 @@ class TestVerifyCurrentUser:
 
         with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
-                res=mock_response,
+                request=None,
+                response=mock_response,
                 credential=mock_credentials,
                 config=mock_graph_config_jwt_auth,
                 auth_backend=mock_auth_backend,
@@ -216,7 +223,8 @@ class TestVerifyCurrentUser:
 
         with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
-                res=mock_response,
+                request=None,
+                response=mock_response,
                 credential=mock_credentials,
                 config=mock_graph_config_jwt_auth,
                 auth_backend=mock_auth_backend,
@@ -238,7 +246,8 @@ class TestVerifyCurrentUser:
 
         with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
-                res=mock_response,
+                request=None,
+                response=mock_response,
                 credential=mock_credentials,
                 config=mock_graph_config_jwt_auth,
                 auth_backend=mock_auth_backend,
@@ -260,7 +269,8 @@ class TestVerifyCurrentUser:
 
         with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
-                res=mock_response,
+                request=None,
+                response=mock_response,
                 credential=mock_credentials,
                 config=mock_graph_config_jwt_auth,
                 auth_backend=mock_auth_backend,
@@ -297,11 +307,12 @@ class TestVerifyCurrentUserWithNullCredentials:
         mock_auth.authenticate.return_value = {"user_id": "123"}
 
         verify_current_user(
-            res=mock_response,
+            request=None,
+            response=mock_response,
             credential=None,  # Null credentials
             config=mock_graph_config_jwt_auth,
             auth_backend=mock_auth,
         )
 
         # Verify authenticate was called with None credentials
-        mock_auth.authenticate.assert_called_once_with(mock_response, None)
+        mock_auth.authenticate.assert_called_once_with(None, mock_response, None)

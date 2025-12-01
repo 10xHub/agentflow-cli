@@ -13,7 +13,7 @@ These tests cover all edge cases and scenarios for JWT authentication:
 """
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -88,7 +88,7 @@ class TestJwtAuth:
     ):
         """Test that null credentials raise UserAccountError with REVOKED_TOKEN."""
         with pytest.raises(UserAccountError) as exc_info:
-            jwt_auth.authenticate(mock_response, None)
+            jwt_auth.authenticate(None, mock_response, None)
 
         assert exc_info.value.error_code == "REVOKED_TOKEN"
         assert "Invalid token" in exc_info.value.message
@@ -111,7 +111,7 @@ class TestJwtAuth:
             credentials = self.create_credentials("some-token")
 
             with pytest.raises(UserAccountError) as exc_info:
-                jwt_auth.authenticate(mock_response, credentials)
+                jwt_auth.authenticate(None, mock_response, credentials)
 
             assert exc_info.value.error_code == "JWT_SETTINGS_NOT_CONFIGURED"
             assert "JWT settings are not configured" in exc_info.value.message
@@ -130,7 +130,7 @@ class TestJwtAuth:
             credentials = self.create_credentials("some-token")
 
             with pytest.raises(UserAccountError) as exc_info:
-                jwt_auth.authenticate(mock_response, credentials)
+                jwt_auth.authenticate(None, mock_response, credentials)
 
             assert exc_info.value.error_code == "JWT_SETTINGS_NOT_CONFIGURED"
             assert "JWT settings are not configured" in exc_info.value.message
@@ -145,7 +145,7 @@ class TestJwtAuth:
             credentials = self.create_credentials("some-token")
 
             with pytest.raises(UserAccountError) as exc_info:
-                jwt_auth.authenticate(mock_response, credentials)
+                jwt_auth.authenticate(None, mock_response, credentials)
 
             assert exc_info.value.error_code == "JWT_SETTINGS_NOT_CONFIGURED"
 
@@ -168,7 +168,7 @@ class TestJwtAuth:
         credentials = self.create_credentials(token)
 
         with pytest.raises(UserAccountError) as exc_info:
-            jwt_auth.authenticate(mock_response, credentials)
+            jwt_auth.authenticate(None, mock_response, credentials)
 
         assert exc_info.value.error_code == "EXPIRED_TOKEN"
         assert "Token has expired" in exc_info.value.message
@@ -186,7 +186,7 @@ class TestJwtAuth:
         credentials = self.create_credentials("not-a-valid-jwt-token")
 
         with pytest.raises(UserAccountError) as exc_info:
-            jwt_auth.authenticate(mock_response, credentials)
+            jwt_auth.authenticate(None, mock_response, credentials)
 
         assert exc_info.value.error_code == "INVALID_TOKEN"
         assert "Invalid token" in exc_info.value.message
@@ -207,7 +207,7 @@ class TestJwtAuth:
         credentials = self.create_credentials(token)
 
         with pytest.raises(UserAccountError) as exc_info:
-            jwt_auth.authenticate(mock_response, credentials)
+            jwt_auth.authenticate(None, mock_response, credentials)
 
         assert exc_info.value.error_code == "INVALID_TOKEN"
 
@@ -233,7 +233,7 @@ class TestJwtAuth:
             credentials = self.create_credentials(token)
 
             with pytest.raises(UserAccountError) as exc_info:
-                jwt_auth.authenticate(mock_response, credentials)
+                jwt_auth.authenticate(None, mock_response, credentials)
 
             assert exc_info.value.error_code == "INVALID_TOKEN"
 
@@ -247,7 +247,7 @@ class TestJwtAuth:
         credentials = self.create_credentials("")
 
         with pytest.raises(UserAccountError) as exc_info:
-            jwt_auth.authenticate(mock_response, credentials)
+            jwt_auth.authenticate(None, mock_response, credentials)
 
         assert exc_info.value.error_code == "INVALID_TOKEN"
 
@@ -270,7 +270,7 @@ class TestJwtAuth:
         credentials = self.create_credentials(token)
 
         with pytest.raises(UserAccountError) as exc_info:
-            jwt_auth.authenticate(mock_response, credentials)
+            jwt_auth.authenticate(None, mock_response, credentials)
 
         assert exc_info.value.error_code == "INVALID_TOKEN"
         assert "user_id missing" in exc_info.value.message
@@ -289,7 +289,7 @@ class TestJwtAuth:
         token = self.create_token(valid_token_payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
@@ -313,7 +313,7 @@ class TestJwtAuth:
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result["user_id"] == "user-456"
         assert result["email"] == "custom@example.com"
@@ -336,7 +336,7 @@ class TestJwtAuth:
         token_with_prefix = f"bearer {actual_token}"
         credentials = self.create_credentials(token_with_prefix)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
@@ -353,7 +353,7 @@ class TestJwtAuth:
         token_with_prefix = f"Bearer {actual_token}"
         credentials = self.create_credentials(token_with_prefix)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
@@ -370,7 +370,7 @@ class TestJwtAuth:
         token_with_prefix = f"BEARER {actual_token}"
         credentials = self.create_credentials(token_with_prefix)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
@@ -386,7 +386,7 @@ class TestJwtAuth:
         token = self.create_token(valid_token_payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
@@ -404,8 +404,7 @@ class TestJwtAuth:
         """Test that WWW-Authenticate header is set on successful auth."""
         token = self.create_token(valid_token_payload)
         credentials = self.create_credentials(token)
-
-        jwt_auth.authenticate(mock_response, credentials)
+        jwt_auth.authenticate(None, mock_response, credentials)
 
         assert "WWW-Authenticate" in mock_response.headers
         assert mock_response.headers["WWW-Authenticate"] == 'Bearer realm="auth_required"'
@@ -424,7 +423,7 @@ class TestJwtAuth:
         token = self.create_token(minimal_payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "minimal-user"
@@ -443,7 +442,7 @@ class TestJwtAuth:
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == 12345
@@ -458,12 +457,12 @@ class TestJwtAuth:
         uuid_user_id = "550e8400-e29b-41d4-a716-446655440000"
         payload = {
             "user_id": uuid_user_id,
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == uuid_user_id
@@ -482,7 +481,7 @@ class TestJwtAuth:
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
@@ -502,7 +501,11 @@ class TestJwtAuth:
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
 
-        result = jwt_auth.authenticate(mock_response, credentials)
+        result = jwt_auth.authenticate(
+            None,
+            mock_response,
+            credentials,
+        )
 
         assert result is not None
         assert result["user_id"] == special_user_id
@@ -530,7 +533,7 @@ class TestJwtAuth:
             token = self.create_token(payload, algorithm="HS384")
             credentials = self.create_credentials(token)
 
-            result = jwt_auth.authenticate(mock_response, credentials)
+            result = jwt_auth.authenticate(None, mock_response, credentials)
 
             assert result is not None
             assert result["user_id"] == "user-hs384"
@@ -555,7 +558,7 @@ class TestJwtAuth:
             token = self.create_token(payload, algorithm="HS512")
             credentials = self.create_credentials(token)
 
-            result = jwt_auth.authenticate(mock_response, credentials)
+            result = jwt_auth.authenticate(None, mock_response, credentials)
 
             assert result is not None
             assert result["user_id"] == "user-hs512"
@@ -574,7 +577,7 @@ class TestJwtAuth:
             credentials = self.create_credentials("invalid-token")
 
             with pytest.raises(UserAccountError):
-                jwt_auth.authenticate(mock_response, credentials)
+                jwt_auth.authenticate(None, mock_response, credentials)
 
             mock_logger.exception.assert_called_once()
             call_args = mock_logger.exception.call_args
@@ -624,7 +627,7 @@ class TestJwtAuthIntegration:
             credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
             # Authenticate
-            result = jwt_auth.authenticate(mock_response, credentials)
+            result = jwt_auth.authenticate(None, mock_response, credentials)
 
             # Verify all claims are returned
             assert result["user_id"] == "user-integration-test"
@@ -669,7 +672,7 @@ class TestJwtAuthIntegration:
             token = jwt.encode(complex_payload, secret, algorithm=algorithm)
             credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
-            result = jwt_auth.authenticate(mock_response, credentials)
+            result = jwt_auth.authenticate(None, mock_response, credentials)
 
             assert result["user_id"] == "complex-user"
             assert result["metadata"]["nested"]["deeply"] == "nested value"

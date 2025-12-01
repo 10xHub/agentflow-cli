@@ -2,7 +2,7 @@ import os
 from typing import Any
 
 import jwt
-from fastapi import Response
+from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
 from agentflow_cli.src.app.core import logger
@@ -12,7 +12,10 @@ from agentflow_cli.src.app.core.exceptions import UserAccountError
 
 class JwtAuth(BaseAuth):
     def authenticate(
-        self, res: Response, credential: HTTPAuthorizationCredentials
+        self,
+        request: Request,
+        response: Response,
+        credential: HTTPAuthorizationCredentials,
     ) -> dict[str, Any] | None:
         """No authentication is required, so return None."""
         """
@@ -72,7 +75,8 @@ class JwtAuth(BaseAuth):
                 message="Invalid token, please login again",
                 error_code="INVALID_TOKEN",
             )
-        res.headers["WWW-Authenticate"] = 'Bearer realm="auth_required"'
+
+        response.headers["WWW-Authenticate"] = 'Bearer realm="auth_required"'
 
         # check if user_id exists in the token
         if "user_id" not in decoded_token:
