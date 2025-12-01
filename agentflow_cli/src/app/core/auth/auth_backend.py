@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import Depends, Response
+from fastapi import Depends, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from injectq.integrations import InjectAPI
 
@@ -10,7 +10,8 @@ from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 
 
 def verify_current_user(
-    res: Response,
+    request: Request,
+    response: Response,
     credential: HTTPAuthorizationCredentials = Depends(
         HTTPBearer(auto_error=False),
     ),
@@ -27,7 +28,11 @@ def verify_current_user(
         logger.error("Auth backend is not configured")
         return user
 
-    user: dict | None = auth_backend.authenticate(res, credential)
+    user: dict | None = auth_backend.authenticate(
+        request,
+        response,
+        credential,
+    )
     if user and "user_id" not in user:
         logger.error("Authentication failed: 'user_id' not found in user info")
     return user or {}

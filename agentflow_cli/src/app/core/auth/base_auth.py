@@ -1,14 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from fastapi import Response
+from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
 
 class BaseAuth(ABC):
     @abstractmethod
     def authenticate(
-        self, res: Response, credential: HTTPAuthorizationCredentials
+        self,
+        request: Request,
+        response: Response,
+        credential: HTTPAuthorizationCredentials,
     ) -> dict[str, Any] | None:
         """Authenticate the user based on the provided credentials.
         IT should return an empty dict if no authentication is required.
