@@ -66,7 +66,7 @@ class GraphConfig:
             if not path or not method:
                 raise ValueError("Both method and path must be provided in auth config")
 
-            if method == "custom" and path and Path(path).exists():
+            if method == "custom" and path:
                 return {
                     "method": "custom",
                     "path": path,
