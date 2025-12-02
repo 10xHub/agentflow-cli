@@ -217,7 +217,7 @@ class GraphService:
             input_data, config, meta = await self._prepare_input(graph_input)
             # add user inside config
             config["user"] = user
-            config["user_id"] = user.get("id", "anonymous")
+            config["user_id"] = user.get("user_id", "anonymous")
 
             # if its a new thread then save the thread into db
             await self._save_thread(config, config["thread_id"])
@@ -282,7 +282,7 @@ class GraphService:
             input_data, config, meta = await self._prepare_input(graph_input)
             # add user inside config
             config["user"] = user
-            config["user_id"] = user.get("id", "anonymous")
+            config["user_id"] = user.get("user_id", "anonymous")
 
             await self._save_thread(config, config["thread_id"])
 
@@ -400,7 +400,7 @@ class GraphService:
             logger.debug(f"User info: {user}")
 
             fix_config = {"thread_id": thread_id, "user": user}
-            fix_config["user_id"] = user.get("id", "anonymous")
+            fix_config["user_id"] = user.get("user_id", "anonymous")
             if config:
                 fix_config.update(config)
 
