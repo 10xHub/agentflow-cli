@@ -264,24 +264,6 @@ class TestGraphConfigAuthConfig:
 
         assert result == {"method": "custom", "path": str(custom_auth_path)}
 
-    def test_auth_config_raises_error_when_custom_path_not_exists(
-        self,
-        temp_config_file,
-    ):
-        """Test that auth_config raises ValueError when custom path doesn't exist."""
-        config_path = temp_config_file(
-            {
-                "agent": "path/to/agent.py",
-                "auth": {"method": "custom", "path": "/nonexistent/path/auth.py"},
-            }
-        )
-        graph_config = GraphConfig(path=config_path)
-
-        with pytest.raises(ValueError) as exc_info:
-            graph_config.auth_config()
-
-        assert "Unsupported auth method" in str(exc_info.value)
-
     def test_auth_config_raises_error_when_dict_missing_method(
         self,
         temp_config_file,

@@ -219,8 +219,12 @@ class GraphService:
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
 
-            # if its a new thread then save the thread into db
-            await self._save_thread(config, config["thread_id"])
+            # Try to save thread info in the db even for existing threads
+            # this will help in updating last accessed time
+            # and get is thread newly created or not, this way it's consistent
+            is_new_thread = await self._save_thread(config, config["thread_id"])
+            if is_new_thread and type(is_new_thread) is bool:
+                meta["is_new_thread"] = True
 
             # Execute the graph
             result = await self._graph.ainvoke(
@@ -284,7 +288,12 @@ class GraphService:
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
 
-            await self._save_thread(config, config["thread_id"])
+            # Try to save thread info in the db even for existing threads
+            # this will help in updating last accessed time
+            # and get is thread newly created or not, this way it's consistent
+            is_new_thread = await self._save_thread(config, config["thread_id"])
+            if is_new_thread and type(is_new_thread) is bool:
+                meta["is_new_thread"] = True
 
             messages_str = []
 
