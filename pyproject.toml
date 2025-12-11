@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.2.5"
+version = "0.2.6"
 description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
