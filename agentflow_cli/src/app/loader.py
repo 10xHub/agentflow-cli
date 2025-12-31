@@ -10,6 +10,10 @@ from agentflow.store import BaseStore
 from injectq import InjectQ
 
 from agentflow_cli import BaseAuth
+from agentflow_cli.src.app.core.auth.authorization import (
+    AuthorizationBackend,
+    DefaultAuthorizationBackend,
+)
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
 
@@ -152,6 +156,44 @@ def load_auth(path: str | None) -> BaseAuth | None:
     return auth
 
 
+def load_authorization(path: str | None) -> AuthorizationBackend | None:
+    """
+    Load authorization backend from the specified path.
+
+    Args:
+        path: Module path in format 'module:attribute' or None
+
+    Returns:
+        AuthorizationBackend instance or None if path is not provided
+
+    Raises:
+        Exception: If loading fails or object is not AuthorizationBackend
+    """
+    if not path:
+        return None
+
+    module_name_importable, function_name = path.split(":")
+
+    try:
+        module = importlib.import_module(module_name_importable)
+        entry_point_obj = getattr(module, function_name)
+
+        # If it's a class, instantiate it; if it's an instance, use as is
+        if inspect.isclass(entry_point_obj) and issubclass(entry_point_obj, AuthorizationBackend):
+            authorization = entry_point_obj()
+        elif isinstance(entry_point_obj, AuthorizationBackend):
+            authorization = entry_point_obj
+        else:
+            raise TypeError("Loaded object is not a subclass or instance of AuthorizationBackend.")
+
+        logger.info(f"Successfully loaded AuthorizationBackend '{function_name}' from {path}.")
+    except Exception as e:
+        logger.error(f"Error loading AuthorizationBackend from {path}: {e}")
+        raise Exception(f"Failed to load AuthorizationBackend from {path}: {e}")
+
+    return authorization
+
+
 def load_thread_name_generator(path: str | None) -> ThreadNameGenerator | None:
     if not path:
         return None
@@ -242,6 +284,17 @@ async def attach_all_modules(
     else:
         # bind None if not configured
         container.bind_instance(ThreadNameGenerator, None, allow_none=True)
+
+    # load authorization backend
+    authorization_path = config.authorization_path
+    if authorization_path:
+        authorization_backend = load_authorization(authorization_path)
+        container.bind_instance(AuthorizationBackend, authorization_backend)
+    else:
+        # Use default authorization backend if not configured
+        default_authorization = DefaultAuthorizationBackend()
+        container.bind_instance(AuthorizationBackend, default_authorization)
+        logger.info("Using DefaultAuthorizationBackend (allows all authenticated users)")
 
     logger.info("Container loaded successfully")
     logger.debug(f"Container dependency graph: {container.get_dependency_graph()}")

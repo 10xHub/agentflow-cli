@@ -1,0 +1,13 @@
+{
+  "agent": "graph.react:app",
+  "env": ".env.production",
+  "auth": "jwt",
+  "authorization": {
+    "path": "auth.rbac_backend:RBACAuthorizationBackend"
+  },
+  "checkpointer": null,
+  "injectq": null,
+  "store": null,
+  "redis": null,
+  "thread_name_generator": null
+}

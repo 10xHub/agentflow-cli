@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
@@ -135,7 +136,7 @@ class GraphService:
         """
         try:
             logger.info(f"Stopping graph execution for thread: {thread_id}")
-            logger.debug(f"User info: {user}")
+            logger.debug(f"User info: {sanitize_for_logging(user)}")
 
             # Prepare config with thread_id and user info
             stop_config = {
@@ -406,7 +407,7 @@ class GraphService:
         """
         try:
             logger.info(f"Starting fix graph operation for thread: {thread_id}")
-            logger.debug(f"User info: {user}")
+            logger.debug(f"User info: {sanitize_for_logging(user)}")
 
             fix_config = {"thread_id": thread_id, "user": user}
             fix_config["user_id"] = user.get("user_id", "anonymous")

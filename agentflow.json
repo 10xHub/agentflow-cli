@@ -2,5 +2,8 @@
   "agent": "graph.react:app",
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "env": ".env",
-  "auth": null
+  "auth": {
+    "path": "graph.custom_auth:CustomAuth",
+    "method": "custom"
+  }
 }

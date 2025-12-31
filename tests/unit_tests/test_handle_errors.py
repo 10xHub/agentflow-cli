@@ -10,6 +10,15 @@ HTTP_NOT_FOUND = 404
 
 
 def test_http_exception_handler_returns_error_payload():
+    import os
+
+    # Ensure development mode for this test
+    os.environ["MODE"] = "development"
+
+    from agentflow_cli.src.app.core.config.settings import get_settings
+
+    get_settings.cache_clear()
+
     app = FastAPI()
     setup_middleware(app)
     init_errors_handler(app)
@@ -24,3 +33,7 @@ def test_http_exception_handler_returns_error_payload():
     body = r.json()
     assert body["error"]["code"] == "HTTPException"
     assert body["error"]["message"] == "nope"
+
+    # Cleanup
+    if "MODE" in os.environ:
+        del os.environ["MODE"]

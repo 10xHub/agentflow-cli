@@ -6,6 +6,7 @@ from injectq import inject, singleton
 
 from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.config.settings import get_settings
+from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     MessagesListResponseSchema,
     ResponseSchema,
@@ -130,7 +131,7 @@ class CheckpointerService:
     # Threads
     async def get_thread(self, config: dict[str, Any], user: dict) -> ThreadResponseSchema:
         cfg = self._config(config, user)
-        logger.debug(f"User info: {user} and thread config: {cfg}")
+        logger.debug(f"User info: {sanitize_for_logging(user)} and thread config: {cfg}")
         res = await self.checkpointer.aget_thread(cfg)
         return ThreadResponseSchema(thread=res.model_dump() if res else None)
 
@@ -152,7 +153,7 @@ class CheckpointerService:
         thread_id: Any,
     ) -> ResponseSchema:
         cfg = self._config(config, user)
-        logger.debug(f"User info: {user} and thread ID: {thread_id}")
+        logger.debug(f"User info: {sanitize_for_logging(user)} and thread ID: {thread_id}")
         res = await self.checkpointer.aclean_thread(cfg)
         return ResponseSchema(success=True, message="Thread deleted successfully", data=res)
 
