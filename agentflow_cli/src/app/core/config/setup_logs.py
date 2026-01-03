@@ -3,6 +3,8 @@ import sys
 
 from fastapi.logger import logger as fastapi_logger
 
+from agentflow_cli.src.app.core.utils.log_sanitizer import SanitizingFormatter
+
 
 def init_logger(level: int | str = logging.INFO) -> None:
     """
@@ -59,9 +61,12 @@ def init_logger(level: int | str = logging.INFO) -> None:
     console_handler.setLevel(level)
 
     # Create formatter
-    formatter = logging.Formatter(
+    base_formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
     )
+    # Wrap with sanitizing formatter to prevent sensitive data in logs
+    formatter = SanitizingFormatter(base_formatter)
+
     # Add formatter to console handler
     console_handler.setFormatter(formatter)
     # Add console handler to logger

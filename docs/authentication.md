@@ -5,9 +5,11 @@ This guide covers implementing authentication in your AgentFlow application usin
 ## Table of Contents
 
 - [Overview](#overview)
+- [Security Considerations](#security-considerations)
 - [No Authentication](#no-authentication)
 - [JWT Authentication](#jwt-authentication)
 - [Custom Authentication](#custom-authentication)
+- [Authorization](#authorization)
 - [BaseAuth Interface](#baseauth-interface)
 - [Best Practices](#best-practices)
 - [Examples](#examples)
@@ -32,6 +34,67 @@ Authentication is configured in `agentflow.json`:
   }
 }
 ```
+
+---
+
+## Security Considerations
+
+### Authentication vs Authorization
+
+**Authentication** answers: *"Who are you?"*
+- Verifies user identity
+- Validates credentials (tokens, API keys, etc.)
+- Returns user context
+
+**Authorization** answers: *"What can you do?"*
+- Controls access to resources
+- Enforces permissions
+- Checks user roles and privileges
+
+AgentFlow provides both:
+- **Authentication**: Via this authentication system
+- **Authorization**: Via the [Authorization Framework](../SECURITY.md#authorization)
+
+See [SECURITY.md](../SECURITY.md) for comprehensive security documentation.
+
+### Security Requirements by Environment
+
+**Development:**
+- Can use `auth: null` for convenience
+- Use simple secrets for testing
+- API docs can be enabled
+
+**Staging:**
+- Should use JWT or custom authentication
+- Use environment-specific secrets
+- Test security configurations
+
+**Production:**
+- **MUST** use JWT or custom authentication
+- **MUST** use strong, random secrets (32+ characters)
+- **MUST** use HTTPS
+- **MUST** disable API documentation
+- **MUST** implement authorization
+- **MUST** enable request size limits
+- **MUST** configure specific CORS origins
+
+### Security Checklist
+
+Before deploying to production:
+
+- [ ] Authentication enabled (`auth: "jwt"` or custom)
+- [ ] Strong JWT secret configured (generate with `secrets.token_urlsafe(32)`)
+- [ ] HTTPS enabled with valid SSL/TLS certificates
+- [ ] Authorization backend implemented
+- [ ] CORS configured with specific domains (not `*`)
+- [ ] API documentation disabled (`DOCS_PATH=` and `REDOCS_PATH=`)
+- [ ] Debug mode disabled (`IS_DEBUG=false`)
+- [ ] Request size limits configured (`MAX_REQUEST_SIZE=10485760`)
+- [ ] Rate limiting implemented
+- [ ] Security headers configured
+- [ ] Logs sanitized for sensitive data
+
+See the [Production Deployment Checklist](../SECURITY.md#production-deployment) for complete details.
 
 ---
 
@@ -386,6 +449,149 @@ class MyAuthBackend(BaseAuth):
         # Example: Query database, call external API, etc.
         pass
 ```
+
+---
+
+## Authorization
+
+### Overview
+
+After authentication establishes *who* the user is, authorization determines *what* they can do. AgentFlow provides a flexible authorization framework.
+
+### Authorization Flow
+
+```
+Request → Authentication → Authorization → Resource Access
+           (Who are you?)   (What can you do?)
+```
+
+All AgentFlow endpoints automatically enforce authorization using the `RequirePermission` dependency:
+
+```python
+from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+from fastapi import Depends
+
+@router.post("/graph/invoke")
+async def invoke_graph(
+    user: dict = Depends(RequirePermission("graph", "invoke")),
+    request: GraphRequest
+):
+    # User is authenticated AND authorized
+    # Can proceed with graph invocation
+    pass
+```
+
+### Implementing Authorization
+
+**Step 1: Create Authorization Backend**
+
+```python
+# auth/rbac_backend.py
+from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+from typing import Any
+
+class RBACAuthorizationBackend(AuthorizationBackend):
+    """Role-Based Access Control authorization."""
+    
+    PERMISSIONS = {
+        "admin": {
+            "graph": ["invoke", "stream", "read", "stop", "setup", "fix"],
+            "checkpointer": ["read", "write", "delete"],
+            "store": ["read", "write", "delete", "forget"]
+        },
+        "developer": {
+            "graph": ["invoke", "stream", "read", "setup"],
+            "checkpointer": ["read", "write"],
+            "store": ["read", "write"]
+        },
+        "viewer": {
+            "graph": ["read"],
+            "checkpointer": ["read"],
+            "store": ["read"]
+        }
+    }
+    
+    async def authorize(
+        self,
+        user: dict[str, Any],
+        resource: str,
+        action: str,
+        resource_id: str | None = None,
+        **context
+    ) -> bool:
+        """Check if user's role permits the action."""
+        role = user.get("role", "viewer")
+        role_permissions = self.PERMISSIONS.get(role, {})
+        allowed_actions = role_permissions.get(resource, [])
+        return action in allowed_actions
+```
+
+**Step 2: Configure agentflow.json**
+
+```json
+{
+  "auth": "jwt",
+  "authorization": {
+    "path": "auth.rbac_backend:RBACAuthorizationBackend"
+  },
+  "agent": "graph.react:app"
+}
+```
+
+**Step 3: Include Role in User Context**
+
+Ensure your authentication returns user role:
+
+```python
+# JWT payload
+{
+  "user_id": "user_123",
+  "email": "user@example.com",
+  "role": "developer",  # Include role for authorization
+  "exp": 1735689600
+}
+```
+
+### Authorization Examples
+
+See [examples/security/](../examples/security/) for complete implementations:
+- **RBAC** - Role-Based Access Control
+- **Ownership** - Resource ownership-based authorization
+- **ABAC** - Attribute-Based Access Control
+
+### Resources and Actions
+
+AgentFlow defines these resources and actions:
+
+**Graph Resource:**
+- `invoke` - Execute graph
+- `stream` - Stream graph execution
+- `read` - View graph details and state
+- `stop` - Stop running graph
+- `setup` - Configure graph
+- `fix` - Fix graph errors
+
+**Checkpointer Resource:**
+- `read` - View state, messages, threads
+- `write` - Update state, add messages
+- `delete` - Delete threads, messages, state
+
+**Store Resource:**
+- `read` - Search and view memories
+- `write` - Create and update memories
+- `delete` - Delete memories
+- `forget` - Permanently forget memories
+
+### Authorization Best Practices
+
+1. **Deny by Default** - Only grant explicit permissions
+2. **Least Privilege** - Grant minimum necessary access
+3. **Validate Every Request** - Never cache authorization decisions
+4. **Resource-Level Control** - Check permissions for specific resources
+5. **Audit Failures** - Log all authorization denials
+6. **Separate Concerns** - Keep authentication and authorization logic separate
+
+For complete authorization documentation, see [SECURITY.md - Authorization](../SECURITY.md#authorization).
 
 ---
 

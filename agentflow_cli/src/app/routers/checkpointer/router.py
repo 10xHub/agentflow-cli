@@ -6,8 +6,7 @@ from agentflow.state import Message
 from fastapi import APIRouter, Depends, Request, status
 from injectq.integrations import InjectAPI
 
-from agentflow_cli.src.app.core import logger
-from agentflow_cli.src.app.core.auth.auth_backend import verify_current_user
+from agentflow_cli.src.app.core.auth.permissions import RequirePermission
 from agentflow_cli.src.app.utils.response_helper import success_response
 from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_responses
 
@@ -38,7 +37,7 @@ async def get_state(
     request: Request,
     thread_id: int | str,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "read")),
 ):
     """Get state from checkpointer.
 
@@ -49,8 +48,6 @@ async def get_state(
     Returns:
         State response with state data or error
     """
-    logger.debug(f"User info: {user}")
-
     config = {"thread_id": thread_id}
 
     result = await service.get_state(
@@ -76,7 +73,7 @@ async def put_state(
     thread_id: str | int,
     payload: StateSchema,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "write")),
 ):
     """Put state to checkpointer.
 
@@ -89,7 +86,6 @@ async def put_state(
     Returns:
         Success response or error
     """
-    logger.debug(f"User info: {user}")
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
@@ -118,7 +114,7 @@ async def clear_state(
     request: Request,
     thread_id: int | str,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "delete")),
 ):
     """Clear state from checkpointer.
 
@@ -131,7 +127,6 @@ async def clear_state(
     Returns:
         Success response or error
     """
-    logger.debug(f"User info: {user}")
     config = {"thread_id": thread_id}
 
     res = await service.clear_state(
@@ -160,7 +155,7 @@ async def put_messages(
     thread_id: str | int,
     payload: PutMessagesSchema,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "write")),
 ):
     """Put messages to checkpointer.
 
@@ -173,8 +168,6 @@ async def put_messages(
     Returns:
         Success response or error
     """
-    logger.debug(f"User info: {user}")
-
     # Convert message dicts to Message objects if needed
     config = {"thread_id": thread_id}
     if payload.config:
@@ -207,7 +200,7 @@ async def get_message(
     thread_id: str | int,
     message_id: str | int,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "read")),
 ):
     """Get message from checkpointer.
 
@@ -220,7 +213,6 @@ async def get_message(
     Returns:
         Message response with message data or error
     """
-    logger.debug(f"User info: {user}")
     config = {"thread_id": thread_id}
 
     result = await service.get_message(
@@ -250,7 +242,7 @@ async def list_messages(
     offset: int | None = None,
     limit: int | None = None,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "read")),
 ):
     """List messages from checkpointer.
 
@@ -263,7 +255,6 @@ async def list_messages(
     Returns:
         Messages list response with messages data or error
     """
-    logger.debug(f"User info: {user}")
     config = {"thread_id": thread_id}
 
     result = await service.get_messages(
@@ -293,7 +284,7 @@ async def delete_message(
     thread_id: str | int,
     payload: ConfigSchema,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "delete")),
 ):
     """Delete message from checkpointer.
 
@@ -306,7 +297,6 @@ async def delete_message(
     Returns:
         Success response or error
     """
-    logger.debug(f"User info: {user}")
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
@@ -337,7 +327,7 @@ async def get_thread(
     request: Request,
     thread_id: str | int,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "read")),
 ):
     """Get thread from checkpointer.
 
@@ -350,8 +340,6 @@ async def get_thread(
     Returns:
         Thread response with thread data or error
     """
-    logger.debug(f"User info: {user}")
-
     result = await service.get_thread(
         {"thread_id": thread_id},
         user,
@@ -376,7 +364,7 @@ async def list_threads(
     offset: int | None = None,
     limit: int | None = None,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "read")),
 ):
     """List threads from checkpointer.
 
@@ -389,8 +377,6 @@ async def list_threads(
     Returns:
         Threads list response with threads data or error
     """
-    logger.debug(f"User info: {user}")
-
     result = await service.list_threads(
         user,
         search,
@@ -416,7 +402,7 @@ async def delete_thread(
     thread_id: str | int,
     payload: ConfigSchema,
     service: CheckpointerService = InjectAPI(CheckpointerService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("checkpointer", "delete")),
 ):
     """Delete thread from checkpointer.
 
@@ -429,8 +415,6 @@ async def delete_thread(
     Returns:
         Success response or error
     """
-    logger.debug(f"User info: {user} and thread ID: {thread_id}")
-
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)

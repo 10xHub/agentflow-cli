@@ -7,8 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, Request, status
 from injectq.integrations import InjectAPI
 
-from agentflow_cli.src.app.core import logger
-from agentflow_cli.src.app.core.auth.auth_backend import verify_current_user
+from agentflow_cli.src.app.core.auth.permissions import RequirePermission
 from agentflow_cli.src.app.utils.response_helper import success_response
 from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_responses
 
@@ -43,11 +42,10 @@ async def create_memory(
     request: Request,
     payload: StoreMemorySchema,
     service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("store", "write")),
 ):
     """Store a memory item using the configured store."""
 
-    logger.debug("User info: %s", user)
     result = await service.store_memory(payload, user)
     return success_response(result, request, message="Memory stored successfully")
 
@@ -63,11 +61,10 @@ async def search_memories(
     request: Request,
     payload: SearchMemorySchema,
     service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("store", "read")),
 ):
     """Search stored memories."""
 
-    logger.debug("User info: %s", user)
     result = await service.search_memories(payload, user)
     return success_response(result, request)
 
@@ -87,11 +84,10 @@ async def get_memory(
         description="Optional configuration and options for retrieving the memory.",
     ),
     service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("store", "read")),
 ):
     """Get a memory by ID."""
 
-    logger.debug("User info: %s", user)
     cfg = payload.config if payload else {}
     opts = payload.options if payload else None
     result = await service.get_memory(memory_id, cfg, user, options=opts)
@@ -112,11 +108,10 @@ async def list_memories(
         description="Optional configuration, limit, and options for listing memories.",
     ),
     service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("store", "read")),
 ):
     """List stored memories."""
 
-    logger.debug("User info: %s", user)
     if payload is None:
         payload = ListMemoriesSchema()
     cfg = payload.config or {}
@@ -137,11 +132,10 @@ async def update_memory(
     memory_id: str,
     payload: UpdateMemorySchema,
     service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("store", "write")),
 ):
     """Update a stored memory."""
 
-    logger.debug("User info: %s", user)
     result = await service.update_memory(memory_id, payload, user)
     return success_response(result, request, message="Memory updated successfully")
 
@@ -161,11 +155,10 @@ async def delete_memory(
         description="Optional configuration overrides forwarded to the store backend.",
     ),
     service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("store", "delete")),
 ):
     """Delete a stored memory."""
 
-    logger.debug("User info: %s", user)
     config_payload = payload.config if payload else {}
     options_payload = payload.options if payload else None
     result = await service.delete_memory(memory_id, config_payload, user, options=options_payload)
@@ -183,10 +176,9 @@ async def forget_memory(
     request: Request,
     payload: ForgetMemorySchema,
     service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(verify_current_user),
+    user: dict[str, Any] = Depends(RequirePermission("store", "delete")),
 ):
     """Forget memories based on filters."""
 
-    logger.debug("User info: %s", user)
     result = await service.forget_memory(payload, user)
     return success_response(result, request, message="Memories removed successfully")

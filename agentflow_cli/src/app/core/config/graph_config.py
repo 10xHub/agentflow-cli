@@ -43,6 +43,17 @@ class GraphConfig:
     def thread_name_generator_path(self) -> str | None:
         return self.data.get("thread_name_generator", None)
 
+    @property
+    def authorization_path(self) -> str | None:
+        """
+        Get the authorization backend path from configuration.
+
+        Returns:
+            str | None: Path to authorization backend module in format 'module:attribute',
+                       or None if not configured
+        """
+        return self.data.get("authorization", None)
+
     def auth_config(self) -> dict | None:
         res = self.data.get("auth", None)
         if not res:

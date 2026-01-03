@@ -1,0 +1,120 @@
+version: "3.8"
+
+services:
+  # Main API service
+  api:
+    build:
+      context: ../../../..
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Load from .env.production file
+      - MODE=production
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ORIGINS=${ORIGINS}
+      - ALLOWED_HOST=${ALLOWED_HOST}
+      - IS_DEBUG=false
+      - DOCS_PATH=
+      - REDOCS_PATH=
+      - MAX_REQUEST_SIZE=10485760
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env.production
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Security: Read-only root filesystem
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Security: Drop all capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "1"
+          memory: 512M
+    networks:
+      - app-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis for caching/checkpointing
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    # Security: Run as non-root user
+    user: "999:999"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    networks:
+      - app-network
+    # Security: No external port exposure (only internal)
+    # Only accessible from api service
+
+  # Nginx reverse proxy with SSL/TLS
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx:rw
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis_data:
+    driver: local
+  nginx_cache:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

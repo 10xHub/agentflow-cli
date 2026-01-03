@@ -9,6 +9,9 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from agentflow_cli.src.app.core.middleware.request_limits import RequestSizeLimitMiddleware
+from agentflow_cli.src.app.core.middleware.security_headers import SecurityHeadersMiddleware
+
 from .sentry_config import init_sentry
 from .settings import get_settings, logger
 
@@ -114,6 +117,25 @@ def setup_middleware(app: FastAPI):
     )
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOST.split(","))
+
+    # Add request size limit middleware (protects against DoS via large payloads)
+    app.add_middleware(RequestSizeLimitMiddleware, max_size=settings.MAX_REQUEST_SIZE)
+
+    # Add security headers middleware (if enabled)
+    if settings.SECURITY_HEADERS_ENABLED:
+        app.add_middleware(
+            SecurityHeadersMiddleware,
+            enable_hsts=settings.HSTS_ENABLED,
+            hsts_max_age=settings.HSTS_MAX_AGE,
+            hsts_include_subdomains=settings.HSTS_INCLUDE_SUBDOMAINS,
+            hsts_preload=settings.HSTS_PRELOAD,
+            frame_options=settings.FRAME_OPTIONS,
+            content_type_options=settings.CONTENT_TYPE_OPTIONS,
+            xss_protection=settings.XSS_PROTECTION,
+            referrer_policy=settings.REFERRER_POLICY,
+            permissions_policy=settings.PERMISSIONS_POLICY,
+            csp_policy=settings.CSP_POLICY,
+        )
 
     app.add_middleware(RequestIDMiddleware)
 

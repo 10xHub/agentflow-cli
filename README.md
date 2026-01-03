@@ -268,6 +268,107 @@ name = generator.generate_name()
 ```
 
 See the [Thread Name Generator Guide](./docs/thread-name-generator.md) for custom implementations.
+
+## Security
+
+AgentFlow CLI provides enterprise-grade security features for production deployments.
+
+### Security Features
+
+- ✅ **Authentication** - Built-in JWT and custom authentication backends
+- ✅ **Authorization** - Resource-based access control with extensible backends
+- ✅ **Request Limits** - DoS protection with configurable size limits (default 10MB)
+- ✅ **Error Sanitization** - Production-safe error messages preventing information disclosure
+- ✅ **Log Sanitization** - Automatic redaction of sensitive data (tokens, passwords, secrets)
+- ✅ **Security Warnings** - Startup validation for insecure configurations
+- ✅ **HTTPS Ready** - SSL/TLS support with secure headers
+
+### Production Security Checklist
+
+Before deploying to production, ensure:
+
+```bash
+# Required: Set production mode
+MODE=production
+
+# Required: Strong JWT secret (32+ characters)
+JWT_SECRET_KEY=<generate-with-secrets.token_urlsafe(32)>
+
+# Required: Disable debug mode
+IS_DEBUG=false
+
+# Required: Specific CORS origins (not *)
+ORIGINS=https://yourdomain.com
+
+# Required: Specific allowed hosts (not *)
+ALLOWED_HOST=yourdomain.com
+
+# Recommended: Disable API docs
+DOCS_PATH=
+REDOCS_PATH=
+
+# Recommended: Configure request size limit
+MAX_REQUEST_SIZE=10485760  # 10MB default
+```
+
+### Quick Security Setup
+
+**1. Enable JWT Authentication:**
+```json
+{
+  "auth": "jwt"
+}
+```
+
+**2. Implement Authorization:**
+```python
+# auth/rbac_backend.py
+from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+
+class RBACAuthorizationBackend(AuthorizationBackend):
+    async def authorize(self, user, resource, action, resource_id=None, **context):
+        role = user.get("role", "viewer")
+        # Implement your authorization logic
+        return role == "admin" or (role == "developer" and action == "read")
+```
+
+**3. Configure in agentflow.json:**
+```json
+{
+  "auth": "jwt",
+  "authorization": {
+    "path": "auth.rbac_backend:RBACAuthorizationBackend"
+  }
+}
+```
+
+### Security Validation
+
+AgentFlow automatically validates your configuration and warns about security issues:
+
+```
+⚠️  SECURITY WARNING: CORS ORIGINS='*' in production.
+   Set ORIGINS to specific domains.
+
+⚠️  SECURITY WARNING: DEBUG mode enabled in production!
+   Set IS_DEBUG=false
+```
+
+### Comprehensive Security Guide
+
+For detailed security documentation, threat model, best practices, and deployment guidelines, see:
+
+📖 **[SECURITY.md](./SECURITY.md)** - Complete Security Guide
+
+Topics covered:
+- Threat model and attack vectors
+- Authentication and authorization patterns
+- Production deployment checklist
+- Docker and Kubernetes security configurations
+- Security testing and monitoring
+- Incident response procedures
+- Vulnerability reporting
+
 ## Deployment
 
 See the [Deployment Guide](./docs/deployment.md) for complete deployment instructions.
