@@ -52,7 +52,6 @@ class AuthorizationBackend(ABC):
         Raises:
             Exception: Can raise exceptions for auth failures or errors
         """
-        pass
 
 
 class DefaultAuthorizationBackend(AuthorizationBackend):

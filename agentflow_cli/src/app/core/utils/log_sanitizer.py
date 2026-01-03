@@ -71,14 +71,13 @@ def sanitize_for_logging(data: Any, max_depth: int = 10, _current_depth: int = 0
 
     if isinstance(data, dict):
         return {k: _sanitize_value(k, v, max_depth, _current_depth + 1) for k, v in data.items()}
-    elif isinstance(data, list):
+    if isinstance(data, list):
         return [sanitize_for_logging(item, max_depth, _current_depth + 1) for item in data]
-    elif isinstance(data, tuple):
+    if isinstance(data, tuple):
         return tuple(sanitize_for_logging(item, max_depth, _current_depth + 1) for item in data)
-    elif isinstance(data, str):
+    if isinstance(data, str):
         return _sanitize_string(data)
-    else:
-        return data
+    return data
 
 
 def _sanitize_value(key: str, value: Any, max_depth: int, current_depth: int) -> Any:
@@ -113,8 +112,9 @@ def _sanitize_string(value: str) -> str:
     Returns:
         Original string or redaction marker
     """
+    max_value = 32
     # Check for JWT token pattern
-    if len(value) > 20 and JWT_PATTERN.match(value):
+    if len(value) > max_value and JWT_PATTERN.match(value):
         return "***JWT_TOKEN***"
 
     # Check for Bearer token pattern
@@ -122,7 +122,7 @@ def _sanitize_string(value: str) -> str:
         return "***BEARER_TOKEN***"
 
     # Check if string looks like a long random token (>32 chars, alphanumeric)
-    if len(value) > 32 and value.replace("-", "").replace("_", "").isalnum():
+    if len(value) > max_value and value.replace("-", "").replace("_", "").isalnum():
         # Could be an API key or token
         return f"{value[:4]}...{value[-4:]}"
 

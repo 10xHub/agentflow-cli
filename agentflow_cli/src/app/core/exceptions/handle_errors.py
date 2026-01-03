@@ -62,7 +62,7 @@ def _sanitize_error_message(message: str, error_code: str, is_production: bool) 
     return "An unexpected error occurred. Please contact support."
 
 
-def init_errors_handler(app: FastAPI):
+def init_errors_handler(app: FastAPI):  # noqa: PLR0915
     """
     Initialize error handlers for the FastAPI application.
 

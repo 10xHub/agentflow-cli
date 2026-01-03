@@ -9,10 +9,11 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from agentflow_cli.src.app.core.middleware.request_limits import RequestSizeLimitMiddleware
+from agentflow_cli.src.app.core.middleware.security_headers import SecurityHeadersMiddleware
+
 from .sentry_config import init_sentry
 from .settings import get_settings, logger
-from ..middleware.request_limits import RequestSizeLimitMiddleware
-from ..middleware.security_headers import SecurityHeadersMiddleware
 
 
 # Paths that should be excluded from GZip compression (streaming endpoints)

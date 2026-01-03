@@ -220,6 +220,50 @@ def load_thread_name_generator(path: str | None) -> ThreadNameGenerator | None:
     return thread_name_generator
 
 
+def load_and_bind_auth(container: InjectQ, auth_config: dict) -> None:
+    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+
+    method = auth_config.get("method")
+    path = auth_config.get("path")
+    if not path or not method:
+        raise ValueError("Both 'method' and 'path' must be specified in auth_config.")
+
+    # Extract file path before the ':' for existence check
+    module_or_path = path.split(":", 1)[0] if ":" in path else path
+
+    # Simple handling: if it appears to be a filesystem path, use it; otherwise
+    # convert dotted module path to a file path like src/auth/custom_auth.py
+    if os.path.sep in module_or_path or module_or_path.endswith(".py"):
+        file_path = Path(module_or_path)
+    elif "." in module_or_path and os.path.sep not in module_or_path:
+        file_path = Path(module_or_path.replace(".", os.path.sep) + ".py")
+    else:
+        file_path = Path(module_or_path)
+
+    if not file_path.exists():
+        raise ValueError(f"Custom auth path does not exist: {module_or_path}")
+
+    auth_backends = {
+        "custom": lambda: load_auth(path),
+        "jwt": lambda: JwtAuth(),
+        "none": lambda: None,
+    }
+
+    auth_backend = auth_backends.get(method, lambda: None)()
+    container.bind_instance(BaseAuth, auth_backend, allow_none=True)
+
+
+def load_and_bind_authorization(container: InjectQ, authorization_path: str | None) -> None:
+    if authorization_path:
+        authorization_backend = load_authorization(authorization_path)
+        container.bind_instance(AuthorizationBackend, authorization_backend)
+    else:
+        # Use default authorization backend if not configured
+        default_authorization = DefaultAuthorizationBackend()
+        container.bind_instance(AuthorizationBackend, default_authorization)
+        logger.info("Using DefaultAuthorizationBackend (allows all authenticated users)")
+
+
 async def attach_all_modules(
     config: GraphConfig,
     container: InjectQ,
@@ -239,39 +283,7 @@ async def attach_all_modules(
     # load auth backend
     auth_config = config.auth_config()
     if auth_config:
-        method = auth_config.get("method", None)
-        path = auth_config.get("path", None)
-        if not path or not method:
-            raise ValueError("Both 'method' and 'path' must be specified in auth_config.")
-
-        # Extract file path before the ':' for existence check
-        module_or_path = path.split(":", 1)[0] if ":" in path else path
-
-        # Simple handling: if it appears to be a filesystem path, use it; otherwise
-        # convert dotted module path to a file path like src/auth/custom_auth.py
-        if os.path.sep in module_or_path or module_or_path.endswith(".py"):
-            file_path = Path(module_or_path)
-        elif "." in module_or_path and os.path.sep not in module_or_path:
-            file_path = Path(module_or_path.replace(".", os.path.sep) + ".py")
-        else:
-            file_path = Path(module_or_path)
-
-        if not file_path.exists():
-            raise ValueError(f"Custom auth path does not exist: {module_or_path}")
-
-        if method == "custom":
-            auth_backend = load_auth(
-                path,
-            )
-            container.bind_instance(BaseAuth, auth_backend)
-        elif method == "jwt":
-            from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
-
-            jwt_auth = JwtAuth()
-            container.bind_instance(BaseAuth, jwt_auth)
-
-        elif method == "none":
-            container.bind_instance(BaseAuth, None, allow_none=True)
+        load_and_bind_auth(container, auth_config)
     else:
         # bind None
         container.bind_instance(BaseAuth, None, allow_none=True)
@@ -287,14 +299,7 @@ async def attach_all_modules(
 
     # load authorization backend
     authorization_path = config.authorization_path
-    if authorization_path:
-        authorization_backend = load_authorization(authorization_path)
-        container.bind_instance(AuthorizationBackend, authorization_backend)
-    else:
-        # Use default authorization backend if not configured
-        default_authorization = DefaultAuthorizationBackend()
-        container.bind_instance(AuthorizationBackend, default_authorization)
-        logger.info("Using DefaultAuthorizationBackend (allows all authenticated users)")
+    load_and_bind_authorization(container, authorization_path)
 
     logger.info("Container loaded successfully")
     logger.debug(f"Container dependency graph: {container.get_dependency_graph()}")

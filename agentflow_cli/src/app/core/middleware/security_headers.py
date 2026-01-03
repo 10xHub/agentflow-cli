@@ -20,7 +20,8 @@ Configure via environment variables or settings:
 - CSP_POLICY: Custom CSP policy (default: strict policy)
 """
 
-from typing import Callable
+from collections.abc import Callable
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -34,7 +35,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     that protect against common web vulnerabilities.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         app,
         enable_hsts: bool = True,
@@ -83,7 +84,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         Returns:
             Default permissions policy string
         """
-        return "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+        return (
+            "geolocation=(), microphone=(), camera=(), payment=(), usb=(), "
+            "magnetometer=(), gyroscope=(), accelerometer=()"
+        )
 
     def _default_csp_policy(self) -> str:
         """
@@ -140,10 +144,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Check X-Forwarded-Proto header (for proxied requests)
         forwarded_proto = request.headers.get("X-Forwarded-Proto", "")
-        if forwarded_proto.lower() == "https":
-            return True
-
-        return False
+        return forwarded_proto.lower() == "https"
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """

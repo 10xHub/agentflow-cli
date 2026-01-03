@@ -5,7 +5,8 @@ This module provides a reusable dependency that combines authentication and
 authorization checks, reducing code duplication across routers.
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer

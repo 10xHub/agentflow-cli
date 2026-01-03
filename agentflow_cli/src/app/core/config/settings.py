@@ -129,8 +129,7 @@ class Settings(BaseSettings):
 
             if self.IS_DEBUG:
                 warnings.append(
-                    "⚠️  DEBUG mode is enabled in production. "
-                    "This may expose sensitive information."
+                    "⚠️  DEBUG mode is enabled in production. This may expose sensitive information."
                 )
 
             if self.DOCS_PATH or self.REDOCS_PATH:
@@ -146,7 +145,7 @@ class Settings(BaseSettings):
                 )
 
             if warnings:
-                logger.warning("\n".join(["\n🔒 PRODUCTION SECURITY WARNINGS:"] + warnings))
+                logger.warning("\n".join(["\n🔒 PRODUCTION SECURITY WARNINGS:", *warnings]))
 
         return self
 
