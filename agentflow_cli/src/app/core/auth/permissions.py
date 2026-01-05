@@ -78,12 +78,19 @@ class RequirePermission:
         Raises:
             HTTPException: 403 if authorization fails
         """
-        # Step 1: Authentication (reusing verify_current_user logic)
-        user = {}
+        # Step 1: Check if auth is configured
         backend = config.auth_config()
+
+        # If auth is not configured, skip authentication and authorization entirely
         if not backend:
-            user = {}
-        elif not auth_backend:
+            logger.debug(
+                f"Auth not configured, skipping auth/authz for {self.resource}:{self.action}"
+            )
+            return {}
+
+        # Step 2: Authentication (reusing verify_current_user logic)
+        user = {}
+        if not auth_backend:
             logger.error("Auth backend is not configured")
             user = {}
         else:
@@ -96,14 +103,14 @@ class RequirePermission:
                 logger.error("Authentication failed: 'user_id' not found in user info")
             user = user_result or {}
 
-        # Step 2: Extract resource_id if available
+        # Step 3: Extract resource_id if available
         resource_id = None
         if self.extract_resource_id_fn:
             resource_id = self.extract_resource_id_fn(request)
         else:
             resource_id = self._extract_resource_id_from_path(request)
 
-        # Step 3: Authorization
+        # Step 4: Authorization
         if not await authz.authorize(
             user,
             self.resource,

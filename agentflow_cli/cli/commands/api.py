@@ -66,6 +66,9 @@ class APICommand(BaseCommand):
             # Set environment variables
             os.environ["GRAPH_PATH"] = str(actual_config_path)
 
+            # Add project root to sys.path for importing graph modules
+            sys.path.insert(0, str(actual_config_path.parent))
+
             # Ensure we're using the correct module path
             sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
