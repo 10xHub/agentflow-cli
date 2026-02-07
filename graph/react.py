@@ -99,6 +99,8 @@ async def main_agent(
         state=state,
     )
 
+    print("Calling Messages")
+
     # Retrieve conversation history from checkpointer
     try:
         thread_messages = await checkpointer.aget_thread({"thread_id": config["thread_id"]})
