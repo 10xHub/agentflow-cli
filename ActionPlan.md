@@ -35,7 +35,7 @@ agentflow dev                     # Start API + UI, auto-open browser
 
 # With options
 agentflow dev --port 8000         # Custom API port
-agentflow dev --ui-port 5173      # Custom UI port  
+agentflow dev --ui-port 5173      # Custom UI port
 agentflow dev --no-open           # Don't open browser
 agentflow dev --api-only          # Only start API (existing behavior)
 ```
@@ -69,14 +69,14 @@ UI_DEST = Path("agentflow_cli/src/app/static/ui")
 def bundle_ui():
     # Build UI
     subprocess.run(["npm", "run", "build"], cwd=UI_SOURCE, check=True)
-    
+
     # Clear destination
     if UI_DEST.exists():
         shutil.rmtree(UI_DEST)
-    
+
     # Copy build output
     shutil.copytree(UI_SOURCE / "dist", UI_DEST)
-    
+
     print(f"✅ UI bundled to {UI_DEST}")
 
 if __name__ == "__main__":
@@ -119,7 +119,7 @@ UI_STATIC_DIR = Path(__file__).parent.parent.parent / "static" / "ui"
 def get_ui_router():
     """Create router for serving UI static files."""
     router = APIRouter(tags=["UI"])
-    
+
     @router.get("/")
     async def serve_ui_index():
         """Serve the main UI index.html."""
@@ -127,7 +127,7 @@ def get_ui_router():
         if index_path.exists():
             return FileResponse(index_path)
         return {"error": "UI not bundled. Run 'make bundle-ui' first."}
-    
+
     return router
 
 
@@ -138,7 +138,7 @@ def mount_ui_static(app):
         assets_dir = UI_STATIC_DIR / "assets"
         if assets_dir.exists():
             app.mount("/assets", StaticFiles(directory=assets_dir), name="ui-assets")
-        
+
         # Mount root static files (favicon, etc.)
         app.mount("/static", StaticFiles(directory=UI_STATIC_DIR), name="ui-static")
 ```
@@ -273,9 +273,9 @@ class DevCommand(BaseCommand):
     def _wait_and_open_browser(self, url: str, host: str, port: int):
         """Wait for server readiness and open browser."""
         import requests
-        
+
         ping_url = f"http://{host}:{port}/ping"
-        
+
         for _ in range(50):  # 5 seconds max
             try:
                 r = requests.get(ping_url, timeout=0.5)
@@ -285,7 +285,7 @@ class DevCommand(BaseCommand):
                     return
             except Exception:
                 time.sleep(0.1)
-        
+
         self.logger.warning("Could not open browser - server not ready")
 
     def _is_ci_environment(self) -> bool:
@@ -394,10 +394,10 @@ app.add_middleware(
 # Mount UI if in dev mode and UI is enabled
 if os.environ.get("AGENTFLOW_UI_ENABLED") == "1":
     from agentflow_cli.src.app.routers.ui.router import get_ui_router, mount_ui_static
-    
+
     # Mount static files first
     mount_ui_static(app)
-    
+
     # Add UI routes (for SPA fallback)
     app.include_router(get_ui_router())
 ```
@@ -413,9 +413,9 @@ if os.environ.get("AGENTFLOW_UI_ENABLED") == "1":
 ```javascript
 export default defineConfig({
   // ... existing config
-  
+
   base: '/',  // Serve from root
-  
+
   build: {
     outDir: 'dist',
     // Generate assets with predictable names for bundling
@@ -443,7 +443,7 @@ const getDefaultBackendUrl = () => {
     // Same origin - use current host
     return window.location.origin
   }
-  
+
   // Fallback to localStorage
   return localStorage.getItem("backendUrl")
 }
@@ -457,11 +457,11 @@ instance.interceptors.request.use(
     try {
       // Use auto-detected URL or localStorage
       const backendUrl = localStorage.getItem("backendUrl") || getDefaultBackendUrl()
-      
+
       if (backendUrl == null) {
         throw new Error("Backend URL is not set")
       }
-      
+
       // ... rest of interceptor
     } catch (error) {
       return Promise.reject(error)
@@ -545,10 +545,10 @@ class TestDevCommand:
     def test_wait_and_open_browser(self, mock_get, mock_open):
         """Test browser opening logic."""
         mock_get.return_value = MagicMock(ok=True)
-        
+
         cmd = DevCommand(OutputFormatter())
         cmd._wait_and_open_browser("http://localhost:8000", "localhost", 8000)
-        
+
         mock_open.assert_called_once_with("http://localhost:8000", new=0)
 ```
 
