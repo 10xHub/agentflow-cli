@@ -34,6 +34,7 @@ class GraphInputSchema(BaseModel):
         if not v:
             raise ValueError("messages must contain at least one message")
         return v
+
     response_granularity: ResponseGranularity = Field(
         default=ResponseGranularity.LOW,
         description="Granularity of the response (full, partial, low)",
@@ -128,6 +129,7 @@ class GraphStopSchema(BaseModel):
         if not v.strip():
             raise ValueError("thread_id cannot be empty or whitespace")
         return v.strip()
+
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the stop operation"
     )
@@ -161,6 +163,7 @@ class FixGraphRequestSchema(BaseModel):
         if not v.strip():
             raise ValueError("thread_id cannot be empty or whitespace")
         return v.strip()
+
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the fix operation"
     )
