@@ -154,6 +154,9 @@ class GraphService:
             logger.info(f"Graph stop completed for thread {thread_id}: {result}")
             return result
 
+        except ValueError as e:
+            logger.warning(f"Graph stop input validation failed for thread {thread_id}: {e}")
+            raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
             logger.error(f"Graph stop failed for thread {thread_id}: {e}")
             raise HTTPException(
@@ -166,7 +169,7 @@ class GraphService:
     ):
         is_new_thread = False
         config = graph_input.config or {}
-        if "thread_id" in config:
+        if config.get("thread_id"):
             thread_id = config["thread_id"]
         else:
             thread_id = await InjectQ.get_instance().atry_get("generated_id") or str(uuid4())
@@ -258,6 +261,9 @@ class GraphService:
                 meta=meta,
             )
 
+        except ValueError as e:
+            logger.warning(f"Graph input validation failed: {e}")
+            raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
             logger.error(f"Graph execution failed: {e}")
             raise HTTPException(status_code=500, detail=f"Graph execution failed: {e!s}")
@@ -334,6 +340,9 @@ class GraphService:
                     + "\n"
                 )
 
+        except ValueError as e:
+            logger.warning(f"Graph stream input validation failed: {e}")
+            raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
             logger.error(f"Graph streaming failed: {e}")
             raise HTTPException(status_code=500, detail=f"Graph streaming failed: {e!s}")
@@ -341,9 +350,11 @@ class GraphService:
     async def graph_details(self) -> GraphSchema:
         try:
             logger.info("Getting graph details")
-            # Fetch and return graph details
             res = self._graph.generate_graph()
             return GraphSchema(**res)
+        except ValueError as e:
+            logger.warning(f"Graph details validation failed: {e}")
+            raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
             logger.error(f"Failed to get graph details: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get graph details: {e!s}")
@@ -351,9 +362,11 @@ class GraphService:
     async def get_state_schema(self) -> dict:
         try:
             logger.info("Getting state schema")
-            # Fetch and return state schema
             res: BaseModel = self._graph._state
             return res.model_json_schema()
+        except ValueError as e:
+            logger.warning(f"State schema validation failed: {e}")
+            raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
             logger.error(f"Failed to get state schema: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get state schema: {e!s}")
@@ -451,6 +464,9 @@ class GraphService:
                 "removed_count": removed_count,
                 "state": state.model_dump_json(serialize_as_any=True),
             }
+        except ValueError as e:
+            logger.warning(f"Fix graph input validation failed: {e}")
+            raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
             logger.error(f"Fix graph operation failed: {e}")
             raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")

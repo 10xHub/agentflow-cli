@@ -2,7 +2,7 @@ from typing import Any
 
 from agentflow.state import Message
 from agentflow.utils import ResponseGranularity
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class GraphInputSchema(BaseModel):
@@ -23,8 +23,17 @@ class GraphInputSchema(BaseModel):
     )
     recursion_limit: int = Field(
         default=25,
+        ge=1,
+        le=100,
         description="Maximum recursion limit for graph execution",
     )
+
+    @field_validator("messages")
+    @classmethod
+    def messages_must_not_be_empty(cls, v: list[Message]) -> list[Message]:
+        if not v:
+            raise ValueError("messages must contain at least one message")
+        return v
     response_granularity: ResponseGranularity = Field(
         default=ResponseGranularity.LOW,
         description="Granularity of the response (full, partial, low)",
@@ -111,7 +120,7 @@ class GraphSchema(BaseModel):
 class GraphStopSchema(BaseModel):
     """Schema for stopping graph execution."""
 
-    thread_id: str = Field(..., description="Thread ID to stop execution for")
+    thread_id: str = Field(..., min_length=1, description="Thread ID to stop execution for")
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the stop operation"
     )
@@ -137,7 +146,7 @@ class GraphSetupSchema(BaseModel):
 class FixGraphRequestSchema(BaseModel):
     """Schema for fixing graph state by removing messages with empty tool call content."""
 
-    thread_id: str = Field(..., description="Thread ID to fix the graph state for")
+    thread_id: str = Field(..., min_length=1, description="Thread ID to fix the graph state for")
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the fix operation"
     )

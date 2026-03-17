@@ -3,7 +3,7 @@
 from typing import Any
 
 from agentflow.state import Message
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from injectq.integrations import InjectAPI
 
 from agentflow_cli.src.app.core.auth.permissions import RequirePermission
@@ -48,6 +48,9 @@ async def get_state(
     Returns:
         State response with state data or error
     """
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+
     config = {"thread_id": thread_id}
 
     result = await service.get_state(
@@ -86,11 +89,13 @@ async def put_state(
     Returns:
         Success response or error
     """
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
 
-    # State is provided as dict; service will handle merging/reconstruction
     res = await service.put_state(
         config,
         user,
@@ -127,6 +132,9 @@ async def clear_state(
     Returns:
         Success response or error
     """
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+
     config = {"thread_id": thread_id}
 
     res = await service.clear_state(
@@ -168,7 +176,11 @@ async def put_messages(
     Returns:
         Success response or error
     """
-    # Convert message dicts to Message objects if needed
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    if not payload.messages:
+        raise HTTPException(status_code=422, detail="messages must not be empty")
+
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
@@ -213,6 +225,11 @@ async def get_message(
     Returns:
         Message response with message data or error
     """
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    if not message_id or (isinstance(message_id, str) and not str(message_id).strip()):
+        raise HTTPException(status_code=422, detail="message_id is required and cannot be empty")
+
     config = {"thread_id": thread_id}
 
     result = await service.get_message(
@@ -255,6 +272,13 @@ async def list_messages(
     Returns:
         Messages list response with messages data or error
     """
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    if offset is not None and offset < 0:
+        raise HTTPException(status_code=422, detail="offset must be >= 0")
+    if limit is not None and limit <= 0:
+        raise HTTPException(status_code=422, detail="limit must be > 0")
+
     config = {"thread_id": thread_id}
 
     result = await service.get_messages(
@@ -297,6 +321,11 @@ async def delete_message(
     Returns:
         Success response or error
     """
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    if not message_id or (isinstance(message_id, str) and not str(message_id).strip()):
+        raise HTTPException(status_code=422, detail="message_id is required and cannot be empty")
+
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
@@ -415,6 +444,9 @@ async def delete_thread(
     Returns:
         Success response or error
     """
+    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
+        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
