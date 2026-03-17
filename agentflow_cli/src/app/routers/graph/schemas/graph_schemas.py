@@ -121,6 +121,13 @@ class GraphStopSchema(BaseModel):
     """Schema for stopping graph execution."""
 
     thread_id: str = Field(..., min_length=1, description="Thread ID to stop execution for")
+
+    @field_validator("thread_id")
+    @classmethod
+    def thread_id_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("thread_id cannot be empty or whitespace")
+        return v.strip()
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the stop operation"
     )
@@ -147,6 +154,13 @@ class FixGraphRequestSchema(BaseModel):
     """Schema for fixing graph state by removing messages with empty tool call content."""
 
     thread_id: str = Field(..., min_length=1, description="Thread ID to fix the graph state for")
+
+    @field_validator("thread_id")
+    @classmethod
+    def thread_id_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("thread_id cannot be empty or whitespace")
+        return v.strip()
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the fix operation"
     )

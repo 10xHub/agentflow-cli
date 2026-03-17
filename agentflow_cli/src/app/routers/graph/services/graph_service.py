@@ -169,8 +169,8 @@ class GraphService:
     ):
         is_new_thread = False
         config = graph_input.config or {}
-        if config.get("thread_id"):
-            thread_id = config["thread_id"]
+        if config.get("thread_id") and str(config["thread_id"]).strip():
+            thread_id = str(config["thread_id"]).strip()
         else:
             thread_id = await InjectQ.get_instance().atry_get("generated_id") or str(uuid4())
             is_new_thread = True
