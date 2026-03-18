@@ -22,6 +22,9 @@ logger = logging.getLogger("agentflow-cli.loader")
 
 
 async def load_graph(path: str) -> CompiledGraph | None:
+    if ":" not in path:
+        raise ValueError(f"Invalid graph path format '{path}'. Expected 'module:attribute'.")
+
     module_name_importable, function_name = path.split(":")
 
     try:
@@ -44,6 +47,12 @@ async def load_graph(path: str) -> CompiledGraph | None:
         else:
             raise TypeError("Loaded object is not a CompiledGraph.")
 
+    except ModuleNotFoundError as e:
+        logger.error(f"Module not found when loading graph from {path}: {e}")
+        raise ModuleNotFoundError(f"Module not found for graph path '{path}': {e}")
+    except AttributeError as e:
+        logger.error(f"Attribute not found when loading graph from {path}: {e}")
+        raise AttributeError(f"Attribute not found for graph path '{path}': {e}")
     except Exception as e:
         logger.error(f"Error loading graph from {path}: {e}")
         raise Exception(f"Failed to load graph from {path}: {e}")
@@ -54,6 +63,9 @@ async def load_graph(path: str) -> CompiledGraph | None:
 def load_checkpointer(path: str | None) -> BaseCheckpointer | None:
     if not path:
         return None
+
+    if ":" not in path:
+        raise ValueError(f"Invalid checkpointer path format '{path}'. Expected 'module:attribute'.")
 
     module_name_importable, function_name = path.split(":")
 
@@ -69,6 +81,12 @@ def load_checkpointer(path: str | None) -> BaseCheckpointer | None:
             logger.info(f"Successfully loaded BaseCheckpointer '{function_name}' from {path}.")
         else:
             raise TypeError("Loaded object is not a BaseCheckpointer.")
+    except ModuleNotFoundError as e:
+        logger.error(f"Module not found when loading BaseCheckpointer from {path}: {e}")
+        raise ModuleNotFoundError(f"Module not found for checkpointer path '{path}': {e}")
+    except AttributeError as e:
+        logger.error(f"Attribute not found when loading BaseCheckpointer from {path}: {e}")
+        raise AttributeError(f"Attribute not found for checkpointer path '{path}': {e}")
     except Exception as e:
         logger.error(f"Error loading BaseCheckpointer from {path}: {e}")
         raise Exception(f"Failed to load BaseCheckpointer from {path}: {e}")
@@ -79,6 +97,9 @@ def load_checkpointer(path: str | None) -> BaseCheckpointer | None:
 def load_store(path: str | None) -> BaseStore | None:
     if not path:
         return None
+
+    if ":" not in path:
+        raise ValueError(f"Invalid store path format '{path}'. Expected 'module:attribute'.")
 
     module_name_importable, function_name = path.split(":")
 
@@ -94,6 +115,12 @@ def load_store(path: str | None) -> BaseStore | None:
             logger.info(f"Successfully loaded graph '{function_name}' from {path}.")
         else:
             raise TypeError("Loaded object is not a BaseStore.")
+    except ModuleNotFoundError as e:
+        logger.error(f"Module not found when loading BaseStore from {path}: {e}")
+        raise ModuleNotFoundError(f"Module not found for store path '{path}': {e}")
+    except AttributeError as e:
+        logger.error(f"Attribute not found when loading BaseStore from {path}: {e}")
+        raise AttributeError(f"Attribute not found for store path '{path}': {e}")
     except Exception as e:
         logger.error(f"Error loading BaseStore from {path}: {e}")
         raise Exception(f"Failed to load BaseStore from {path}: {e}")
@@ -134,13 +161,15 @@ def load_auth(path: str | None) -> BaseAuth | None:
     if not path:
         return None
 
+    if ":" not in path:
+        raise ValueError(f"Invalid auth path format '{path}'. Expected 'module:attribute'.")
+
     module_name_importable, function_name = path.split(":")
 
     try:
         module = importlib.import_module(module_name_importable)
         entry_point_obj = getattr(module, function_name)
 
-        # If it's a class, instantiate it; if it's an instance, use as is
         if inspect.isclass(entry_point_obj) and issubclass(entry_point_obj, BaseAuth):
             auth = entry_point_obj()
         elif isinstance(entry_point_obj, BaseAuth):
@@ -149,6 +178,12 @@ def load_auth(path: str | None) -> BaseAuth | None:
             raise TypeError("Loaded object is not a subclass or instance of BaseAuth.")
 
         logger.info(f"Successfully loaded BaseAuth '{function_name}' from {path}.")
+    except ModuleNotFoundError as e:
+        logger.error(f"Module not found when loading BaseAuth from {path}: {e}")
+        raise ModuleNotFoundError(f"Module not found for auth path '{path}': {e}")
+    except AttributeError as e:
+        logger.error(f"Attribute not found when loading BaseAuth from {path}: {e}")
+        raise AttributeError(f"Attribute not found for auth path '{path}': {e}")
     except Exception as e:
         logger.error(f"Error loading BaseAuth from {path}: {e}")
         raise Exception(f"Failed to load BaseAuth from {path}: {e}")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from injectq.integrations import InjectAPI
 
 from agentflow_cli.src.app.core.auth.permissions import RequirePermission
@@ -64,6 +64,8 @@ async def search_memories(
     user: dict[str, Any] = Depends(RequirePermission("store", "read")),
 ):
     """Search stored memories."""
+    if not payload.query or (isinstance(payload.query, str) and not payload.query.strip()):
+        raise HTTPException(status_code=422, detail="query is required and cannot be empty")
 
     result = await service.search_memories(payload, user)
     return success_response(result, request)
@@ -87,6 +89,8 @@ async def get_memory(
     user: dict[str, Any] = Depends(RequirePermission("store", "read")),
 ):
     """Get a memory by ID."""
+    if not memory_id or not memory_id.strip():
+        raise HTTPException(status_code=422, detail="memory_id is required and cannot be empty")
 
     cfg = payload.config if payload else {}
     opts = payload.options if payload else None
@@ -112,6 +116,9 @@ async def list_memories(
 ):
     """List stored memories."""
 
+    if payload and payload.limit is not None and payload.limit <= 0:
+        raise HTTPException(status_code=422, detail="limit must be > 0")
+
     if payload is None:
         payload = ListMemoriesSchema()
     cfg = payload.config or {}
@@ -135,6 +142,8 @@ async def update_memory(
     user: dict[str, Any] = Depends(RequirePermission("store", "write")),
 ):
     """Update a stored memory."""
+    if not memory_id or not memory_id.strip():
+        raise HTTPException(status_code=422, detail="memory_id is required and cannot be empty")
 
     result = await service.update_memory(memory_id, payload, user)
     return success_response(result, request, message="Memory updated successfully")
@@ -158,6 +167,8 @@ async def delete_memory(
     user: dict[str, Any] = Depends(RequirePermission("store", "delete")),
 ):
     """Delete a stored memory."""
+    if not memory_id or not memory_id.strip():
+        raise HTTPException(status_code=422, detail="memory_id is required and cannot be empty")
 
     config_payload = payload.config if payload else {}
     options_payload = payload.options if payload else None
