@@ -26,6 +26,26 @@ from .services.checkpointer_service import CheckpointerService
 router = APIRouter(tags=["checkpointer"])
 
 
+def validate_thread_id(thread_id: int | str) -> None:
+    if isinstance(thread_id, str):
+        if not thread_id.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="thread_id cannot be empty or whitespace"
+            )
+    elif isinstance(thread_id, int):
+        if thread_id < 1:
+            raise HTTPException(
+                status_code=422,
+                detail="thread_id must be a non-negative integer"
+            )
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail="thread_id must be a string or integer"
+        )
+
+
 @router.get(
     "/v1/threads/{thread_id}/state",
     status_code=status.HTTP_200_OK,
@@ -48,8 +68,7 @@ async def get_state(
     Returns:
         State response with state data or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    validate_thread_id(thread_id)
 
     config = {"thread_id": thread_id}
 
@@ -89,9 +108,7 @@ async def put_state(
     Returns:
         Success response or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
-
+    validate_thread_id(thread_id)
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
@@ -132,9 +149,7 @@ async def clear_state(
     Returns:
         Success response or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
-
+    validate_thread_id(thread_id)
     config = {"thread_id": thread_id}
 
     res = await service.clear_state(
@@ -176,8 +191,7 @@ async def put_messages(
     Returns:
         Success response or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    validate_thread_id(thread_id)
     if not payload.messages:
         raise HTTPException(status_code=422, detail="messages must not be empty")
 
@@ -225,8 +239,7 @@ async def get_message(
     Returns:
         Message response with message data or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    validate_thread_id(thread_id)
     if not message_id or (isinstance(message_id, str) and not str(message_id).strip()):
         raise HTTPException(status_code=422, detail="message_id is required and cannot be empty")
 
@@ -272,8 +285,7 @@ async def list_messages(
     Returns:
         Messages list response with messages data or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    validate_thread_id(thread_id)
     if offset is not None and offset < 0:
         raise HTTPException(status_code=422, detail="offset must be >= 0")
     if limit is not None and limit <= 0:
@@ -321,8 +333,7 @@ async def delete_message(
     Returns:
         Success response or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
+    validate_thread_id(thread_id)
     if not message_id or (isinstance(message_id, str) and not str(message_id).strip()):
         raise HTTPException(status_code=422, detail="message_id is required and cannot be empty")
 
@@ -369,6 +380,7 @@ async def get_thread(
     Returns:
         Thread response with thread data or error
     """
+    validate_thread_id(thread_id)
     result = await service.get_thread(
         {"thread_id": thread_id},
         user,
@@ -444,9 +456,7 @@ async def delete_thread(
     Returns:
         Success response or error
     """
-    if not thread_id or (isinstance(thread_id, str) and not str(thread_id).strip()):
-        raise HTTPException(status_code=422, detail="thread_id is required and cannot be empty")
-
+    validate_thread_id(thread_id)
     config = {"thread_id": thread_id}
     if payload.config:
         config.update(payload.config)
