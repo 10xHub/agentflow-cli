@@ -14,6 +14,13 @@ DEFAULT_CONFIG_FILE: Final[str] = "agentflow.json"
 DEFAULT_PYTHON_VERSION: Final[str] = "3.13"
 DEFAULT_SERVICE_NAME: Final[str] = "agentflow-api"
 
+# A2A server defaults
+DEFAULT_A2A_HOST: Final[str] = "0.0.0.0"
+DEFAULT_A2A_PORT: Final[int] = 9999
+DEFAULT_A2A_NAME: Final[str] = "AgentFlowAgent"
+DEFAULT_A2A_DESCRIPTION: Final[str] = "An agentflow-powered A2A agent"
+DEFAULT_A2A_VERSION: Final[str] = "1.0.0"
+
 # File paths and names
 CONFIG_FILENAMES: Final[list[str]] = [
     "agentflow.json",
