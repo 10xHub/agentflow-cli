@@ -282,10 +282,10 @@ class GraphService:
 
         Yields:
             str: Individual JSON chunks from graph execution with newline delimiters.
-
-        Raises:
-            HTTPException: If graph streaming fails.
         """
+        # Initialize meta here so it is available in the except blocks even if
+        # _prepare_input raises before assigning it.
+        meta: dict[str, Any] = {}
         try:
             logger.debug(f"Streaming graph with input: {graph_input.messages}")
 
@@ -340,12 +340,23 @@ class GraphService:
                     + "\n"
                 )
 
-        except ValueError as e:
-            logger.warning(f"Graph stream input validation failed: {e}")
-            raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
+            # Never raise HTTPException from inside an async generator that is
+            # consumed by StreamingResponse.  By the time any exception is raised
+            # from within the generator body, Starlette has already committed to a
+            # 200 OK response and cannot replace it with a 4xx/5xx.  Raising here
+            # would cause: RuntimeError("Caught handled exception, but response
+            # already started.")  Instead, we yield a structured error chunk so
+            # the client can detect and display the failure.
             logger.error(f"Graph streaming failed: {e}")
-            raise HTTPException(status_code=500, detail=f"Graph streaming failed: {e!s}")
+            yield (
+                StreamChunk(
+                    event=StreamEvent.ERROR,
+                    data={"reason": str(e)},
+                    metadata=meta,
+                ).model_dump_json(serialize_as_any=True)
+                + "\n"
+            )
 
     async def graph_details(self) -> GraphSchema:
         try:
