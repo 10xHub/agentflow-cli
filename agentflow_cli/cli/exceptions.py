@@ -100,3 +100,24 @@ class DockerError(PyagenityCLIError):
         """
         super().__init__(message, exit_code=1)
         self.dockerfile_path = dockerfile_path
+
+
+class EvaluationError(PyagenityCLIError):
+    """Raised when agent evaluation operations fail."""
+
+    def __init__(
+        self,
+        message: str,
+        agent_module: str | None = None,
+        eval_file: str | None = None,
+    ) -> None:
+        """Initialize evaluation error.
+
+        Args:
+            message: Error message
+            agent_module: Python module path of the agent graph
+            eval_file: Path to the eval set file
+        """
+        super().__init__(message, exit_code=1)
+        self.agent_module = agent_module
+        self.eval_file = eval_file

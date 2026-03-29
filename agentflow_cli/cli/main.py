@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.commands.build import BuildCommand
+from agentflow_cli.cli.commands.eval import EvalCommand
 from agentflow_cli.cli.commands.init import InitCommand
 from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import DEFAULT_CONFIG_FILE, DEFAULT_HOST, DEFAULT_PORT
@@ -240,6 +241,62 @@ def build(
             port=port,
             docker_compose=docker_compose,
             service_name=service_name,
+        )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command(name="eval")
+def eval_cmd(
+    agent_module: str = typer.Option(
+        ...,
+        "--agent-module",
+        "-a",
+        help="Dotted Python module path containing the graph (e.g. graph.react)",
+    ),
+    eval_file: str = typer.Option(
+        ...,
+        "--eval-file",
+        "-e",
+        help="Path to the .evalset.json file",
+    ),
+    config_file: str = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to an EvalConfig JSON file (optional)",
+    ),
+    output_file: str = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output JSON report file path (default: eval_report_<timestamp>.json)",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress all output except errors",
+    ),
+) -> None:
+    """Run agent evaluation and generate a JSON report."""
+    # Setup logging
+    setup_cli_logging(verbose=verbose, quiet=quiet)
+
+    try:
+        command = EvalCommand(output)
+        exit_code = command.execute(
+            agent_module=agent_module,
+            eval_file=eval_file,
+            config_file=config_file,
+            output=output_file,
         )
         sys.exit(exit_code)
     except Exception as e:
