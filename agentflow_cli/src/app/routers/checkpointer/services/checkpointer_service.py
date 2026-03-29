@@ -2,6 +2,7 @@ from typing import Any
 
 from agentflow.checkpointer import BaseCheckpointer
 from agentflow.state import AgentState, Message
+from fastapi import HTTPException
 from injectq import inject, singleton
 
 from agentflow_cli.src.app.core import logger
@@ -26,7 +27,7 @@ class CheckpointerService:
 
     def _config(self, config: dict[str, Any] | None, user: dict) -> dict[str, Any]:
         if not self.checkpointer:
-            raise ValueError("Checkpointer is not configured")
+            raise HTTPException(status_code=503, detail="Checkpointer service is not available")
 
         cfg: dict[str, Any] = dict(config or {})
         cfg["user"] = user

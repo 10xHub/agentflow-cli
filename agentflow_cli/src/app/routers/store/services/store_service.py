@@ -4,6 +4,7 @@ from typing import Any
 
 from agentflow.state import Message
 from agentflow.store import BaseStore
+from fastapi import HTTPException
 from injectq import inject, singleton
 
 from agentflow_cli.src.app.core import logger
@@ -30,7 +31,7 @@ class StoreService:
 
     def _get_store(self) -> BaseStore:
         if not self.store:
-            raise ValueError("Store is not configured")
+            raise HTTPException(status_code=503, detail="Store service is not available")
         return self.store
 
     def _config(self, config: dict[str, Any] | None, user: dict[str, Any]) -> dict[str, Any]:

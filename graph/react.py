@@ -21,9 +21,16 @@ def get_weather(
     This demo shows injectable parameters: tool_call_id and state are automatically injected.
     """
     # You can access injected parameters here
+    """
+    Get the current weather for a specific location.
+    This demo shows injectable parameters: tool_call_id and state are automatically injected.
+    """
+    # You can access injected parameters here
     if tool_call_id:
         print(f"Tool call ID: {tool_call_id}")
+        print(f"Tool call ID: {tool_call_id}")
     if state and hasattr(state, "context"):
+        print(f"Number of messages in context: {len(state.context)}")  # type: ignore
         print(f"Number of messages in context: {len(state.context)}")  # type: ignore
 
     return f"The weather in {location} is sunny"
@@ -52,11 +59,17 @@ agent = Agent(
 
 def should_use_tools(state: AgentState) -> str:
     """Determine if we should use tools or end the conversation."""
+
+
+def should_use_tools(state: AgentState) -> str:
+    """Determine if we should use tools or end the conversation."""
     if not state.context or len(state.context) == 0:
+        return "TOOL"  # No context, might need tools
         return "TOOL"  # No context, might need tools
 
     last_message = state.context[-1]
 
+    # If the last message is from assistant and has tool calls, go to TOOL
     # If the last message is from assistant and has tool calls, go to TOOL
     if (
         hasattr(last_message, "tools_calls")
@@ -67,9 +80,12 @@ def should_use_tools(state: AgentState) -> str:
         return "TOOL"
 
     # If last message is a tool result, we should be done (AI will make final response)
+    # If last message is a tool result, we should be done (AI will make final response)
     if last_message.role == "tool":
         return "MAIN"
+        return "MAIN"
 
+    # Default to END for other cases
     # Default to END for other cases
     return END
 
@@ -77,7 +93,11 @@ def should_use_tools(state: AgentState) -> str:
 graph = StateGraph()
 graph.add_node("MAIN", agent)
 graph.add_node("TOOL", tool_node)
+graph = StateGraph()
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
 
+# Add conditional edges from MAIN
 # Add conditional edges from MAIN
 graph.add_conditional_edges(
     "MAIN",
@@ -85,6 +105,7 @@ graph.add_conditional_edges(
     {"TOOL": "TOOL", END: END},
 )
 
+# Always go back to MAIN after TOOL execution
 # Always go back to MAIN after TOOL execution
 graph.add_edge("TOOL", "MAIN")
 graph.set_entry_point("MAIN")

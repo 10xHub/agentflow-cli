@@ -56,8 +56,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                         "error": {
                             "code": "REQUEST_TOO_LARGE",
                             "message": (
-                                f"Request body too large. "
-                                f"Maximum size is {self.max_size_mb:.1f}MB"
+                                f"Request body too large. Maximum size is {self.max_size_mb:.1f}MB"
                             ),
                             "max_size_bytes": self.max_size,
                             "max_size_mb": self.max_size_mb,
