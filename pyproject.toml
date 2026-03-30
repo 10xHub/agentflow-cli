@@ -54,6 +54,10 @@ Issues = "https://github.com/10xHub/agentflow-cli/issues"
 Documentation = "https://agentflow-cli.readthedocs.io/"
 
 [project.optional-dependencies]
+a2a = [
+    "a2a-sdk",
+    "httpx",
+]
 sentry = [
     "sentry-sdk>=2.10.0",
 ]
