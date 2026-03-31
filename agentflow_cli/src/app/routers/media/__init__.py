@@ -105,8 +105,7 @@ class MediaService:
         """
         if len(data) > self.max_size_bytes:
             raise ValueError(
-                f"File size {len(data)} exceeds maximum "
-                f"{self._settings.MEDIA_MAX_SIZE_MB}MB"
+                f"File size {len(data)} exceeds maximum {self._settings.MEDIA_MAX_SIZE_MB}MB"
             )
 
         # Store binary in the configured MediaStore

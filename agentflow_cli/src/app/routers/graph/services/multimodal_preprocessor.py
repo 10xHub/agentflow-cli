@@ -39,7 +39,11 @@ async def preprocess_multimodal_messages(
         changed = False
 
         for block in msg.content:
-            if isinstance(block, DocumentBlock) and block.media.kind == "file_id" and block.media.file_id:
+            if (
+                isinstance(block, DocumentBlock)
+                and block.media.kind == "file_id"
+                and block.media.file_id
+            ):
                 cached = media_service.get_cached_extraction(block.media.file_id)
                 if cached:
                     new_content.append(TextBlock(text=cached))
