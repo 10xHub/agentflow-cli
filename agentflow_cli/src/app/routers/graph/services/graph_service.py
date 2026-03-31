@@ -55,6 +55,21 @@ class GraphService:
         self.checkpointer = checkpointer
         self.thread_name_generator = thread_name_generator
 
+        # Lazy import to avoid circular dependency
+        self._media_service = None
+
+    @property
+    def media_service(self):
+        if self._media_service is None:
+            try:
+                container = InjectQ.get_instance()
+                from agentflow_cli.src.app.routers.media import MediaService
+
+                self._media_service = container.try_get(MediaService)
+            except Exception:
+                self._media_service = None
+        return self._media_service
+
     async def _save_thread_name(
         self,
         config: dict[str, Any],
@@ -185,8 +200,13 @@ class GraphService:
         config["recursion_limit"] = graph_input.recursion_limit or 25
 
         # Prepare the input for the graph
+        # Preprocess multimodal messages (resolve file_id → cached text, etc.)
+        preprocessed = await preprocess_multimodal_messages(
+            graph_input.messages,
+            self.media_service,
+        )
         input_data: dict = {
-            "messages": graph_input.messages,
+            "messages": preprocessed,
         }
         if graph_input.initial_state:
             input_data["state"] = graph_input.initial_state
