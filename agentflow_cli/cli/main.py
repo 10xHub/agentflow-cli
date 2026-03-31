@@ -5,14 +5,11 @@ import sys
 import typer
 from dotenv import load_dotenv
 
-from agentflow_cli.cli.commands.a2a import A2ACommand
 from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.commands.build import BuildCommand
 from agentflow_cli.cli.commands.init import InitCommand
 from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import (
-    DEFAULT_A2A_HOST,
-    DEFAULT_A2A_PORT,
     DEFAULT_CONFIG_FILE,
     DEFAULT_HOST,
     DEFAULT_PORT,
@@ -165,74 +162,6 @@ def play(
             port=port,
             reload=reload,
             open_playground=True,
-        )
-        sys.exit(exit_code)
-    except Exception as e:
-        sys.exit(handle_exception(e))
-
-
-@app.command()
-def a2a(
-    config: str = typer.Option(
-        DEFAULT_CONFIG_FILE,
-        "--config",
-        "-c",
-        help="Path to agentflow.json config file",
-    ),
-    host: str = typer.Option(
-        DEFAULT_A2A_HOST,
-        "--host",
-        "-H",
-        help="Host to bind the A2A server on (default: 0.0.0.0)",
-    ),
-    port: int = typer.Option(
-        DEFAULT_A2A_PORT,
-        "--port",
-        "-p",
-        help="Port to run the A2A server on (default: 9999)",
-    ),
-    name: str = typer.Option(
-        None,
-        "--name",
-        "-n",
-        help="Agent name shown in the agent card (overrides agentflow.json)",
-    ),
-    description: str = typer.Option(
-        None,
-        "--description",
-        "-d",
-        help="Agent description shown in the agent card (overrides agentflow.json)",
-    ),
-    streaming: bool = typer.Option(
-        False,
-        "--streaming/--no-streaming",
-        help="Enable A2A streaming (SSE) responses",
-    ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Enable verbose logging",
-    ),
-    quiet: bool = typer.Option(
-        False,
-        "--quiet",
-        "-q",
-        help="Suppress all output except errors",
-    ),
-) -> None:
-    """Start an A2A-protocol agent server for the configured graph."""
-    setup_cli_logging(verbose=verbose, quiet=quiet)
-
-    try:
-        command = A2ACommand(output)
-        exit_code = command.execute(
-            config=config,
-            host=host,
-            port=port,
-            name=name,
-            description=description,
-            streaming=streaming,
         )
         sys.exit(exit_code)
     except Exception as e:

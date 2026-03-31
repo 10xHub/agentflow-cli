@@ -29,21 +29,12 @@ router = APIRouter(tags=["checkpointer"])
 def validate_thread_id(thread_id: int | str) -> None:
     if isinstance(thread_id, str):
         if not thread_id.strip():
-            raise HTTPException(
-                status_code=422,
-                detail="thread_id cannot be empty or whitespace"
-            )
+            raise HTTPException(status_code=422, detail="thread_id cannot be empty or whitespace")
     elif isinstance(thread_id, int):
         if thread_id < 1:
-            raise HTTPException(
-                status_code=422,
-                detail="thread_id must be a non-negative integer"
-            )
+            raise HTTPException(status_code=422, detail="thread_id must be a non-negative integer")
     else:
-        raise HTTPException(
-            status_code=422,
-            detail="thread_id must be a string or integer"
-        )
+        raise HTTPException(status_code=422, detail="thread_id must be a string or integer")
 
 
 @router.get(

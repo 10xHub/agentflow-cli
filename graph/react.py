@@ -1,8 +1,7 @@
-from agentflow.state.message import Message
 from agentflow.checkpointer import InMemoryCheckpointer
 from agentflow.graph import StateGraph, ToolNode
 from agentflow.graph.agent import Agent
-from agentflow.state import AgentState, ToolResult
+from agentflow.state import AgentState
 from agentflow.utils.constants import END
 from dotenv import load_dotenv
 
@@ -94,18 +93,3 @@ graph.set_entry_point("MAIN")
 app = graph.compile(
     checkpointer=checkpointer,
 )
-
-
-if __name__ == "__main__":
-    config = {
-        "thread_id": "demo_thread_1",
-    }
-    inp = {"messages": [Message.text_message("Hello")]}
-
-    result = app.invoke(inp, config)
-
-    print("Final Result:", result)
-
-    result = app.invoke(inp, config)
-
-    print("Final Result after tool call:", result)

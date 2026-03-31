@@ -25,3 +25,10 @@ def test_play_command_delegates_to_api_command(monkeypatch):
     assert called["port"] == 9001
     assert called["reload"] is False
     assert called["open_playground"] is True
+
+
+def test_a2a_command_is_not_exposed():
+    result = runner.invoke(main_mod.app, ["a2a"])
+
+    assert result.exit_code != 0
+    assert "No such command 'a2a'" in result.output
