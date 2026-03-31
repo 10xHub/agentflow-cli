@@ -336,6 +336,18 @@ async def attach_all_modules(
     authorization_path = config.authorization_path
     load_and_bind_authorization(container, authorization_path)
 
+    # --- Media service wiring ---
+    from agentflow_cli.src.app.core.config.media_settings import (
+        MediaSettings,
+        get_media_settings,
+    )
+    from agentflow_cli.src.app.routers.media import MediaService
+
+    media_settings = get_media_settings()
+    container.bind_instance(MediaSettings, media_settings)
+    media_service = MediaService(settings=media_settings)
+    container.bind_instance(MediaService, media_service)
+
     logger.info("Container loaded successfully")
     logger.debug(f"Container dependency graph: {container.get_dependency_graph()}")
 

@@ -20,6 +20,9 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphSchema,
     GraphSetupSchema,
 )
+from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+    preprocess_multimodal_messages,
+)
 from agentflow_cli.src.app.utils import DummyThreadNameGenerator, ThreadNameGenerator
 
 
