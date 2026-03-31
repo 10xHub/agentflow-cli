@@ -88,6 +88,66 @@ def test_api_command_error_path(monkeypatch, silent_output):
     assert code == 1
 
 
+def test_api_command_builds_local_playground_url_for_wildcard_host(silent_output):
+    cmd = APICommand(output=silent_output)
+    url = cmd._build_playground_url(
+        cmd._normalize_browser_host("0.0.0.0"),
+        8000,
+        "https://playground-463bd.web.app",
+    )
+
+    assert url == "https://playground-463bd.web.app?backendUrl=http%3A%2F%2F127.0.0.1%3A8000"
+
+
+def test_api_command_schedules_playground_launch(monkeypatch, tmp_path, silent_output):
+    def fake_validate(host, port, config):
+        return {"host": host, "port": port, "config": config}
+
+    class FakeConfigManager:
+        def find_config_file(self, cfg):
+            p = tmp_path / cfg
+            p.write_text("{}", encoding="utf-8")
+            return p
+
+        def load_config(self, path):  # noqa: D401 - simple stub
+            return {}
+
+        def resolve_env_file(self):
+            return None
+
+    scheduled = {}
+
+    def fake_schedule(self, host, port, playground_base_url):
+        scheduled.update(
+            {
+                "host": host,
+                "port": port,
+                "playground_base_url": playground_base_url,
+            }
+        )
+
+    monkeypatch.setattr("agentflow_cli.cli.commands.api.validate_cli_options", fake_validate)
+    monkeypatch.setattr("agentflow_cli.cli.commands.api.ConfigManager", lambda: FakeConfigManager())
+    monkeypatch.setattr("agentflow_cli.cli.commands.api.uvicorn.run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(APICommand, "_schedule_playground_launch", fake_schedule)
+
+    cmd = APICommand(output=silent_output)
+    code = cmd.execute(
+        config="test_config.json",
+        host="127.0.0.1",
+        port=TEST_PORT,
+        reload=False,
+        open_playground=True,
+    )
+
+    assert code == 0
+    assert scheduled == {
+        "host": "127.0.0.1",
+        "port": TEST_PORT,
+        "playground_base_url": "https://playground-463bd.web.app",
+    }
+
+
 def test_init_command_basic(tmp_path, silent_output):
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False, prod=False)

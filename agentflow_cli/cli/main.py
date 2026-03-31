@@ -114,6 +114,64 @@ def api(
 
 
 @app.command()
+def play(
+    config: str = typer.Option(
+        DEFAULT_CONFIG_FILE,
+        "--config",
+        "-c",
+        help="Path to config file",
+    ),
+    host: str = typer.Option(
+        DEFAULT_HOST,
+        "--host",
+        "-H",
+        help=(
+            "Host to run the API on for the local playground session "
+            "(use 127.0.0.1 for localhost only)"
+        ),
+    ),
+    port: int = typer.Option(
+        DEFAULT_PORT,
+        "--port",
+        "-p",
+        help="Port to run the API on",
+    ),
+    reload: bool = typer.Option(
+        True,
+        "--reload/--no-reload",
+        help="Enable auto-reload for development",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress all output except errors",
+    ),
+) -> None:
+    """Start the API server and open the hosted playground."""
+    setup_cli_logging(verbose=verbose, quiet=quiet)
+
+    try:
+        command = APICommand(output)
+        exit_code = command.execute(
+            config=config,
+            host=host,
+            port=port,
+            reload=reload,
+            open_playground=True,
+        )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command()
 def a2a(
     config: str = typer.Option(
         DEFAULT_CONFIG_FILE,

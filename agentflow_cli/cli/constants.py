@@ -11,6 +11,7 @@ CLI_VERSION: Final[str] = "1.0.0"
 DEFAULT_HOST: Final[str] = "127.0.0.1"
 DEFAULT_PORT: Final[int] = 8000
 DEFAULT_CONFIG_FILE: Final[str] = "agentflow.json"
+DEFAULT_PLAYGROUND_URL: Final[str] = "https://playground-463bd.web.app"
 DEFAULT_PYTHON_VERSION: Final[str] = "3.13"
 DEFAULT_SERVICE_NAME: Final[str] = "agentflow-api"
 

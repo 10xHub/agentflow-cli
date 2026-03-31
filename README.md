@@ -35,6 +35,12 @@ agentflow init --prod
 agentflow api
 ```
 
+### Start API With Play
+
+```bash
+agentflow play
+```
+
 ### Generate Docker Files
 
 ```bash
@@ -94,6 +100,24 @@ agentflow api --no-reload
 
 # Verbose logging
 agentflow api --verbose
+```
+
+### `agentflow play`
+
+Start the development API server and open the hosted playground with your local backend URL preconfigured.
+
+```bash
+# Start with defaults and open the playground
+agentflow play
+
+# Custom host and port
+agentflow play --host 127.0.0.1 --port 9000
+
+# Custom config file
+agentflow play --config production.json
+
+# Disable auto-reload
+agentflow play --no-reload
 ```
 
 ### `agentflow build`
