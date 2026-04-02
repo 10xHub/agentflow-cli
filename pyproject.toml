@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.2.8"
+version = "0.2.9"
 description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
@@ -45,6 +45,7 @@ dependencies = [
     "typer",
     "python-dotenv",
     "PyJWT",
+    "textxtract[pdf,docx,html,xml,md]>=0.2.0",
 ]
 
 [project.urls]
@@ -54,10 +55,6 @@ Issues = "https://github.com/10xHub/agentflow-cli/issues"
 Documentation = "https://agentflow-cli.readthedocs.io/"
 
 [project.optional-dependencies]
-a2a = [
-    "a2a-sdk",
-    "httpx",
-]
 sentry = [
     "sentry-sdk>=2.10.0",
 ]

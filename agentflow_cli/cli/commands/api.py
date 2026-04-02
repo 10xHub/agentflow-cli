@@ -1,5 +1,6 @@
 """API server command implementation."""
 
+import ipaddress
 import os
 import socket
 import sys
@@ -196,8 +197,15 @@ class APICommand(BaseCommand):
         return f"{playground_base_url}?{urlencode({'backendUrl': backend_url})}"
 
     def _normalize_browser_host(self, host: str) -> str:
-        if host in {"0.0.0.0", "::", "[::]", ""}:
+        if not host:
             return "127.0.0.1"
-        if host.startswith("[") and host.endswith("]"):
-            return host[1:-1]
-        return host
+
+        normalized_host = host[1:-1] if host.startswith("[") and host.endswith("]") else host
+
+        try:
+            if ipaddress.ip_address(normalized_host).is_unspecified:
+                return "127.0.0.1"
+        except ValueError:
+            pass
+
+        return normalized_host
