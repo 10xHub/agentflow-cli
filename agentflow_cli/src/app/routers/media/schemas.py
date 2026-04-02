@@ -12,13 +12,25 @@ class FileUploadResponse(BaseModel):
     filename: str
     extracted_text: str | None = None
     url: str = Field(..., description="Relative retrieval URL")
+    direct_url: str | None = None
+    direct_url_expires_at: int | None = None
 
 
 class FileInfoResponse(BaseModel):
     file_id: str
     mime_type: str
     size_bytes: int
+    filename: str | None = None
     extracted_text: str | None = None
+    direct_url: str | None = None
+    direct_url_expires_at: int | None = None
+
+
+class FileAccessUrlResponse(BaseModel):
+    file_id: str
+    url: str
+    expires_at: int | None = None
+    mime_type: str
 
 
 class MultimodalConfigResponse(BaseModel):

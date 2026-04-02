@@ -18,6 +18,15 @@ from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas imp
 from agentflow_cli.src.app.utils.parse_output import parse_state_output
 
 
+class CheckpointerUnavailableError(HTTPException, ValueError):
+    """Raised when the checkpointer service has not been configured."""
+
+    def __init__(self) -> None:
+        detail = "Checkpointer is not configured"
+        HTTPException.__init__(self, status_code=503, detail=detail)
+        ValueError.__init__(self, detail)
+
+
 @singleton
 class CheckpointerService:
     @inject
@@ -27,7 +36,7 @@ class CheckpointerService:
 
     def _config(self, config: dict[str, Any] | None, user: dict) -> dict[str, Any]:
         if not self.checkpointer:
-            raise HTTPException(status_code=503, detail="Checkpointer service is not available")
+            raise CheckpointerUnavailableError()
 
         cfg: dict[str, Any] = dict(config or {})
         cfg["user"] = user

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import TYPE_CHECKING
 
 from agentflow.state import Message
-from agentflow.state.message_block import DocumentBlock, ImageBlock, TextBlock
+from agentflow.state.message_block import DocumentBlock, TextBlock
+
 
 if TYPE_CHECKING:
     from agentflow_cli.src.app.routers.media import MediaService
@@ -14,9 +16,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger("agentflow-cli.media")
 
 
+async def _get_cached_extraction(media_service: MediaService, file_id: str) -> str | None:
+    """Read cached extraction from async or sync service APIs."""
+    async_getter = getattr(media_service, "aget_cached_extraction", None)
+    if callable(async_getter):
+        result = async_getter(file_id)
+        if inspect.isawaitable(result):
+            return await result
+
+    sync_getter = getattr(media_service, "get_cached_extraction", None)
+    if callable(sync_getter):
+        return sync_getter(file_id)
+
+    if callable(async_getter):
+        return result
+
+    return None
+
+
 async def preprocess_multimodal_messages(
     messages: list[Message],
-    media_service: "MediaService | None",
+    media_service: MediaService | None,
 ) -> list[Message]:
     """Resolve file_id references in messages before graph execution.
 
@@ -44,7 +64,7 @@ async def preprocess_multimodal_messages(
                 and block.media.kind == "file_id"
                 and block.media.file_id
             ):
-                cached = media_service.get_cached_extraction(block.media.file_id)
+                cached = await _get_cached_extraction(media_service, block.media.file_id)
                 if cached:
                     new_content.append(TextBlock(text=cached))
                     changed = True

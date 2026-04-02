@@ -14,6 +14,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # MediaService unit tests
 # ---------------------------------------------------------------------------
+from agentflow.checkpointer import InMemoryCheckpointer
 from agentflow_cli.src.app.core.config.media_settings import MediaSettings, MediaStorageType
 
 
@@ -34,7 +35,10 @@ class TestMediaService:
     def _make_service(self, **kwargs):
         from agentflow_cli.src.app.routers.media import MediaService
 
-        return MediaService(settings=_make_settings(**kwargs))
+        return MediaService(
+            settings=_make_settings(**kwargs),
+            checkpointer=InMemoryCheckpointer(),
+        )
 
     @pytest.mark.asyncio
     async def test_upload_file_stores_and_returns_metadata(self):
@@ -85,6 +89,7 @@ class TestMediaService:
         info = await svc.get_file_info(result["file_id"])
         assert info["mime_type"] == "text/plain"
         assert info["size_bytes"] == 3
+        assert info["filename"] == "small.txt"
 
     @pytest.mark.asyncio
     async def test_get_file_not_found(self):
@@ -106,7 +111,48 @@ class TestMediaService:
         ):
             result = await svc.upload_file(b"%PDF data", "report.pdf", "application/pdf")
         assert svc.get_cached_extraction(result["file_id"]) == "Cached!"
+        assert await svc.aget_cached_extraction(result["file_id"]) == "Cached!"
         assert svc.get_cached_extraction("missing") is None
+
+    @pytest.mark.asyncio
+    async def test_get_file_info_uses_store_metadata_without_blob_download(self):
+        svc = self._make_service()
+        mock_store = MagicMock()
+        mock_store.get_metadata = AsyncMock(
+            return_value={
+                "mime_type": "image/png",
+                "size_bytes": 123,
+                "filename": "img.png",
+            }
+        )
+        mock_store.get_direct_url = AsyncMock(return_value=None)
+        mock_store.retrieve = AsyncMock(side_effect=AssertionError("retrieve should not be called"))
+        svc._store = mock_store
+
+        info = await svc.get_file_info("file-123")
+
+        assert info["mime_type"] == "image/png"
+        assert info["size_bytes"] == 123
+        assert info["filename"] == "img.png"
+        mock_store.retrieve.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_direct_url_info_uses_cache(self):
+        svc = self._make_service()
+        mock_store = MagicMock()
+        mock_store.get_direct_url = AsyncMock(return_value="https://signed.example.com/file")
+        svc._store = mock_store
+
+        first = await svc.get_direct_url_info("file-123", mime_type="image/png")
+        second = await svc.get_direct_url_info("file-123", mime_type="image/png")
+
+        assert first == second
+        assert first["url"] == "https://signed.example.com/file"
+        mock_store.get_direct_url.assert_awaited_once_with(
+            "file-123",
+            mime_type="image/png",
+            expiration=3600,
+        )
 
 
 # ---------------------------------------------------------------------------

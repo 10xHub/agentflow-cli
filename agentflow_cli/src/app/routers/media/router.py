@@ -11,14 +11,16 @@ from fastapi.responses import Response
 from injectq.integrations import InjectAPI
 
 from agentflow_cli.src.app.core.auth.permissions import RequirePermission
-from agentflow_cli.src.app.core.config.media_settings import MediaSettings, get_media_settings
+from agentflow_cli.src.app.core.config.media_settings import get_media_settings
 from agentflow_cli.src.app.routers.media import MediaService
 from agentflow_cli.src.app.routers.media.schemas import (
+    FileAccessUrlResponse,
     FileInfoResponse,
     FileUploadResponse,
     MultimodalConfigResponse,
 )
 from agentflow_cli.src.app.utils import success_response
+
 
 router = APIRouter(tags=["Files"])
 
@@ -101,6 +103,31 @@ async def get_file_info(
         raise HTTPException(status_code=404, detail="File not found")
 
     return success_response(FileInfoResponse(**info), request)
+
+
+@router.get(
+    "/v1/files/{file_id}/url",
+    summary="Retrieve direct access URL",
+    response_model=FileAccessUrlResponse,
+)
+async def get_file_access_url(
+    request: Request,
+    file_id: str,
+    service: MediaService = InjectAPI(MediaService),
+    user: dict[str, Any] = Depends(RequirePermission("files", "read")),
+):
+    try:
+        info = await service.get_file_info(file_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    payload = FileAccessUrlResponse(
+        file_id=file_id,
+        url=info["direct_url"] or f"/v1/files/{file_id}",
+        expires_at=info.get("direct_url_expires_at"),
+        mime_type=info["mime_type"],
+    )
+    return success_response(payload, request)
 
 
 # ------------------------------------------------------------------

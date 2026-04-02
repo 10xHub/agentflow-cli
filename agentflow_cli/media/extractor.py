@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+
 logger = logging.getLogger("agentflow_cli.media.extractor")
 
 try:
@@ -65,7 +66,8 @@ class DocumentExtractor:
 
         try:
             if isinstance(data, bytes):
-                assert filename is not None
+                if filename is None:
+                    raise ValueError("filename must be provided when extracting from bytes")
                 return await self.extractor.extract(data, filename)
             return await self.extractor.extract(data)
 

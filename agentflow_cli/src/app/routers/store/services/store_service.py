@@ -21,6 +21,15 @@ from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
 )
 
 
+class StoreUnavailableError(HTTPException, ValueError):
+    """Raised when the store service has not been configured."""
+
+    def __init__(self) -> None:
+        detail = "Store is not configured"
+        HTTPException.__init__(self, status_code=503, detail=detail)
+        ValueError.__init__(self, detail)
+
+
 @singleton
 class StoreService:
     """Service layer wrapping interactions with the configured BaseStore."""
@@ -31,7 +40,7 @@ class StoreService:
 
     def _get_store(self) -> BaseStore:
         if not self.store:
-            raise HTTPException(status_code=503, detail="Store service is not available")
+            raise StoreUnavailableError()
         return self.store
 
     def _config(self, config: dict[str, Any] | None, user: dict[str, Any]) -> dict[str, Any]:

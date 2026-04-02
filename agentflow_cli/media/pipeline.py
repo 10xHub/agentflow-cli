@@ -13,7 +13,9 @@ from typing import Any
 from agentflow.media.config import DocumentHandling
 from agentflow.state.message_block import DocumentBlock, TextBlock
 
+from ._compat import DOCUMENT_PASS_RAW
 from .extractor import DocumentExtractor
+
 
 logger = logging.getLogger("agentflow_cli.media.pipeline")
 
@@ -23,7 +25,7 @@ class DocumentPipeline:
 
     Modes:
         - ``EXTRACT_TEXT``: Extract text via textxtract, return TextBlock.
-        - ``PASS_RAW``: Return the original DocumentBlock untouched.
+        - ``PASS_RAW``/``FORWARD_RAW``: Return the original DocumentBlock untouched.
         - ``SKIP``: Drop the document entirely (returns None).
     """
 
@@ -55,7 +57,7 @@ class DocumentPipeline:
         if self.handling == DocumentHandling.SKIP:
             return None
 
-        if self.handling == DocumentHandling.PASS_RAW:
+        if self.handling == DOCUMENT_PASS_RAW:
             return document_block
 
         # EXTRACT_TEXT path
