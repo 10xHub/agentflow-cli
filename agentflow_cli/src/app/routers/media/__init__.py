@@ -8,20 +8,18 @@ import logging
 import time
 from typing import Any
 
-from agentflow.checkpointer import BaseCheckpointer
-from agentflow.media.config import DocumentHandling
-from agentflow.media.storage.base import BaseMediaStore
+from agentflow.storage.checkpointer import BaseCheckpointer
+from agentflow.storage.media.config import DocumentHandling
+from agentflow.storage.media.storage.base import BaseMediaStore
 from injectq import InjectQ, inject, singleton
 
-from agentflow_cli.media._compat import DOCUMENT_PASS_RAW, ensure_document_handling_aliases
-from agentflow_cli.media.extractor import DocumentExtractor
-from agentflow_cli.media.pipeline import DocumentPipeline
 from agentflow_cli.src.app.core.config.media_settings import MediaSettings, MediaStorageType
+from agentflow_cli.src.app.utils.media.extractor import DocumentExtractor
+from agentflow_cli.src.app.utils.media.pipeline import DocumentPipeline
 
 
 logger = logging.getLogger("agentflow-cli.media")
 
-ensure_document_handling_aliases()
 
 _SIGNED_URL_NAMESPACE = "media:signed-url"
 _EXTRACTION_NAMESPACE = "media:extraction"
@@ -41,17 +39,17 @@ def _create_media_store(settings: MediaSettings) -> BaseMediaStore:
     stype = settings.MEDIA_STORAGE_TYPE
 
     if stype == MediaStorageType.MEMORY:
-        from agentflow.media.storage.memory_store import InMemoryMediaStore
+        from agentflow.storage.media.storage.memory_store import InMemoryMediaStore
 
         return InMemoryMediaStore()
 
     if stype == MediaStorageType.LOCAL:
-        from agentflow.media.storage.local_store import LocalFileMediaStore
+        from agentflow.storage.media.storage.local_store import LocalFileMediaStore
 
         return LocalFileMediaStore(base_dir=settings.MEDIA_STORAGE_PATH)
 
     if stype == MediaStorageType.CLOUD:
-        from agentflow.media.storage.cloud_store import CloudMediaStore
+        from agentflow.storage.media.storage.cloud_store import CloudMediaStore
         from cloud_storage_manager import (
             AwsConfig,
             CloudStorageFactory,
@@ -117,7 +115,7 @@ def _create_media_store(settings: MediaSettings) -> BaseMediaStore:
 def _create_document_pipeline(settings: MediaSettings) -> DocumentPipeline:
     handling_map = {
         "extract_text": DocumentHandling.EXTRACT_TEXT,
-        "pass_raw": DOCUMENT_PASS_RAW,
+        "pass_raw": DocumentHandling.FORWARD_RAW,
         "skip": DocumentHandling.SKIP,
     }
     handling = handling_map.get(settings.DOCUMENT_HANDLING, DocumentHandling.EXTRACT_TEXT)

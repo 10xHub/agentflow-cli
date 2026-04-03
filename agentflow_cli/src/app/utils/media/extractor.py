@@ -19,12 +19,6 @@ try:
 except ImportError:  # pragma: no cover
     AsyncTextExtractor = None  # type: ignore[assignment]
 
-    class FileTypeNotSupportedError(Exception):  # type: ignore[no-redef]
-        """Fallback exception when textxtract is unavailable."""
-
-    class ExtractionError(Exception):  # type: ignore[no-redef]
-        """Fallback exception when textxtract is unavailable."""
-
 
 class DocumentExtractor:
     """Wraps textxtract AsyncTextExtractor for API-side document extraction.
@@ -71,9 +65,9 @@ class DocumentExtractor:
                 return await self.extractor.extract(data, filename)
             return await self.extractor.extract(data)
 
-        except FileTypeNotSupportedError:
+        except FileTypeNotSupportedError:  # type: ignore
             logger.warning("Document type not supported for extraction: %s", filename)
             return None
-        except ExtractionError as exc:
+        except ExtractionError as exc:  # type: ignore
             logger.exception("Document extraction failed for %s", filename)
             raise ValueError("Failed to extract text from document") from exc

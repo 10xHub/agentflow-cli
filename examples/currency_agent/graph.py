@@ -12,9 +12,9 @@ import httpx
 from dotenv import load_dotenv
 from litellm import acompletion
 
-from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
-from agentflow.graph import StateGraph, ToolNode
-from agentflow.state import AgentState
+from agentflow.runtime.adapters.llm.model_response_converter import ModelResponseConverter
+from agentflow.core.graph import StateGraph, ToolNode
+from agentflow.core.state import AgentState
 from agentflow.utils.constants import END
 from agentflow.utils.converter import convert_messages
 
@@ -23,6 +23,7 @@ load_dotenv()
 # --------------------------------------------------------------------------- #
 #  Tool — Frankfurter API                                                       #
 # --------------------------------------------------------------------------- #
+
 
 async def get_exchange_rate(
     currency_from: str,
@@ -90,17 +91,14 @@ async def llm_node(state: AgentState):
 #  Routing                                                                      #
 # --------------------------------------------------------------------------- #
 
+
 def should_use_tools(state: AgentState) -> str:
     if not state.context:
         return END
 
     last = state.context[-1]
 
-    if (
-        hasattr(last, "tools_calls")
-        and last.tools_calls
-        and last.role == "assistant"
-    ):
+    if hasattr(last, "tools_calls") and last.tools_calls and last.role == "assistant":
         return "TOOL"
 
     if last.role == "tool":

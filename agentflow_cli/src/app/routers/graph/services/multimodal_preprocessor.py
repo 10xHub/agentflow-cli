@@ -6,8 +6,8 @@ import inspect
 import logging
 from typing import TYPE_CHECKING
 
-from agentflow.state import Message
-from agentflow.state.message_block import DocumentBlock, TextBlock
+from agentflow.core.state import Message
+from agentflow.core.state.message_block import DocumentBlock, TextBlock
 
 
 if TYPE_CHECKING:

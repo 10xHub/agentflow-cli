@@ -1,6 +1,6 @@
 import os
 
-from agentflow.graph import CompiledGraph
+from agentflow.core.graph import CompiledGraph
 from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import ORJSONResponse

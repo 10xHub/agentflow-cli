@@ -14,7 +14,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # MediaService unit tests
 # ---------------------------------------------------------------------------
-from agentflow.checkpointer import InMemoryCheckpointer
+from agentflow.storage.checkpointer import InMemoryCheckpointer
 from agentflow_cli.src.app.core.config.media_settings import MediaSettings, MediaStorageType
 
 
@@ -165,7 +165,7 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_noop_when_no_media_service(self):
-        from agentflow.state import Message
+        from agentflow.core.state import Message
 
         from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
@@ -177,8 +177,8 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_document_file_id_resolved_to_text(self):
-        from agentflow.state import Message
-        from agentflow.state.message_block import DocumentBlock, MediaRef, TextBlock
+        from agentflow.core.state import Message
+        from agentflow.core.state.message_block import DocumentBlock, MediaRef, TextBlock
 
         from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
@@ -202,8 +202,8 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_image_file_id_to_agentflow_url(self):
-        from agentflow.state import Message
-        from agentflow.state.message_block import ImageBlock, MediaRef
+        from agentflow.core.state import Message
+        from agentflow.core.state.message_block import ImageBlock, MediaRef
 
         from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
@@ -224,8 +224,8 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_text_only_message_unchanged(self):
-        from agentflow.state import Message
-        from agentflow.state.message_block import TextBlock
+        from agentflow.core.state import Message
+        from agentflow.core.state.message_block import TextBlock
 
         from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
@@ -239,8 +239,8 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_document_file_id_without_cached_text(self):
-        from agentflow.state import Message
-        from agentflow.state.message_block import DocumentBlock, MediaRef
+        from agentflow.core.state import Message
+        from agentflow.core.state.message_block import DocumentBlock, MediaRef
 
         from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
@@ -285,7 +285,7 @@ class TestMediaSettings:
 
 class TestMediaStoreFactory:
     def test_memory_store(self):
-        from agentflow.media.storage.memory_store import InMemoryMediaStore
+        from agentflow.storage.media.storage.memory_store import InMemoryMediaStore
         from agentflow_cli.src.app.routers.media import _create_media_store
 
         s = _make_settings(MEDIA_STORAGE_TYPE=MediaStorageType.MEMORY)
@@ -293,7 +293,7 @@ class TestMediaStoreFactory:
         assert isinstance(store, InMemoryMediaStore)
 
     def test_local_store(self):
-        from agentflow.media.storage.local_store import LocalFileMediaStore
+        from agentflow.storage.media.storage.local_store import LocalFileMediaStore
         from agentflow_cli.src.app.routers.media import _create_media_store
 
         s = _make_settings(MEDIA_STORAGE_TYPE=MediaStorageType.LOCAL)

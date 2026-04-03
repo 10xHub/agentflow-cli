@@ -3,8 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from agentflow.checkpointer import BaseCheckpointer
-from agentflow.state import AgentState, Message, TextBlock
+from agentflow.storage.checkpointer import BaseCheckpointer
+from agentflow.core.state import AgentState, Message, TextBlock
 from fastapi import HTTPException
 
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService

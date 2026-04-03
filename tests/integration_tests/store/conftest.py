@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from agentflow.store import BaseStore, MemorySearchResult, MemoryType
+from agentflow.storage.store import BaseStore, MemorySearchResult, MemoryType
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 

@@ -5,16 +5,15 @@ These tests live in pyagenity-api because document extraction is an API concern
 """
 
 import pytest
+from agentflow.storage.media.config import DocumentHandling
+from agentflow.core.state.message_block import DocumentBlock, MediaRef, TextBlock
 
-from agentflow.media.config import DocumentHandling
-from agentflow.state.message_block import DocumentBlock, MediaRef, TextBlock
-
-from agentflow_cli.media.extractor import (
+from agentflow_cli.src.app.utils.media.extractor import (
     DocumentExtractor,
     ExtractionError,
     FileTypeNotSupportedError,
 )
-from agentflow_cli.media.pipeline import DocumentPipeline
+from agentflow_cli.src.app.utils.media.pipeline import DocumentPipeline
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +72,7 @@ class TestDocumentExtractor:
 
     def test_no_textxtract_raises_import_error(self, monkeypatch):
         """If textxtract is not installed, instantiation raises ImportError."""
-        import agentflow_cli.media.extractor as mod
+        import agentflow_cli.src.app.utils.media.extractor as mod
 
         monkeypatch.setattr(mod, "AsyncTextExtractor", None)
         with pytest.raises(ImportError, match="textxtract is required"):
