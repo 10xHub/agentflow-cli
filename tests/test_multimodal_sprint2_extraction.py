@@ -5,8 +5,8 @@ These tests live in pyagenity-api because document extraction is an API concern
 """
 
 import pytest
-from agentflow.storage.media.config import DocumentHandling
 from agentflow.core.state.message_block import DocumentBlock, MediaRef, TextBlock
+from agentflow.storage.media.config import DocumentHandling
 
 from agentflow_cli.src.app.utils.media.extractor import (
     DocumentExtractor,
@@ -104,7 +104,7 @@ class TestDocumentPipeline:
     async def test_pass_raw_returns_original(self):
         pipeline = DocumentPipeline(
             document_extractor=DocumentExtractor(extractor=FakeExtractor()),
-            handling=DocumentHandling.PASS_RAW,
+            handling=DocumentHandling.FORWARD_RAW,
         )
         block = DocumentBlock(media=MediaRef(kind="url", url="https://example.com/doc.pdf"))
         result = await pipeline.process_document(block)
