@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.2.9"
+version = "0.3.0.1"
 description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
@@ -34,7 +34,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
-    "10xscale-agentflow>=0.5.0",
+    "10xscale-agentflow>=0.7.0",
     "fastapi",
     "gunicorn",
     "orjson",
@@ -177,7 +177,7 @@ env = [
     "ENVIRONMENT=pytest",
 ]
 testpaths = [
-    "agentflow-cli/src/tests",
+    "tests",
 ]
 pythonpath = [
     ".",
@@ -186,8 +186,8 @@ filterwarnings = [
     "ignore::DeprecationWarning"
 ]
 addopts = [
-        # Limit coverage collection to the local project package only
-        "--cov=agentflow-cli",
+    # Limit coverage collection to the local project package only
+    "--cov=agentflow_cli",
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
@@ -198,7 +198,7 @@ addopts = [
 
 [tool.coverage.run]
 # Only measure the first-party project package
-source = ["agentflow-cli"]
+source = ["agentflow_cli"]
 branch = true
 omit = [
     "*/__init__.py",           # often trivial
@@ -221,8 +221,8 @@ show_missing = true
 
 [tool.coverage.paths]
 source = [
-    "agentflow-cli",
-    "*/site-packages/agentflow-cli",
+    "agentflow_cli",
+    "*/site-packages/agentflow_cli",
 ]
 
 [tool.pytest-env]
@@ -246,4 +246,3 @@ dev = [
     "markdown-it-py==3.0.0",
     "requests==2.32.3",
 ]
-

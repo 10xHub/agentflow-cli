@@ -1,6 +1,6 @@
 from typing import Any
 
-from agentflow.state import StreamChunk
+from agentflow.core.state import StreamChunk
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse

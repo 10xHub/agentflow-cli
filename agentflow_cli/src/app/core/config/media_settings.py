@@ -6,6 +6,7 @@ import logging
 from enum import Enum
 from functools import lru_cache
 
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -41,8 +42,7 @@ class MediaSettings(BaseSettings):
     MEDIA_SIGNED_URL_TTL_SECONDS: int = 3600
     MEDIA_SIGNED_URL_REFRESH_BUFFER_SECONDS: int = 60
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 @lru_cache

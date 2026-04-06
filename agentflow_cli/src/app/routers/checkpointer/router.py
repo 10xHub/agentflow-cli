@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from agentflow.state import Message
+from agentflow.core.state import Message
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from injectq.integrations import InjectAPI
 

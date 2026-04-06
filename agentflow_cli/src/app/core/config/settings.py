@@ -2,7 +2,7 @@ import logging
 import os
 from functools import lru_cache
 
-from pydantic import field_validator, model_validator
+from pydantic import ConfigDict, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -102,6 +102,12 @@ class Settings(BaseSettings):
     SNOWFLAKE_NODE_BITS: int = 5
     SNOWFLAKE_WORKER_BITS: int = 8
 
+    #################################
+    ###### JWT Config ###############
+    #################################
+    JWT_SECRET_KEY: str | None = None
+    JWT_ALGORITHM: str = "HS256"
+
     @field_validator("MODE", mode="before")
     @classmethod
     def normalize_mode(cls, v: str | None) -> str:
@@ -149,8 +155,7 @@ class Settings(BaseSettings):
 
         return self
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 @lru_cache

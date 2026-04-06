@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from agentflow.state import Message
-from agentflow.store import BaseStore
+from agentflow.core.state import Message
+from agentflow.storage.store import BaseStore
 from fastapi import HTTPException
 from injectq import inject, singleton
 

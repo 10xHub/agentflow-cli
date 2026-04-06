@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from agentflow.state import Message
-from agentflow.store.store_schema import (
+from agentflow.core.state import Message
+from agentflow.storage.store.store_schema import (
     DistanceMetric,
     MemoryRecord,
     MemorySearchResult,

@@ -10,10 +10,9 @@ import logging
 from base64 import b64decode
 from typing import Any
 
-from agentflow.media.config import DocumentHandling
-from agentflow.state.message_block import DocumentBlock, TextBlock
+from agentflow.core.state.message_block import DocumentBlock, TextBlock
+from agentflow.storage.media.config import DocumentHandling
 
-from ._compat import DOCUMENT_PASS_RAW
 from .extractor import DocumentExtractor
 
 
@@ -57,7 +56,7 @@ class DocumentPipeline:
         if self.handling == DocumentHandling.SKIP:
             return None
 
-        if self.handling == DOCUMENT_PASS_RAW:
+        if self.handling == DocumentHandling.FORWARD_RAW:
             return document_block
 
         # EXTRACT_TEXT path

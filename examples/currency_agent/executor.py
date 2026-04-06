@@ -18,7 +18,7 @@ from a2a.server.tasks.task_updater import TaskUpdater
 from a2a.types import TaskState, TextPart
 
 from agentflow.a2a_integration.executor import AgentFlowExecutor
-from agentflow.state import Message as AFMessage
+from agentflow.core.state import Message as AFMessage
 from agentflow.utils.constants import ResponseGranularity
 
 logger = logging.getLogger(__name__)
@@ -28,10 +28,18 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 _ASKING_PHRASES = [
-    "could you", "please provide", "please specify",
-    "what amount", "which currency", "what currency",
-    "let me know", "can you tell", "i need",
-    "please tell", "what is the", "what date",
+    "could you",
+    "please provide",
+    "please specify",
+    "what amount",
+    "which currency",
+    "what currency",
+    "let me know",
+    "can you tell",
+    "i need",
+    "please tell",
+    "what is the",
+    "what date",
 ]
 
 
@@ -43,6 +51,7 @@ def _is_asking_for_input(text: str) -> bool:
 # --------------------------------------------------------------------------- #
 #  Executor                                                                     #
 # --------------------------------------------------------------------------- #
+
 
 class CurrencyAgentExecutor(AgentFlowExecutor):
     """Runs the currency graph; emits INPUT_REQUIRED for vague queries."""
