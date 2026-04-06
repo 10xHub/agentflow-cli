@@ -177,7 +177,7 @@ env = [
     "ENVIRONMENT=pytest",
 ]
 testpaths = [
-    "agentflow-cli/src/tests",
+    "tests",
 ]
 pythonpath = [
     ".",
@@ -186,8 +186,8 @@ filterwarnings = [
     "ignore::DeprecationWarning"
 ]
 addopts = [
-        # Limit coverage collection to the local project package only
-        "--cov=agentflow-cli",
+    # Limit coverage collection to the local project package only
+    "--cov=agentflow_cli",
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
@@ -198,7 +198,7 @@ addopts = [
 
 [tool.coverage.run]
 # Only measure the first-party project package
-source = ["agentflow-cli"]
+source = ["agentflow_cli"]
 branch = true
 omit = [
     "*/__init__.py",           # often trivial
@@ -221,8 +221,8 @@ show_missing = true
 
 [tool.coverage.paths]
 source = [
-    "agentflow-cli",
-    "*/site-packages/agentflow-cli",
+    "agentflow_cli",
+    "*/site-packages/agentflow_cli",
 ]
 
 [tool.pytest-env]
@@ -246,4 +246,3 @@ dev = [
     "markdown-it-py==3.0.0",
     "requests==2.32.3",
 ]
-

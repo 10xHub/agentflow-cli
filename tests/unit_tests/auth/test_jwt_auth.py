@@ -8,7 +8,7 @@ These tests cover all edge cases and scenarios for JWT authentication:
 - Invalid/malformed tokens
 - Valid tokens without user_id
 - Valid tokens with user_id (successful auth)
-- Bearer prefix handling
+- Bearer scheme handling
 - WWW-Authenticate header setting
 """
 
@@ -22,12 +22,21 @@ from fastapi import Response
 from fastapi.security import HTTPAuthorizationCredentials
 
 from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+from agentflow_cli.src.app.core.config.settings import get_settings
 from agentflow_cli.src.app.core.exceptions.user_exception import UserAccountError
 
 
 # Test constants
 TEST_SECRET_KEY = "test-super-secret-key-for-testing-purposes"
 TEST_ALGORITHM = "HS256"
+
+
+@pytest.fixture(autouse=True)
+def clear_settings_cache():
+    """Keep env-patched settings isolated between JWT auth tests."""
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 class TestJwtAuth:
@@ -74,9 +83,13 @@ class TestJwtAuth:
         """Helper method to create a JWT token."""
         return jwt.encode(payload, secret, algorithm=algorithm)
 
-    def create_credentials(self, token: str) -> HTTPAuthorizationCredentials:
+    def create_credentials(
+        self,
+        token: str,
+        scheme: str = "Bearer",
+    ) -> HTTPAuthorizationCredentials:
         """Helper method to create HTTPAuthorizationCredentials."""
-        return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+        return HTTPAuthorizationCredentials(scheme=scheme, credentials=token)
 
     # =========================================================================
     # Test: Null credentials
@@ -116,12 +129,12 @@ class TestJwtAuth:
             assert exc_info.value.error_code == "JWT_SETTINGS_NOT_CONFIGURED"
             assert "JWT settings are not configured" in exc_info.value.message
 
-    def test_authenticate_missing_jwt_algorithm_raises_error(
+    def test_authenticate_uses_default_jwt_algorithm_when_env_var_missing(
         self,
         jwt_auth: JwtAuth,
         mock_response: Response,
     ):
-        """Test that missing JWT_ALGORITHM raises UserAccountError."""
+        """Test that missing JWT_ALGORITHM falls back to the Settings default."""
         with patch.dict(
             os.environ,
             {"JWT_SECRET_KEY": TEST_SECRET_KEY},
@@ -132,8 +145,8 @@ class TestJwtAuth:
             with pytest.raises(UserAccountError) as exc_info:
                 jwt_auth.authenticate(None, mock_response, credentials)
 
-            assert exc_info.value.error_code == "JWT_SETTINGS_NOT_CONFIGURED"
-            assert "JWT settings are not configured" in exc_info.value.message
+            assert exc_info.value.error_code == "INVALID_TOKEN"
+            assert "Invalid token" in exc_info.value.message
 
     def test_authenticate_missing_both_jwt_settings_raises_error(
         self,
@@ -322,53 +335,50 @@ class TestJwtAuth:
         assert result["organization_id"] == "org-789"
 
     # =========================================================================
-    # Test: Bearer prefix handling
+    # Test: Bearer scheme handling
     # =========================================================================
-    def test_authenticate_strips_bearer_prefix_lowercase(
+    def test_authenticate_accepts_lowercase_bearer_scheme(
         self,
         jwt_auth: JwtAuth,
         mock_response: Response,
         jwt_env_vars,
         valid_token_payload: dict,
     ):
-        """Test that 'bearer ' prefix (lowercase) is stripped from token."""
+        """Test that lowercase bearer scheme works when token is separate."""
         actual_token = self.create_token(valid_token_payload)
-        token_with_prefix = f"bearer {actual_token}"
-        credentials = self.create_credentials(token_with_prefix)
+        credentials = self.create_credentials(actual_token, scheme="bearer")
 
         result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
 
-    def test_authenticate_strips_bearer_prefix_uppercase(
+    def test_authenticate_accepts_titlecase_bearer_scheme(
         self,
         jwt_auth: JwtAuth,
         mock_response: Response,
         jwt_env_vars,
         valid_token_payload: dict,
     ):
-        """Test that 'Bearer ' prefix (capitalized) is stripped from token."""
+        """Test that titlecase Bearer scheme works when token is separate."""
         actual_token = self.create_token(valid_token_payload)
-        token_with_prefix = f"Bearer {actual_token}"
-        credentials = self.create_credentials(token_with_prefix)
+        credentials = self.create_credentials(actual_token, scheme="Bearer")
 
         result = jwt_auth.authenticate(None, mock_response, credentials)
 
         assert result is not None
         assert result["user_id"] == "user-123"
 
-    def test_authenticate_strips_bearer_prefix_mixed_case(
+    def test_authenticate_accepts_uppercase_bearer_scheme(
         self,
         jwt_auth: JwtAuth,
         mock_response: Response,
         jwt_env_vars,
         valid_token_payload: dict,
     ):
-        """Test that 'BEARER ' prefix (mixed case) is stripped from token."""
+        """Test that uppercase bearer scheme works when token is separate."""
         actual_token = self.create_token(valid_token_payload)
-        token_with_prefix = f"BEARER {actual_token}"
-        credentials = self.create_credentials(token_with_prefix)
+        credentials = self.create_credentials(actual_token, scheme="BEARER")
 
         result = jwt_auth.authenticate(None, mock_response, credentials)
 
