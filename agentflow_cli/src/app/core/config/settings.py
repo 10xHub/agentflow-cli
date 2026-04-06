@@ -102,6 +102,12 @@ class Settings(BaseSettings):
     SNOWFLAKE_NODE_BITS: int = 5
     SNOWFLAKE_WORKER_BITS: int = 8
 
+    #################################
+    ###### JWT Config ###############
+    #################################
+    JWT_SECRET_KEY: str | None = None
+    JWT_ALGORITHM: str = "HS256"
+
     @field_validator("MODE", mode="before")
     @classmethod
     def normalize_mode(cls, v: str | None) -> str:

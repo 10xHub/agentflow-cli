@@ -3,8 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from agentflow.storage.checkpointer import BaseCheckpointer
 from agentflow.core.state import AgentState, Message
+from agentflow.storage.checkpointer import BaseCheckpointer
 
 from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     MessagesListResponseSchema,

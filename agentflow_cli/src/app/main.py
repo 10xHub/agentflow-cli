@@ -1,3 +1,4 @@
+import logging
 import os
 
 from agentflow.core.graph import CompiledGraph
@@ -21,6 +22,8 @@ from agentflow_cli.src.app.loader import attach_all_modules, load_container
 from agentflow_cli.src.app.routers import init_routes
 
 
+logger = logging.getLogger("agentflow_api")
+
 settings = get_settings()
 # redis_client = Redis(
 #     host=settings.REDIS_HOST,
@@ -36,6 +39,28 @@ container: InjectQ = load_container(graph_config.injectq_path) or InjectQ.get_in
 container.bind_instance(GraphConfig, graph_config)
 
 
+async def _cleanup_temp_media_cache() -> None:
+    """Run best-effort cleanup of expired temporary media cache entries."""
+    try:
+        from agentflow.storage.media.temp_cache import TemporaryMediaCache
+
+        checkpointer = container.try_get("checkpointer") or container.try_get("BaseCheckpointer")
+        media_store = container.try_get("media_store") or container.try_get("BaseMediaStore")
+
+        if checkpointer is None:
+            logger.debug("No checkpointer available, skipping temp media cache cleanup")
+            return
+
+        cache = TemporaryMediaCache()
+        cleaned = await cache.cleanup(checkpointer, media_store)
+        if cleaned:
+            logger.info("Cleaned up %d expired temporary media cache entries on startup", cleaned)
+        else:
+            logger.debug("No expired temporary media cache entries to clean up")
+    except Exception as e:
+        logger.warning("Failed to clean up temporary media cache on startup: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the cache
@@ -45,6 +70,9 @@ async def lifespan(app: FastAPI):
         graph_config,
         container=container,
     )
+
+    # Clean up expired temporary media cache on startup
+    await _cleanup_temp_media_cache()
 
     # load Store
     # store = load_store(graph_config.store_path)

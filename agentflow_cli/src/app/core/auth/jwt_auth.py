@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 import jwt
@@ -7,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+from agentflow_cli.src.app.core.config.settings import get_settings
 from agentflow_cli.src.app.core.exceptions import UserAccountError
 
 
@@ -44,13 +44,12 @@ class JwtAuth(BaseAuth):
                 message="Invalid token, please login again",
                 error_code="REVOKED_TOKEN",
             )
-        jwt_secret_key = os.environ.get("JWT_SECRET_KEY", None)
-        jwt_algorithm = os.environ.get("JWT_ALGORITHM", None)
 
-        # check bearer token then remove barer prefix
+        settings = get_settings()
+        jwt_secret_key = settings.JWT_SECRET_KEY
+        jwt_algorithm = settings.JWT_ALGORITHM
+
         token = credential.credentials
-        if token.lower().startswith("bearer "):
-            token = token[7:]
 
         if jwt_secret_key is None or jwt_algorithm is None:
             raise UserAccountError(
@@ -61,8 +60,8 @@ class JwtAuth(BaseAuth):
         try:
             decoded_token = jwt.decode(
                 token,
-                jwt_secret_key,  # type: ignore
-                algorithms=[jwt_algorithm],  # type: ignore
+                jwt_secret_key,
+                algorithms=[jwt_algorithm],
             )
         except jwt.ExpiredSignatureError:
             raise UserAccountError(

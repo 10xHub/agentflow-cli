@@ -3,6 +3,7 @@ from collections.abc import AsyncIterable
 from typing import Any
 from uuid import uuid4
 
+from agentflow.core.exceptions.media_exceptions import UnsupportedMediaInputError
 from agentflow.core.graph import CompiledGraph
 from agentflow.core.state import AgentState, Message, StreamChunk, StreamEvent
 from agentflow.storage.checkpointer import BaseCheckpointer
@@ -284,6 +285,9 @@ class GraphService:
                 meta=meta,
             )
 
+        except UnsupportedMediaInputError as e:
+            logger.warning("Unsupported media input: %s", e.message)
+            raise HTTPException(status_code=422, detail=e.message)
         except ValueError as e:
             logger.warning(f"Graph input validation failed: {e}")
             raise HTTPException(status_code=422, detail=str(e))
