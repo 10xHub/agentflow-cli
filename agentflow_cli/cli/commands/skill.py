@@ -42,9 +42,7 @@ class SkillCommand(BaseCommand):
                 targets = {agent_key: SKILL_TARGETS[agent_key]}
             else:
                 supported = ", ".join(sorted(["all", *SKILL_TARGETS]))
-                raise FileOperationError(
-                    f"Unknown agent '{agent}'. Supported: {supported}."
-                )
+                raise FileOperationError(f"Unknown agent '{agent}'. Supported: {supported}.")
 
             written: list[Path] = []
             for name, (rel_path, content) in targets.items():
@@ -67,9 +65,7 @@ class SkillCommand(BaseCommand):
         except FileOperationError as e:
             return self.handle_error(e)
         except Exception as e:
-            return self.handle_error(
-                FileOperationError(f"Failed to generate skill files: {e}")
-            )
+            return self.handle_error(FileOperationError(f"Failed to generate skill files: {e}"))
 
     def _write_file(self, path: Path, content: str, *, force: bool) -> None:
         try:
