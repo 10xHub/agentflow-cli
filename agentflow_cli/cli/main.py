@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.commands.build import BuildCommand
 from agentflow_cli.cli.commands.init import InitCommand
+from agentflow_cli.cli.commands.skill import SkillCommand
 from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import (
     DEFAULT_CONFIG_FILE,
@@ -303,6 +304,53 @@ def build(
             docker_compose=docker_compose,
             service_name=service_name,
         )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command()
+def skill(
+    path: str = typer.Option(
+        ".",
+        "--path",
+        "-p",
+        help="Directory to generate skill files in",
+    ),
+    agent: str = typer.Option(
+        "all",
+        "--agent",
+        "-a",
+        help=(
+            "Coding agent to target: 'claude', 'cursor', 'copilot', 'windsurf', "
+            "'codex', or 'all' (default)"
+        ),
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Overwrite existing skill files if they exist",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress all output except errors",
+    ),
+) -> None:
+    """Generate AgentFlow skill files for coding agents (Claude Code, Cursor, Copilot, ...)."""
+    setup_cli_logging(verbose=verbose, quiet=quiet)
+
+    try:
+        command = SkillCommand(output)
+        exit_code = command.execute(path=path, agent=agent, force=force)
         sys.exit(exit_code)
     except Exception as e:
         sys.exit(handle_exception(e))

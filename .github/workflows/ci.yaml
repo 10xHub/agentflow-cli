@@ -45,7 +45,7 @@ jobs:
     - name: Install dependencies
       run: |
         # create venv in repo so it can be cached
-        python -m venv .venv
+        python -m venv --clear .venv
         source .venv/bin/activate
         pip install --upgrade pip
         uv sync --dev
