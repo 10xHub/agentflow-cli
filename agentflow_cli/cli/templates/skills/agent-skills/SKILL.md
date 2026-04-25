@@ -16,6 +16,22 @@ metadata:
     - references/api-client.md
     - references/remote-tools.md
     - references/callbacks-and-command.md
+    - references/prebuilt-agents-and-tools.md
+    - references/testing-and-evaluation.md
+    - references/publishers-and-runtime-protocols.md
+    - references/context-id-background.md
+    - references/providers-and-adapters.md
+    - references/security-and-validators.md
+    - references/cli-commands.md
+    - references/api-configuration.md
+    - references/auth-and-authorization.md
+    - references/api-settings-and-middleware.md
+    - references/rest-api-and-errors.md
+    - references/id-and-thread-name-generators.md
+    - references/client-auth-and-errors.md
+    - references/client-messages-invoke-stream.md
+    - references/client-threads-memory-files.md
+    - references/client-a2ui-a2a-troubleshooting.md
   tags:
     - agentflow
     - agents
@@ -53,6 +69,22 @@ Treat `agentflow-docs/docs` as the first source of truth for public package name
    - REST and TypeScript client surface: `references/api-client.md`
    - Browser/client-side tool execution: `references/remote-tools.md`
    - Observability hooks, validators, and runtime jumps: `references/callbacks-and-command.md`
+   - Prebuilt agents/tools and handoff helpers: `references/prebuilt-agents-and-tools.md`
+   - Testing helpers and evaluation framework: `references/testing-and-evaluation.md`
+   - Event publishers and A2A/ACP runtime protocols: `references/publishers-and-runtime-protocols.md`
+   - Context management, ID generation, and background tasks: `references/context-id-background.md`
+   - Provider internals and adapters: `references/providers-and-adapters.md`
+   - Prompt-injection and validation safety: `references/security-and-validators.md`
+   - CLI commands and generated project files: `references/cli-commands.md`
+   - `agentflow.json` and dependency loading: `references/api-configuration.md`
+   - API auth and authorization: `references/auth-and-authorization.md`
+   - API environment, settings, and middleware: `references/api-settings-and-middleware.md`
+   - REST routes and error behavior: `references/rest-api-and-errors.md`
+   - API Snowflake IDs and thread naming: `references/id-and-thread-name-generators.md`
+   - TypeScript auth helpers and structured errors: `references/client-auth-and-errors.md`
+   - TypeScript messages, invoke, and stream details: `references/client-messages-invoke-stream.md`
+   - TypeScript thread, memory, and file APIs: `references/client-threads-memory-files.md`
+   - TypeScript A2UI/A2A surfaces and troubleshooting: `references/client-a2ui-a2a-troubleshooting.md`
 3. Prefer existing Agentflow abstractions over new custom wiring:
    - Build workflows with `StateGraph`, `Agent`, `ToolNode`, `AgentState`, and `Message`.
    - Persist conversation state with checkpointers; use stores only for cross-thread memory.
