@@ -6,6 +6,7 @@ include example_weather_agent.py
 recursive-include agentflow_cli *.json
 recursive-include agentflow_cli *.yaml
 recursive-include agentflow_cli *.yml
+recursive-include agentflow_cli *.md
 recursive-include agentflow_cli *.py
 recursive-include src *.json
 recursive-include src *.yaml

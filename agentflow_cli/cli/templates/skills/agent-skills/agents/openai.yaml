@@ -1,4 +1,4 @@
 interface:
   display_name: "Agentflow"
   short_description: "Build and debug Agentflow agents"
-  default_prompt: "Use $agent-skills to build or debug an Agentflow graph, agent, tool, API route, or TypeScript client workflow."
+  default_prompt: "Use $agentflow to build or debug an Agentflow graph, agent, tool, API route, or TypeScript client workflow."

@@ -41,6 +41,16 @@ agentflow = agentflow_cli.cli.main:main
 - Generates Docker deployment files.
 - Options include `--output/-o`, `--force/-f`, `--python-version`, `--port/-p`, `--docker-compose/--no-docker-compose`, `--service-name`, `--verbose/-v`, and `--quiet/-q`.
 
+`agentflow skills`
+
+- Installs the bundled Agentflow skill into an agent-specific project directory.
+- Prompts for the target agent when `--agent` is omitted:
+  - `1` / `codex`: `.agent/skills/agentflow`
+  - `2` / `claude`: `.claude/skills/agentflow`
+  - `3` / `github`: `.github/skills/agentflow`
+- Options include `--agent/-a`, `--path/-p`, `--force/-f`, `--verbose/-v`, and `--quiet/-q`.
+- Source template: `agentflow-api/agentflow_cli/cli/templates/skills/agent-skills`.
+
 `agentflow version`
 
 - Prints CLI and library version information.

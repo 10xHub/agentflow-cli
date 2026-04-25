@@ -1,5 +1,5 @@
 ---
-name: agent-skills
+name: agentflow
 description: Use for building, debugging, documenting, or extending Agentflow agents, tools, graphs, API/CLI services, TypeScript clients, memory, checkpointing, streaming, media, dependency injection, production runtime, and multi-agent workflows in this repository.
 metadata:
   resources:
