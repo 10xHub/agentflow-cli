@@ -329,6 +329,17 @@ def skills(
         "-f",
         help="Overwrite the existing installed Agentflow skill directory",
     ),
+    all_agents: bool = typer.Option(
+        False,
+        "--all",
+        help="Install skills for every supported agent",
+    ),
+    list_agents: bool = typer.Option(
+        False,
+        "--list",
+        "-l",
+        help="List supported agents and exit",
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -342,12 +353,18 @@ def skills(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Install bundled Agentflow skills for Codex, Claude, or Github."""
+    """Install bundled Agentflow skills for Codex, Claude, or GitHub."""
     setup_cli_logging(verbose=verbose, quiet=quiet)
 
     try:
         command = SkillsCommand(output)
-        exit_code = command.execute(agent=agent, path=path, force=force)
+        exit_code = command.execute(
+            agent=agent,
+            path=path,
+            force=force,
+            all_agents=all_agents,
+            list_agents=list_agents,
+        )
         sys.exit(exit_code)
     except Exception as e:
         sys.exit(handle_exception(e))
