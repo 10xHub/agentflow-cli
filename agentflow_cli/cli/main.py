@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.commands.build import BuildCommand
 from agentflow_cli.cli.commands.init import InitCommand
+from agentflow_cli.cli.commands.skills import SkillsCommand
 from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import (
     DEFAULT_CONFIG_FILE,
@@ -302,6 +303,67 @@ def build(
             port=port,
             docker_compose=docker_compose,
             service_name=service_name,
+        )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command()
+def skills(
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target agent: codex, claude, github, or menu number 1, 2, 3",
+    ),
+    path: str = typer.Option(
+        ".",
+        "--path",
+        "-p",
+        help="Project directory where the skills should be installed",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Overwrite the existing installed Agentflow skill directory",
+    ),
+    all_agents: bool = typer.Option(
+        False,
+        "--all",
+        help="Install skills for every supported agent",
+    ),
+    list_agents: bool = typer.Option(
+        False,
+        "--list",
+        "-l",
+        help="List supported agents and exit",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress all output except errors",
+    ),
+) -> None:
+    """Install bundled Agentflow skills for Codex, Claude, or GitHub."""
+    setup_cli_logging(verbose=verbose, quiet=quiet)
+
+    try:
+        command = SkillsCommand(output)
+        exit_code = command.execute(
+            agent=agent,
+            path=path,
+            force=force,
+            all_agents=all_agents,
+            list_agents=list_agents,
         )
         sys.exit(exit_code)
     except Exception as e:

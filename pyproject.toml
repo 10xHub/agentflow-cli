@@ -165,7 +165,7 @@ docstring-code-format = true
 
 [tool.bandit]
 exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*"]
-skips = ["B101", "B611", "B601", "B608"]
+skips = ["B101", "B611", "B601"]
 
 
 [tool.ruff.lint.pydocstyle]
