@@ -6,7 +6,7 @@ import json
 import shutil
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -34,7 +34,7 @@ _TARGETS: tuple[_AgentTarget, ...] = (
     _AgentTarget(
         name="Codex",
         kind="folder",
-        install_relpath=".codex/skills/agentflow",
+        install_relpath=".agents/skills/agentflow",
         source_relpath="agent-skills",
     ),
     _AgentTarget(
@@ -96,9 +96,7 @@ class SkillsCommand(BaseCommand):
                 return 0
 
             if all_agents and agent:
-                raise ValidationError(
-                    "--all cannot be combined with --agent.", field="agent"
-                )
+                raise ValidationError("--all cannot be combined with --agent.", field="agent")
 
             templates_root = self._templates_root()
             project_root = self._safe_project_root(path)
@@ -176,8 +174,7 @@ class SkillsCommand(BaseCommand):
 
         if skipped:
             self.output.warning(
-                "Skipped existing installs (use --force to overwrite): "
-                + ", ".join(skipped)
+                "Skipped existing installs (use --force to overwrite): " + ", ".join(skipped)
             )
         if failed:
             self.output.error("Failed installs: " + "; ".join(failed))
@@ -190,7 +187,7 @@ class SkillsCommand(BaseCommand):
         manifest = {
             "agent": agent_name,
             "cli_version": CLI_VERSION,
-            "installed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "installed_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
         (target_dir / _MANIFEST_FILENAME).write_text(
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"

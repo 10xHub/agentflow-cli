@@ -54,7 +54,7 @@ Treat `agentflow-docs/docs` as the first source of truth for public package name
    - npm TypeScript SDK: `@10xscale/agentflow-client` (`npm install @10xscale/agentflow-client`), source in `agentflow-client/src`
    - Main docs: `agentflow-docs/docs`
    - Playground/UI: `agentflow play` command after installed cli
-   
+
 2. Read the matching reference file before changing behavior:
    - Architecture and package flow: `references/architecture.md`
    - Agent and tool behavior: `references/agents-and-tools.md`

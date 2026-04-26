@@ -104,12 +104,13 @@ def test_install_claude_creates_folder_and_manifest(
     assert "installed_at" in manifest
 
 
-def test_install_codex_uses_codex_dotdir(cmd: SkillsCommand, tmp_path: Path) -> None:
+def test_install_codex_uses_agents_dotdir(cmd: SkillsCommand, tmp_path: Path) -> None:
     exit_code = cmd.execute(agent="codex", path=str(tmp_path))
     assert exit_code == 0
-    assert (tmp_path / ".codex" / "skills" / "agentflow" / "SKILL.md").is_file()
-    # Old wrong path must NOT be created
+    assert (tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md").is_file()
+    # Earlier wrong paths must NOT be created
     assert not (tmp_path / ".agent").exists()
+    assert not (tmp_path / ".codex").exists()
 
 
 def test_install_github_writes_copilot_instructions_file(
@@ -167,7 +168,7 @@ def test_all_installs_every_agent(cmd: SkillsCommand, tmp_path: Path) -> None:
     exit_code = cmd.execute(all_agents=True, path=str(tmp_path))
     assert exit_code == 0
 
-    assert (tmp_path / ".codex" / "skills" / "agentflow" / "SKILL.md").is_file()
+    assert (tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md").is_file()
     assert (tmp_path / ".claude" / "skills" / "agentflow" / "SKILL.md").is_file()
     assert (tmp_path / ".github" / "instructions" / "agentflow.instructions.md").is_file()
 
