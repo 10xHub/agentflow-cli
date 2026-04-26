@@ -1,0 +1,142 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/shudipto/projects/Agentflow/agentflow-api
+configfile: pyproject.toml
+testpaths: tests
+plugins: asyncio-1.2.0, cov-7.0.0, env-1.1.5, xdist-3.8.0, anyio-4.10.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 639 items
+
+tests/cli/test_cli_api_env.py .                                          [  0%]
+tests/cli/test_cli_commands_core.py ....                                 [  0%]
+tests/cli/test_cli_commands_ops.py .............                         [  2%]
+tests/cli/test_cli_main.py ..                                            [  3%]
+tests/cli/test_cli_version.py .                                          [  3%]
+tests/cli/test_init_prod.py .                                            [  3%]
+tests/cli/test_router_ping.py .                                          [  3%]
+tests/cli/test_skills.py ...............                                 [  5%]
+tests/cli/test_utils_parse_and_callable.py .......                       [  7%]
+tests/cli/test_utils_response_helper.py ......                           [  7%]
+tests/cli/test_utils_swagger_and_snowflake.py ...                        [  8%]
+tests/integration_tests/test_ping.py .                                   [  8%]
+tests/test_multimodal_sprint2_extraction.py ................             [ 11%]
+tests/test_sprint4_media_api.py .......................                  [ 14%]
+tests/test_utils_parse_and_callable.py .......                           [ 15%]
+tests/unit_tests/auth/test_auth_backend.py ...........                   [ 17%]
+tests/unit_tests/auth/test_graph_config_auth.py ...................      [ 20%]
+tests/unit_tests/auth/test_jwt_auth.py ...........................       [ 24%]
+tests/unit_tests/store/test_store_schemas.py ........................... [ 28%]
+.......                                                                  [ 30%]
+tests/unit_tests/store/test_store_service.py ........................... [ 34%]
+.                                                                        [ 34%]
+tests/unit_tests/test_api_command.py ..........................          [ 38%]
+tests/unit_tests/test_callable_helper.py ...                             [ 38%]
+tests/unit_tests/test_checkpointer_router.py ......................      [ 42%]
+tests/unit_tests/test_checkpointer_service.py ..............             [ 44%]
+tests/unit_tests/test_cli_config_manager.py ...........................  [ 48%]
+tests/unit_tests/test_cli_output.py .................................... [ 54%]
+                                                                         [ 54%]
+tests/unit_tests/test_cli_validation.py ................................ [ 59%]
+..................                                                       [ 62%]
+tests/unit_tests/test_error_sanitization.py ........                     [ 63%]
+tests/unit_tests/test_fix_graph.py ........                              [ 64%]
+tests/unit_tests/test_general_and_user_exceptions.py ...                 [ 65%]
+tests/unit_tests/test_graph_config.py ..                                 [ 65%]
+tests/unit_tests/test_handle_errors.py .......................           [ 69%]
+tests/unit_tests/test_log_sanitizer.py ................................. [ 74%]
+...                                                                      [ 74%]
+tests/unit_tests/test_main.py ........................                   [ 78%]
+tests/unit_tests/test_media_router.py ............                       [ 80%]
+tests/unit_tests/test_parse_output.py ....                               [ 81%]
+tests/unit_tests/test_permissions.py ................                    [ 83%]
+tests/unit_tests/test_request_limits.py .....                            [ 84%]
+tests/unit_tests/test_resource_exceptions.py ...                         [ 84%]
+tests/unit_tests/test_response_helper.py ..                              [ 85%]
+tests/unit_tests/test_security_config.py ...........                     [ 86%]
+tests/unit_tests/test_security_headers.py ......................         [ 90%]
+tests/unit_tests/test_sentry_config.py .............                     [ 92%]
+tests/unit_tests/test_setup_middleware.py .                              [ 92%]
+tests/unit_tests/test_setup_router.py .                                  [ 92%]
+tests/unit_tests/test_store_router.py ................                   [ 95%]
+tests/unit_tests/test_swagger_helper.py ..                               [ 95%]
+tests/unit_tests/test_thread_name_generator.py ......................... [ 99%]
+....                                                                     [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/starlette/formparsers.py:12
+  /home/shudipto/projects/Agentflow/agentflow-api/.venv/lib/python3.13/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.9-final-0 ________________
+
+Name                                                                          Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------------------------------------
+agentflow_cli/cli/commands/api.py                                                85      0     16      0   100%
+agentflow_cli/cli/commands/build.py                                              75      8     24      2    90%   63, 105-107, 136->139, 153-154, 182-183
+agentflow_cli/cli/commands/init.py                                               54      4     10      0    94%   97-99, 127
+agentflow_cli/cli/commands/skills.py                                            130     13     46      5    90%   148-151, 171, 200->204, 227-229, 236, 239, 288-294
+agentflow_cli/cli/commands/version.py                                            22      2      0      0    91%   49-50
+agentflow_cli/cli/constants.py                                                   46      0      0      0   100%
+agentflow_cli/cli/core/config.py                                                 89     10     46      5    87%   60, 70, 97, 116-122, 132-133, 140
+agentflow_cli/cli/core/output.py                                                 69      0     14      0   100%
+agentflow_cli/cli/core/validation.py                                             89      2     44      0    98%   210, 214
+agentflow_cli/cli/exceptions.py                                                  30      4      0      0    87%   71-72, 101-102
+agentflow_cli/cli/logger.py                                                      37     15      8      0    53%   73-97, 109
+agentflow_cli/cli/main.py                                                        83     48      2      0    41%   50-55, 99-111, 169, 189-196, 235-242, 295-309, 357-370, 375-381
+agentflow_cli/cli/templates/defaults.py                                          17      0      4      0   100%
+agentflow_cli/src/app/core/auth/auth_backend.py                                  19      0      6      0   100%
+agentflow_cli/src/app/core/auth/authorization.py                                  6      1      0      0    83%   90
+agentflow_cli/src/app/core/auth/base_auth.py                                      5      0      0      0   100%
+agentflow_cli/src/app/core/auth/jwt_auth.py                                      30      0      6      0   100%
+agentflow_cli/src/app/core/auth/permissions.py                                   43     21     14      0    46%   82-135
+agentflow_cli/src/app/core/config/graph_config.py                                53      3     16      1    94%   40, 44, 55, 80->86
+agentflow_cli/src/app/core/config/media_settings.py                              32      1      0      0    97%   50
+agentflow_cli/src/app/core/config/sentry_config.py                               22      2      4      0    92%   54-55
+agentflow_cli/src/app/core/config/settings.py                                    71      0     12      4    95%   136->141, 141->147, 147->153, 153->156
+agentflow_cli/src/app/core/config/setup_logs.py                                  31      0      0      0   100%
+agentflow_cli/src/app/core/config/setup_middleware.py                            45      1      4      2    94%   39, 125->140
+agentflow_cli/src/app/core/config/worker_middleware.py                            0      0      0      0   100%
+agentflow_cli/src/app/core/exceptions/general_exception.py                       10      0      0      0   100%
+agentflow_cli/src/app/core/exceptions/handle_errors.py                          150      7     30      7    92%   224, 244, 264, 286, 306, 326, 346
+agentflow_cli/src/app/core/exceptions/resources_exceptions.py                    19      0      0      0   100%
+agentflow_cli/src/app/core/exceptions/user_exception.py                          13      0      0      0   100%
+agentflow_cli/src/app/core/middleware/request_limits.py                          18      0      4      0   100%
+agentflow_cli/src/app/core/middleware/security_headers.py                        51      0     12      2    97%   176->180, 180->184
+agentflow_cli/src/app/core/utils/log_sanitizer.py                                42      0     20      0   100%
+agentflow_cli/src/app/loader.py                                                 216    190     68      1    10%   25-60, 64-94, 98-128, 135-157, 161-191, 207-229, 233-255, 259-288, 292-299, 306-354
+agentflow_cli/src/app/main.py                                                    46      0      6      0   100%
+agentflow_cli/src/app/routers/a2a.py                                              0      0      0      0   100%
+agentflow_cli/src/app/routers/a2ui.py                                             0      0      0      0   100%
+agentflow_cli/src/app/routers/checkpointer/router.py                             93      7     26      6    87%   104->107, 189-200, 281, 283, 332->335, 452->455
+agentflow_cli/src/app/routers/checkpointer/schemas/checkpointer_schemas.py       42      0      0      0   100%
+agentflow_cli/src/app/routers/checkpointer/services/checkpointer_service.py     114     24     30      6    76%   34-35, 63, 71-86, 116-117, 137-139, 186->191, 201->205, 210, 212, 223, 232-238
+agentflow_cli/src/app/routers/graph/router.py                                    53     27      0      0    49%   44-53, 74-81, 108-114, 135-141, 169-175, 203-209, 256-266
+agentflow_cli/src/app/routers/graph/schemas/graph_schemas.py                     77      9      6      0    82%   34-36, 129-131, 163-165
+agentflow_cli/src/app/routers/graph/services/graph_service.py                   220    149     50      1    31%   54-60, 64-72, 83-97, 103, 112-134, 156-181, 189-215, 241-296, 315-379, 389-398, 401-410, 482, 506-507, 514-531
+agentflow_cli/src/app/routers/graph/services/multimodal_preprocessor.py          45      4     24      4    86%   22->27, 25, 31-34, 76->81
+agentflow_cli/src/app/routers/media/router.py                                    53      0      4      0   100%
+agentflow_cli/src/app/routers/media/schemas.py                                   29      0      0      0   100%
+agentflow_cli/src/app/routers/ping/router.py                                      7      0      0      0   100%
+agentflow_cli/src/app/routers/setup_router.py                                    12      0      0      0   100%
+agentflow_cli/src/app/routers/store/router.py                                    56      1     12      1    97%   120
+agentflow_cli/src/app/routers/store/schemas/store_schemas.py                     46      0      0      0   100%
+agentflow_cli/src/app/routers/store/services/store_service.py                    73      0      4      0   100%
+agentflow_cli/src/app/tasks/user_tasks.py                                         0      0      0      0   100%
+agentflow_cli/src/app/utils/callable_helper.py                                   13      0      4      0   100%
+agentflow_cli/src/app/utils/media/extractor.py                                   30      1     10      1    95%   64
+agentflow_cli/src/app/utils/media/pipeline.py                                    35      1     14      1    96%   43
+agentflow_cli/src/app/utils/parse_output.py                                       7      0      0      0   100%
+agentflow_cli/src/app/utils/response_helper.py                                   16      0      2      0   100%
+agentflow_cli/src/app/utils/schemas/output_schemas.py                            17      0      0      0   100%
+agentflow_cli/src/app/utils/schemas/user_schemas.py                              11      0      0      0   100%
+agentflow_cli/src/app/utils/snowflake_id_generator.py                            27     10      6      3    61%   25, 40-48, 58->78, 82
+agentflow_cli/src/app/utils/swagger_helper.py                                    28      0      0      0   100%
+agentflow_cli/src/app/utils/thread_name_generator.py                             31      0      4      0   100%
+agentflow_cli/src/app/worker.py                                                   0      0      0      0   100%
+-------------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                          2883    565    612     52    78%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+======================== 639 passed, 1 warning in 5.23s ========================

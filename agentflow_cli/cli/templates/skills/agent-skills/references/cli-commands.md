@@ -45,11 +45,11 @@ agentflow = agentflow_cli.cli.main:main
 
 - Installs the bundled Agentflow skill into an agent-specific project directory.
 - Prompts for the target agent when `--agent` is omitted:
-  - `1` / `codex`: `.agent/skills/agentflow`
+  - `1` / `codex`: `.agents/skills/agentflow`
   - `2` / `claude`: `.claude/skills/agentflow`
-  - `3` / `github`: `.github/skills/agentflow`
+  - `3` / `github`: `.github/instructions/agentflow.instructions.md` and `.github/skills/agentflow`
 - Options include `--agent/-a`, `--path/-p`, `--force/-f`, `--verbose/-v`, and `--quiet/-q`.
-- Source template: `agentflow-api/agentflow_cli/cli/templates/skills/agent-skills`.
+- Source templates: `agentflow-api/agentflow_cli/cli/templates/skills/agent-skills` and `agentflow-api/agentflow_cli/cli/templates/skills/copilot`.
 
 `agentflow version`
 

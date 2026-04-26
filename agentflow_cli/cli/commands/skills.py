@@ -21,33 +21,68 @@ _MANIFEST_FILENAME = ".agentflow-skill.json"
 
 
 @dataclass(frozen=True)
+class _InstallArtifact:
+    """Describes one file or folder installed for an agent."""
+
+    kind: Literal["folder", "file"]
+    install_relpath: str
+    source_relpath: str
+    manifest: bool = False
+
+
+@dataclass(frozen=True)
 class _AgentTarget:
     """Describes how the bundled skill is materialised for one agent."""
 
     name: str
-    kind: Literal["folder", "file"]
-    install_relpath: str
-    source_relpath: str
+    artifacts: tuple[_InstallArtifact, ...]
+
+    @property
+    def kind(self) -> str:
+        kinds = {artifact.kind for artifact in self.artifacts}
+        if len(kinds) == 1:
+            return next(iter(kinds))
+        return "file+folder"
 
 
 _TARGETS: tuple[_AgentTarget, ...] = (
     _AgentTarget(
         name="Codex",
-        kind="folder",
-        install_relpath=".agents/skills/agentflow",
-        source_relpath="agent-skills",
+        artifacts=(
+            _InstallArtifact(
+                kind="folder",
+                install_relpath=".agents/skills/agentflow",
+                source_relpath="agent-skills",
+                manifest=True,
+            ),
+        ),
     ),
     _AgentTarget(
         name="Claude",
-        kind="folder",
-        install_relpath=".claude/skills/agentflow",
-        source_relpath="agent-skills",
+        artifacts=(
+            _InstallArtifact(
+                kind="folder",
+                install_relpath=".claude/skills/agentflow",
+                source_relpath="agent-skills",
+                manifest=True,
+            ),
+        ),
     ),
     _AgentTarget(
         name="GitHub",
-        kind="file",
-        install_relpath=".github/instructions/agentflow.instructions.md",
-        source_relpath="copilot/agentflow.instructions.md",
+        artifacts=(
+            _InstallArtifact(
+                kind="file",
+                install_relpath=".github/instructions/agentflow.instructions.md",
+                source_relpath="copilot/agentflow.instructions.md",
+            ),
+            _InstallArtifact(
+                kind="folder",
+                install_relpath=".github/skills/agentflow",
+                source_relpath="agent-skills",
+                manifest=True,
+            ),
+        ),
     ),
 )
 
@@ -123,47 +158,68 @@ class SkillsCommand(BaseCommand):
         *,
         force: bool,
     ) -> None:
-        source = templates_root / target.source_relpath
-        if not source.exists():
-            raise FileOperationError(
-                f"Bundled skills template not found: {source}", file_path=str(source)
+        installs = [
+            (
+                artifact,
+                templates_root / artifact.source_relpath,
+                project_root / artifact.install_relpath,
             )
-
-        dest = project_root / target.install_relpath
-
-        if dest.exists():
-            if not force:
+            for artifact in target.artifacts
+        ]
+        for _artifact, source, _dest in installs:
+            if not source.exists():
                 raise FileOperationError(
-                    f"Skill already installed at {dest}. Use --force to overwrite.",
-                    file_path=str(dest),
+                    f"Bundled skills template not found: {source}", file_path=str(source)
                 )
-            if dest.is_dir():
-                shutil.rmtree(dest)
-            else:
-                dest.unlink()
 
-        dest.parent.mkdir(parents=True, exist_ok=True)
-
-        if target.kind == "folder":
-            shutil.copytree(
-                source,
-                dest,
-                ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
+        existing = [dest for _artifact, _source, dest in installs if dest.exists()]
+        if existing and not force:
+            paths = ", ".join(str(dest) for dest in existing)
+            raise FileOperationError(
+                f"Skill already installed at {paths}. Use --force to overwrite.",
+                file_path=str(existing[0]),
             )
-            self._write_manifest(dest, target.name)
-        else:
-            shutil.copyfile(source, dest)
 
-        self.output.success(f"Installed Agentflow skills for {target.name} at {dest}")
+        for _artifact, _source, dest in installs:
+            if dest.exists():
+                if dest.is_dir():
+                    shutil.rmtree(dest)
+                else:
+                    dest.unlink()
+
+        installed_paths: list[str] = []
+        for artifact, source, dest in installs:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+
+            if artifact.kind == "folder":
+                shutil.copytree(
+                    source,
+                    dest,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
+                )
+                if artifact.manifest:
+                    self._write_manifest(dest, target.name)
+            else:
+                shutil.copyfile(source, dest)
+            installed_paths.append(str(dest))
+
+        self.output.success(
+            f"Installed Agentflow skills for {target.name} at {', '.join(installed_paths)}"
+        )
 
     def _install_all(self, templates_root: Path, project_root: Path, *, force: bool) -> int:
         installed = 0
         skipped: list[str] = []
         failed: list[str] = []
         for target in _TARGETS:
-            dest = project_root / target.install_relpath
-            if dest.exists() and not force:
-                skipped.append(f"{target.name} ({dest})")
+            existing = [
+                project_root / artifact.install_relpath
+                for artifact in target.artifacts
+                if (project_root / artifact.install_relpath).exists()
+            ]
+            if existing and not force:
+                paths = ", ".join(str(dest) for dest in existing)
+                skipped.append(f"{target.name} ({paths})")
                 continue
             try:
                 self._install_one(templates_root, project_root, target, force=force)
@@ -194,7 +250,9 @@ class SkillsCommand(BaseCommand):
         )
 
     def _print_agents(self) -> None:
-        rows = [[t.name, t.kind, t.install_relpath] for t in _TARGETS]
+        rows = [
+            [t.name, t.kind, ", ".join(a.install_relpath for a in t.artifacts)] for t in _TARGETS
+        ]
         self.output.print_table(
             ["Agent", "Kind", "Install path (relative to --path)"],
             rows,
