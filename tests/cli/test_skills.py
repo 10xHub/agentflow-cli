@@ -113,7 +113,7 @@ def test_install_codex_uses_agents_dotdir(cmd: SkillsCommand, tmp_path: Path) ->
     assert not (tmp_path / ".codex").exists()
 
 
-def test_install_github_writes_copilot_instructions_file(
+def test_install_github_writes_copilot_instructions_and_skill(
     cmd: SkillsCommand, tmp_path: Path
 ) -> None:
     exit_code = cmd.execute(agent="github", path=str(tmp_path))
@@ -124,8 +124,15 @@ def test_install_github_writes_copilot_instructions_file(
     content = instructions.read_text(encoding="utf-8")
     # Copilot frontmatter required for the file to be picked up
     assert content.startswith("---\napplyTo:")
-    # GitHub install does NOT create the old skills folder
-    assert not (tmp_path / ".github" / "skills").exists()
+
+    skill_dir = tmp_path / ".github" / "skills" / "agentflow"
+    assert (skill_dir / "SKILL.md").is_file()
+    assert (skill_dir / "references").is_dir()
+
+    manifest = json.loads((skill_dir / ".agentflow-skill.json").read_text(encoding="utf-8"))
+    assert manifest["agent"] == "GitHub"
+    assert manifest["cli_version"] == CLI_VERSION
+    assert "installed_at" in manifest
 
 
 def test_install_existing_dir_without_force_fails(
@@ -155,10 +162,13 @@ def test_force_overwrites_copilot_file(cmd: SkillsCommand, tmp_path: Path) -> No
     instructions = tmp_path / ".github" / "instructions" / "agentflow.instructions.md"
     cmd.execute(agent="github", path=str(tmp_path))
     instructions.write_text("user-edited", encoding="utf-8")
+    sentinel = tmp_path / ".github" / "skills" / "agentflow" / "SENTINEL.txt"
+    sentinel.write_text("user-local content", encoding="utf-8")
 
     exit_code = cmd.execute(agent="github", path=str(tmp_path), force=True)
     assert exit_code == 0
     assert instructions.read_text(encoding="utf-8").startswith("---\napplyTo:")
+    assert not sentinel.exists(), "force install should remove old GitHub skill contents"
 
 
 # --- --all flow -----------------------------------------------------------
@@ -171,6 +181,7 @@ def test_all_installs_every_agent(cmd: SkillsCommand, tmp_path: Path) -> None:
     assert (tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md").is_file()
     assert (tmp_path / ".claude" / "skills" / "agentflow" / "SKILL.md").is_file()
     assert (tmp_path / ".github" / "instructions" / "agentflow.instructions.md").is_file()
+    assert (tmp_path / ".github" / "skills" / "agentflow" / "SKILL.md").is_file()
 
 
 def test_all_skips_existing_without_force(

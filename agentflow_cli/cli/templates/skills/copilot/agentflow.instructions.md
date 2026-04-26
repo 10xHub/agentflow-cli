@@ -8,6 +8,10 @@ This repo uses **Agentflow** — a multi-agent framework that wraps the official
 
 When generating, refactoring, or debugging code in this repo, prefer Agentflow's own abstractions over hand-rolled equivalents.
 
+Use these instructions together with the Agentflow skill bundle at `.github/skills/agentflow`.
+When a task touches a specific subsystem, read the matching reference file under
+`.github/skills/agentflow/references/` before changing behavior.
+
 ## Public package names (use these in user-facing examples)
 
 - Python core SDK: `10xscale-agentflow` — `pip install 10xscale-agentflow` — source under `agentflow/agentflow`
@@ -31,7 +35,7 @@ Never use repository folder names (e.g. `agentflow-cli`) in install commands or 
 
 ## Where to look when you need more detail
 
-For deeper context on any subsystem, read the matching reference under `.github/skills/agentflow/references/` (if installed) or `agentflow-docs/docs`:
+For deeper context on any subsystem, read the matching reference under `.github/skills/agentflow/references/` or `agentflow-docs/docs`:
 
 - Architecture and package flow
 - Agent and tool behavior, prebuilt agents
