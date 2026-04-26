@@ -31,7 +31,6 @@ metadata:
     - references/client-auth-and-errors.md
     - references/client-messages-invoke-stream.md
     - references/client-threads-memory-files.md
-    - references/client-a2ui-a2a-troubleshooting.md
   tags:
     - agentflow
     - agents
@@ -84,7 +83,6 @@ Treat `agentflow-docs/docs` as the first source of truth for public package name
    - TypeScript auth helpers and structured errors: `references/client-auth-and-errors.md`
    - TypeScript messages, invoke, and stream details: `references/client-messages-invoke-stream.md`
    - TypeScript thread, memory, and file APIs: `references/client-threads-memory-files.md`
-   - TypeScript A2UI/A2A surfaces and troubleshooting: `references/client-a2ui-a2a-troubleshooting.md`
 3. Prefer existing Agentflow abstractions over new custom wiring:
    - Build workflows with `StateGraph`, `Agent`, `ToolNode`, `AgentState`, and `Message`.
    - Persist conversation state with checkpointers; use stores only for cross-thread memory.
