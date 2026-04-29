@@ -1,8 +1,35 @@
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+
+@dataclass
+class RateLimitConfig:
+    """Rate limit configuration parsed from agentflow.json."""
+
+    enabled: bool
+    requests: int
+    window: int
+    by: str  # "ip" | "global"
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "RateLimitConfig":
+        enabled = data.get("enabled", True)
+        requests = int(data.get("requests", 100))
+        window = int(data.get("window", 60))
+        by = data.get("by", "ip")
+
+        if by not in ("ip", "global"):
+            raise ValueError(f"rate_limit.by must be 'ip' or 'global', got '{by}'")
+        if requests <= 0:
+            raise ValueError("rate_limit.requests must be a positive integer")
+        if window <= 0:
+            raise ValueError("rate_limit.window must be a positive integer")
+
+        return cls(enabled=enabled, requests=requests, window=window, by=by)
 
 
 class GraphConfig:
@@ -84,3 +111,28 @@ class GraphConfig:
                 }
 
         raise ValueError(f"Unsupported auth method: {res}")
+
+    @property
+    def rate_limit(self) -> RateLimitConfig | None:
+        """
+        Get rate limit configuration from agentflow.json.
+
+        Returns:
+            RateLimitConfig if 'rate_limit' key is present and enabled, else None.
+
+        Example agentflow.json entry::
+
+            "rate_limit": {
+                "enabled": true,
+                "requests": 100,
+                "window": 60,
+                "by": "ip"
+            }
+        """
+        data = self.data.get("rate_limit", None)
+        if data is None:
+            return None
+        config = RateLimitConfig.from_dict(data)
+        if not config.enabled:
+            return None
+        return config

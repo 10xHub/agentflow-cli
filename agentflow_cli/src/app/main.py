@@ -99,7 +99,7 @@ app = FastAPI(
     root_path=settings.ROOT_PATH,
 )
 
-setup_middleware(app)
+setup_middleware(app, graph_config=graph_config)
 
 # attach_injector(app, injector=injector)
 setup_fastapi(container=container, app=app)

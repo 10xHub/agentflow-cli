@@ -2,5 +2,11 @@
   "agent": "graph.react:app",
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "env": ".env",
-  "auth": null
+  "auth": null,
+  "rate_limit": {
+    "enabled": true,
+    "requests": 100,
+    "window": 60,
+    "by": "ip"
+  }
 }

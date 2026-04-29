@@ -9,9 +9,11 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from agentflow_cli.src.app.core.middleware.rate_limit import RateLimitMiddleware
 from agentflow_cli.src.app.core.middleware.request_limits import RequestSizeLimitMiddleware
 from agentflow_cli.src.app.core.middleware.security_headers import SecurityHeadersMiddleware
 
+from .graph_config import GraphConfig
 from .sentry_config import init_sentry
 from .settings import get_settings, logger
 
@@ -94,17 +96,20 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def setup_middleware(app: FastAPI):
+def setup_middleware(app: FastAPI, graph_config: GraphConfig | None = None):
     """
     Set up middleware for the FastAPI application.
 
     Args:
         app (FastAPI): The FastAPI application instance.
+        graph_config (GraphConfig | None): Optional graph configuration used to
+            enable dynamic rate limiting from ``agentflow.json``.
 
     Middleware:
         - CORS: Configured based on settings.ORIGINS.
         - TrustedHost: Configured with allowed hosts from settings.ALLOWED_HOST.
         - GZip: Applied with a minimum size of 1000 bytes (excludes streaming endpoints).
+        - RateLimit: Applied when ``rate_limit`` is configured in ``agentflow.json``.
     """
     settings = get_settings()
     # init cors
@@ -142,6 +147,19 @@ def setup_middleware(app: FastAPI):
     # Use SelectiveGZipMiddleware to exclude streaming endpoints from compression
     # Streaming endpoints need immediate data transmission without buffering
     app.add_middleware(SelectiveGZipMiddleware, minimum_size=1000)
+
+    # Apply rate limiting only when configured in agentflow.json
+    if graph_config is not None:
+        rate_limit_config = graph_config.rate_limit
+        if rate_limit_config is not None:
+            app.add_middleware(RateLimitMiddleware, config=rate_limit_config)
+            logger.info(
+                "Rate limiting enabled: %d requests per %ds by %s",
+                rate_limit_config.requests,
+                rate_limit_config.window,
+                rate_limit_config.by,
+            )
+
     logger.debug("Middleware set up")
 
     # Initialize Sentry
