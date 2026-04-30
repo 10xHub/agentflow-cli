@@ -216,3 +216,20 @@ def test_redis_backend_reuses_injectq_redis_client():
 def test_redis_backend_requires_url_when_no_injected_client():
     with pytest.raises(ValueError, match="redis.url"):
         build_backend(_config(backend="redis"), container=InjectQ())
+
+
+def test_redis_backend_from_url_requires_optional_extra(monkeypatch):
+    monkeypatch.setattr(
+        "agentflow_cli.src.app.core.middleware.rate_limit.redis._REDIS_AVAILABLE",
+        False,
+    )
+    monkeypatch.setattr(
+        "agentflow_cli.src.app.core.middleware.rate_limit.redis.AsyncRedis",
+        None,
+    )
+
+    with pytest.raises(ImportError, match=r"10xscale-agentflow-cli\[redis\]"):
+        RedisRateLimitBackend.from_url(
+            redis_url="redis://localhost:6379/0",
+            prefix="agentflow:test",
+        )

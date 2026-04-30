@@ -16,6 +16,7 @@ except ImportError:
 
 
 logger = logging.getLogger("agentflow_api.rate_limit")
+_REDIS_EXTRA_INSTALL = 'pip install "10xscale-agentflow-cli[redis]"'
 
 # Atomic sliding-window check using a Redis sorted set.
 #
@@ -82,7 +83,7 @@ class RedisRateLimitBackend(BaseRateLimitBackend):
         if not _REDIS_AVAILABLE or AsyncRedis is None:
             raise ImportError(
                 "Redis backend requires the 'redis' package. "
-                "Install it with: pip install 'redis>=5.0.7'"
+                f"Install the optional Redis extra with: {_REDIS_EXTRA_INSTALL}"
             )
         redis = AsyncRedis.from_url(redis_url, decode_responses=False)
         return cls(redis=redis, prefix=prefix, fail_open=fail_open, close_redis=True)

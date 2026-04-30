@@ -8,6 +8,7 @@ A professional Python API framework for building agent-based applications with F
 - **[Configuration Guide](./docs/configuration.md)** - All configuration options explained
 - **[Deployment Guide](./docs/deployment.md)** - Docker, Kubernetes, and cloud deployment
 - **[Authentication Guide](./docs/authentication.md)** - JWT and custom authentication
+- **[Rate Limiting Guide](./docs/rate-limiting.md)** - Memory, Redis, and custom rate-limit backends
 - **[ID Generation Guide](./docs/id-generation.md)** - Snowflake ID generation
 - **[Thread Name Generator Guide](./docs/thread-name-generator.md)** - Thread naming strategies
 
@@ -17,6 +18,13 @@ A professional Python API framework for building agent-based applications with F
 
 ```bash
 pip install 10xscale-agentflow-cli
+```
+
+Redis rate limiting is optional. Install the Redis extra only when you configure
+`rate_limit.backend` as `redis`:
+
+```bash
+pip install "10xscale-agentflow-cli[redis]"
 ```
 
 ### Initialize a New Project
@@ -53,6 +61,7 @@ agentflow build --docker-compose
 - ✅ **State Graph Orchestration** - Build complex agent workflows with LangGraph
 - ✅ **FastAPI Backend** - High-performance async web framework
 - ✅ **Authentication** - Built-in JWT auth and custom authentication support
+- ✅ **Rate Limiting** - Sliding-window limits with memory, Redis, and custom backends
 - ✅ **ID Generation** - Distributed Snowflake ID generation
 - ✅ **Thread Management** - Intelligent thread naming and conversation management
 - ✅ **Docker Ready** - Generate production-ready Docker files
@@ -174,6 +183,7 @@ The configuration file (`agentflow.json`) defines your agent, authentication, an
 | `injectq` | string\|null | Path to InjectQ container |
 | `store` | string\|null | Path to data store |
 | `redis` | string\|null | Redis connection URL |
+| `rate_limit` | object\|null | Sliding-window rate limiting configuration |
 | `thread_name_generator` | string\|null | Path to custom thread name generator |
 
 See the [Configuration Guide](./docs/configuration.md) for complete details.
@@ -544,4 +554,3 @@ Developed by [10xScale](https://10xscale.ai) and maintained by the community.
 ---
 
 **Made with ❤️ for the AI agent development community**
-

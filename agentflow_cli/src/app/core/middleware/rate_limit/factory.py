@@ -7,7 +7,7 @@ from agentflow_cli.src.app.core.config.graph_config import RateLimitConfig
 
 from .base import BaseRateLimitBackend
 from .memory import MemoryRateLimitBackend
-from .redis import AsyncRedis, RedisRateLimitBackend
+from .redis import RedisRateLimitBackend
 
 
 if TYPE_CHECKING:
@@ -72,8 +72,7 @@ def _build_redis_backend(
     )
     _bind_redis(container, backend._redis)
     logger.info(
-        "Rate-limit backend: created Redis and bound it in InjectQ "
-        "(prefix=%s, fail_open=%s)",
+        "Rate-limit backend: created Redis and bound it in InjectQ (prefix=%s, fail_open=%s)",
         config.redis_prefix,
         config.fail_open,
     )
@@ -84,14 +83,15 @@ def _get_redis_from_container(container: InjectQ) -> Any | None:
     redis = container.try_get("redis") or container.try_get("redis_client")
     if redis is not None:
         return redis
-    if AsyncRedis is not None:
-        redis = container.try_get(AsyncRedis)
-        if redis is not None:
-            return redis
+
+    from redis.asyncio import Redis
+
+    redis = container.try_get(Redis)
+    if redis is not None:
+        return redis
     return container.try_get("Redis")
 
 
 def _bind_redis(container: InjectQ, redis: "Redis") -> None:
-    container.bind_instance("redis", redis)
-    if AsyncRedis is not None:
-        container.bind_instance(AsyncRedis, redis)
+    if Redis is not None:
+        container.bind_instance(Redis, redis)

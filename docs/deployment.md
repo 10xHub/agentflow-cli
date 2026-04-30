@@ -640,7 +640,7 @@ echo "secrets.yaml" >> .gitignore
 pip install --upgrade 10xscale-agentflow-cli
 
 # 7. Enable rate limiting
-# Use nginx, Traefik, or API Gateway
+# Use AgentFlow's Redis backend, or enforce limits at nginx, Traefik, or an API gateway
 ```
 
 ### Performance
