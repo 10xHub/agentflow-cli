@@ -48,6 +48,11 @@ Active middleware areas:
 - Request ID assignment.
 - Selective gzip behavior; streaming endpoints should avoid gzip buffering when configured.
 - Worker middleware where used by deployment.
+- Rate limiting: sliding-window limiter controlled by the `rate_limit` block in `agentflow.json`.
+  Uses an in-process `memory` backend by default; use the `redis` backend (requires
+  `pip install "10xscale-agentflow-cli[redis]"`) for multi-worker or multi-instance deployments.
+  Excluded paths, identity mode (`ip` or `global`), and `fail_open` behavior are all configurable.
+  See `references/rate-limiting.md` for the full option reference.
 
 ## Production Warnings
 
@@ -76,7 +81,10 @@ Production mode warns about unsafe defaults such as:
 - Middleware setup: `agentflow-api/agentflow_cli/src/app/core/config/setup_middleware.py`
 - Request limits: `agentflow-api/agentflow_cli/src/app/core/middleware/request_limits.py`
 - Security headers: `agentflow-api/agentflow_cli/src/app/core/middleware/security_headers.py`
+- Rate limit middleware: `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/`
+- Rate limit base class: `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/base.py`
 - Sentry: `agentflow-api/agentflow_cli/src/app/core/config/sentry_config.py`
 - Log sanitizer: `agentflow-api/agentflow_cli/src/app/core/utils/log_sanitizer.py`
 - Main docs: `agentflow-docs/docs/reference/api-cli/environment.md`
 - Production docs: `agentflow-docs/docs/how-to/production/environment-variables.md`
+- Rate limiting docs: `agentflow-api/docs/rate-limiting.md`

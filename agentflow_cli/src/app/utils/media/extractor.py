@@ -37,7 +37,7 @@ class DocumentExtractor:
         if AsyncTextExtractor is None:
             raise ImportError(
                 "textxtract is required for document extraction. "
-                "Install with `pip install textxtract[pdf,docx,html,xml,md]`"
+                'Install with `pip install "10xscale-agentflow-cli[media]"`'
             )
 
         self.extractor = AsyncTextExtractor()

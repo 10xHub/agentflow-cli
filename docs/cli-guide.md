@@ -11,7 +11,7 @@ pip install 10xscale-agentflow-cli
 For development with all optional dependencies:
 
 ```bash
-pip install "10xscale-agentflow-cli[redis,sentry,firebase,snowflakekit,gcloud]"
+pip install "10xscale-agentflow-cli[redis,jwt,media,sentry,firebase,snowflakekit,gcloud]"
 ```
 
 ## Quick Start

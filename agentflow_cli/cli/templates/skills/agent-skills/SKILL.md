@@ -26,6 +26,7 @@ metadata:
     - references/api-configuration.md
     - references/auth-and-authorization.md
     - references/api-settings-and-middleware.md
+    - references/rate-limiting.md
     - references/rest-api-and-errors.md
     - references/id-and-thread-name-generators.md
     - references/client-auth-and-errors.md
@@ -78,6 +79,7 @@ Treat `agentflow-docs/docs` as the first source of truth for public package name
    - `agentflow.json` and dependency loading: `references/api-configuration.md`
    - API auth and authorization: `references/auth-and-authorization.md`
    - API environment, settings, and middleware: `references/api-settings-and-middleware.md`
+   - Rate limiting (config, backends, headers, custom backend): `references/rate-limiting.md`
    - REST routes and error behavior: `references/rest-api-and-errors.md`
    - API Snowflake IDs and thread naming: `references/id-and-thread-name-generators.md`
    - TypeScript auth helpers and structured errors: `references/client-auth-and-errors.md`

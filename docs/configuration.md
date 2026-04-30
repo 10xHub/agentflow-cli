@@ -9,6 +9,7 @@ This document provides a complete reference for configuring your AgentFlow appli
 - [Authentication](#authentication)
 - [Dependency Injection](#dependency-injection)
 - [Storage & Persistence](#storage--persistence)
+- [Rate Limiting](#rate-limiting)
 - [Environment Variables](#environment-variables)
 - [Application Settings](#application-settings)
 - [Examples](#examples)
@@ -43,6 +44,7 @@ agentflow api --config /path/to/config.json
   "injectq": null,
   "store": null,
   "redis": null,
+  "rate_limit": null,
   "thread_name_generator": null
 }
 ```
@@ -360,6 +362,82 @@ Redis connection URL for caching and sessions.
 ```bash
 REDIS_URL=redis://localhost:6379
 ```
+
+---
+
+## Rate Limiting
+
+### `rate_limit`
+
+Configures AgentFlow's built-in sliding-window rate limiter.
+
+**Type:** `object | null`
+
+**Default:** `null`
+
+**Local development example:**
+```json
+{
+  "rate_limit": {
+    "enabled": true,
+    "backend": "memory",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  }
+}
+```
+
+**Production Redis example:**
+
+Install the optional Redis extra before using `backend: "redis"`:
+
+```bash
+pip install "10xscale-agentflow-cli[redis]"
+```
+
+```json
+{
+  "rate_limit": {
+    "enabled": true,
+    "backend": "redis",
+    "requests": 1000,
+    "window": 60,
+    "by": "ip",
+    "trusted_proxy_headers": true,
+    "exclude_paths": ["/health", "/metrics", "/docs", "/redoc", "/openapi.json"],
+    "redis": {
+      "url": "${RATE_LIMIT_REDIS_URL}",
+      "prefix": "agentflow:rate-limit"
+    },
+    "fail_open": true
+  }
+}
+```
+
+**Options:**
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `true` | Enables rate limiting when the block exists. |
+| `backend` | string | `"memory"` | `memory`, `redis`, or `custom`. |
+| `requests` | integer | `100` | Maximum requests per window. |
+| `window` | integer | `60` | Window duration in seconds. |
+| `by` | string | `"ip"` | `ip` or `global`. |
+| `exclude_paths` | string array | `[]` | Paths that bypass rate limiting. |
+| `trusted_proxy_headers` | boolean | `false` | Use `X-Forwarded-For` only behind a trusted proxy. |
+| `redis.url` | string | `null` | Redis URL for the Redis backend. |
+| `redis.prefix` | string | `"agentflow:rate-limit"` | Redis key prefix. |
+| `fail_open` | boolean | `true` | On Redis errors, allow requests when `true`; deny when `false`. |
+
+Use the `memory` backend for local development or one-process services. Use the
+`redis` backend for production deployments with multiple workers, containers, or
+servers. Redis is optional and is not installed unless you install the `redis`
+extra.
+
+See the [Rate Limiting Guide](./rate-limiting.md) for usage details, response
+headers, and custom backend examples.
 
 ---
 
