@@ -32,6 +32,7 @@ Never use repository folder names (e.g. `agentflow-cli`) in install commands or 
 - Tools need docstrings and type annotations so model-facing schemas are useful.
 - Injectable parameters (`state`, `config`, `tool_call_id`) are hidden from the model schema.
 - For production, avoid process-local storage for shared state — use durable checkpointer/store backends.
+- Add observability, audit, or business-logic side effects by registering a `GraphLifecycleHook` on `CallbackManager` — do not wrap `ainvoke()` / `astream()` calls in application code to achieve the same result.
 
 ## Where to look when you need more detail
 
@@ -44,7 +45,9 @@ For deeper context on any subsystem, read the matching reference under `.github/
 - Multimodal media, long-term memory stores
 - Streaming, SSE, runtime publishers, A2A/ACP protocols
 - API server, REST routes, auth, errors, settings, middleware
+- Rate limiting: sliding-window config, memory/Redis/custom backends, response headers, 429 behavior: `references/rate-limiting.md`
 - TypeScript client: invoke, stream, threads, memory, files, A2UI
+- Observability, validators, graph lifecycle hooks (`GraphLifecycleHook`), and runtime jumps (`Command`): `references/callbacks-and-command.md`
 
 ## Verifying behavior
 

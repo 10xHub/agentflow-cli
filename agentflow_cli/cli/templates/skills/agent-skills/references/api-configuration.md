@@ -23,7 +23,15 @@ Common full shape:
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "authorization": "graph.auth:my_authorization_backend",
   "env": ".env",
-  "auth": "jwt"
+  "auth": "jwt",
+  "rate_limit": {
+    "enabled": true,
+    "backend": "memory",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  }
 }
 ```
 
@@ -37,6 +45,7 @@ Common full shape:
 - `authorization`: optional import path to an authorization backend.
 - `env`: optional `.env` path loaded before graph import.
 - `auth`: `null`, `"jwt"`, or `{"method": "custom", "path": "module:backend"}`.
+- `rate_limit`: optional sliding-window rate limiter config object; omit or set to `null` to disable. See `references/rate-limiting.md` for the full field reference.
 
 ## Loading Order
 
@@ -62,3 +71,4 @@ Common full shape:
 - App startup: `agentflow-api/agentflow_cli/src/app/main.py`
 - Main docs: `agentflow-docs/docs/reference/api-cli/configuration.md`
 - How-to: `agentflow-docs/docs/how-to/api-cli/configure-agentflow-json.md`
+- Rate limit config details: `references/rate-limiting.md`
