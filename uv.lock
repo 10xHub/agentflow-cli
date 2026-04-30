@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -32,10 +32,8 @@ dependencies = [
     { name = "orjson" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "pyjwt" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
-    { name = "textxtract", extra = ["docx", "html", "md", "pdf", "xml"] },
     { name = "typer" },
     { name = "uvicorn" },
 ]
@@ -47,6 +45,12 @@ firebase = [
 ]
 gcloud = [
     { name = "google-cloud-logging" },
+]
+jwt = [
+    { name = "pyjwt" },
+]
+media = [
+    { name = "textxtract", extra = ["docx", "html", "md", "pdf", "xml"] },
 ]
 redis = [
     { name = "redis" },
@@ -67,14 +71,17 @@ dev = [
     { name = "mkdocstrings" },
     { name = "mypy-extensions" },
     { name = "pre-commit" },
+    { name = "pyjwt" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "pytest-env" },
     { name = "pytest-xdist" },
+    { name = "redis" },
     { name = "requests" },
     { name = "ruff" },
     { name = "snowflakekit" },
+    { name = "textxtract", extra = ["docx", "html", "md", "pdf", "xml"] },
 ]
 
 [package.metadata]
@@ -88,17 +95,17 @@ requires-dist = [
     { name = "orjson" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "pyjwt" },
+    { name = "pyjwt", marker = "extra == 'jwt'" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.7" },
     { name = "sentry-sdk", marker = "extra == 'sentry'", specifier = ">=2.10.0" },
     { name = "snowflakekit", marker = "extra == 'snowflakekit'" },
-    { name = "textxtract", extras = ["pdf", "docx", "html", "xml", "md"], specifier = ">=0.2.0" },
+    { name = "textxtract", extras = ["pdf", "docx", "html", "xml", "md"], marker = "extra == 'media'", specifier = ">=0.2.0" },
     { name = "typer" },
     { name = "uvicorn" },
 ]
-provides-extras = ["sentry", "firebase", "snowflakekit", "redis", "gcloud"]
+provides-extras = ["sentry", "firebase", "snowflakekit", "redis", "jwt", "media", "gcloud"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -109,14 +116,17 @@ dev = [
     { name = "mkdocstrings", specifier = "==0.25.2" },
     { name = "mypy-extensions", specifier = "==1.0.0" },
     { name = "pre-commit", specifier = ">=3.8.0" },
+    { name = "pyjwt" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-env", specifier = ">=1.1.5" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "redis", specifier = ">=5.0.7" },
     { name = "requests", specifier = "==2.32.3" },
     { name = "ruff", specifier = "==0.5.2" },
     { name = "snowflakekit" },
+    { name = "textxtract", extras = ["pdf", "docx", "html", "xml", "md"], specifier = ">=0.2.0" },
 ]
 
 [[package]]

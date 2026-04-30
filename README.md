@@ -27,6 +27,14 @@ Redis rate limiting is optional. Install the Redis extra only when you configure
 pip install "10xscale-agentflow-cli[redis]"
 ```
 
+JWT auth and document text extraction are optional too. Install only the extra
+you need:
+
+```bash
+pip install "10xscale-agentflow-cli[jwt]"
+pip install "10xscale-agentflow-cli[media]"
+```
+
 ### Initialize a New Project
 
 ```bash

@@ -1,6 +1,5 @@
 from typing import Any
 
-import jwt
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
@@ -8,6 +7,12 @@ from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
 from agentflow_cli.src.app.core.config.settings import get_settings
 from agentflow_cli.src.app.core.exceptions import UserAccountError
+
+
+try:
+    import jwt
+except ImportError:  # pragma: no cover
+    jwt = None  # type: ignore[assignment]
 
 
 class JwtAuth(BaseAuth):
@@ -50,6 +55,12 @@ class JwtAuth(BaseAuth):
         jwt_algorithm = settings.JWT_ALGORITHM
 
         token = credential.credentials
+
+        if jwt is None:
+            raise ImportError(
+                "PyJWT is required for JWT authentication. "
+                'Install with `pip install "10xscale-agentflow-cli[jwt]"`'
+            )
 
         if jwt_secret_key is None or jwt_algorithm is None:
             raise UserAccountError(

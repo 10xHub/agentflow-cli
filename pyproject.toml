@@ -44,8 +44,6 @@ dependencies = [
     "uvicorn",
     "typer",
     "python-dotenv",
-    "PyJWT",
-    "textxtract[pdf,docx,html,xml,md]>=0.2.0",
 ]
 
 [project.urls]
@@ -67,6 +65,12 @@ snowflakekit = [
 ]
 redis = [
     "redis>=5.0.7",
+]
+jwt = [
+    "PyJWT",
+]
+media = [
+    "textxtract[pdf,docx,html,xml,md]>=0.2.0",
 ]
 gcloud = [
     "google-cloud-logging",
@@ -245,4 +249,7 @@ dev = [
     "lib==4.0.0",
     "markdown-it-py==3.0.0",
     "requests==2.32.3",
+    "redis>=5.0.7",
+    "PyJWT",
+    "textxtract[pdf,docx,html,xml,md]>=0.2.0",
 ]

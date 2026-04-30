@@ -80,18 +80,19 @@ def _build_redis_backend(
 
 
 def _get_redis_from_container(container: InjectQ) -> Any | None:
-    redis = container.try_get("redis") or container.try_get("redis_client")
+    redis = container.try_get("redis")
     if redis is not None:
         return redis
 
-    from redis.asyncio import Redis
-
-    redis = container.try_get(Redis)
+    redis = container.try_get("redis_client")
     if redis is not None:
         return redis
+
     return container.try_get("Redis")
 
 
 def _bind_redis(container: InjectQ, redis: "Redis") -> None:
     if Redis is not None:
         container.bind_instance(Redis, redis)
+    container.bind_instance("redis", redis)
+    container.bind_instance("redis_client", redis)
