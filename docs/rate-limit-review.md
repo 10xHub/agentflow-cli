@@ -162,13 +162,15 @@ Future custom backend example:
   "rate_limit": {
     "enabled": true,
     "backend": "custom",
-    "path": "my_project.rate_limit:backend",
     "requests": 100,
     "window": 60,
     "by": "user"
   }
 }
 ```
+
+For custom backends, implement `BaseRateLimitBackend` and bind an instance into
+InjectQ, matching the authentication/authorization pattern.
 
 Suggested fields:
 
@@ -200,8 +202,8 @@ Split the rate limiter into three layers:
 Example interface:
 
 ```python
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Protocol
 
 
 @dataclass(frozen=True)
@@ -213,7 +215,8 @@ class RateLimitDecision:
     reset_after: int
 
 
-class RateLimitBackend(Protocol):
+class BaseRateLimitBackend(ABC):
+    @abstractmethod
     async def check(self, key: str, *, limit: int, window: int) -> RateLimitDecision:
         ...
 ```
@@ -222,7 +225,6 @@ Then implement:
 
 - `MemoryRateLimitBackend`
 - `RedisRateLimitBackend`
-- `CustomRateLimitBackend`
 
 The middleware should not know whether the counter lives in a deque, Redis, Postgres, or a user's custom implementation.
 
@@ -314,4 +316,3 @@ Do this in one focused PR:
 4. Add tests for config and memory behavior.
 
 Then a second PR can add Redis without mixing architectural cleanup and networked storage in the same change.
-

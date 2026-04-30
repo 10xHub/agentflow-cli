@@ -4,12 +4,13 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from injectq import InjectQ
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from agentflow_cli.src.app.core.middleware.rate_limit import RateLimitMiddleware
+from agentflow_cli.src.app.core.middleware.rate_limit import RateLimitMiddleware, build_backend
 from agentflow_cli.src.app.core.middleware.request_limits import RequestSizeLimitMiddleware
 from agentflow_cli.src.app.core.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -96,7 +97,11 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def setup_middleware(app: FastAPI, graph_config: GraphConfig | None = None):
+def setup_middleware(
+    app: FastAPI,
+    graph_config: GraphConfig | None = None,
+    container: InjectQ | None = None,
+):
     """
     Set up middleware for the FastAPI application.
 
@@ -152,12 +157,23 @@ def setup_middleware(app: FastAPI, graph_config: GraphConfig | None = None):
     if graph_config is not None:
         rate_limit_config = graph_config.rate_limit
         if rate_limit_config is not None:
-            app.add_middleware(RateLimitMiddleware, config=rate_limit_config)
+            backend = build_backend(rate_limit_config, container=container)
+            # Store on app.state so lifespan can close it cleanly
+            app.state.rate_limit_backend = backend
+            app.add_middleware(
+                RateLimitMiddleware,
+                config=rate_limit_config,
+                backend=backend,
+            )
             logger.info(
-                "Rate limiting enabled: %d requests per %ds by %s",
+                "Rate limiting enabled: backend=%s, %d req/%ds, by=%s, "
+                "exclude_paths=%s, trusted_proxy_headers=%s",
+                rate_limit_config.backend,
                 rate_limit_config.requests,
                 rate_limit_config.window,
                 rate_limit_config.by,
+                rate_limit_config.exclude_paths or "(none)",
+                rate_limit_config.trusted_proxy_headers,
             )
 
     logger.debug("Middleware set up")

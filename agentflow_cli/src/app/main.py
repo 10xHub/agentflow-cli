@@ -86,6 +86,11 @@ async def lifespan(app: FastAPI):
         # release all the resources
         await graph.aclose()
 
+    # Close rate-limit backend (e.g. Redis connection pool)
+    backend = getattr(app.state, "rate_limit_backend", None)
+    if backend is not None:
+        await backend.close()
+
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -99,7 +104,7 @@ app = FastAPI(
     root_path=settings.ROOT_PATH,
 )
 
-setup_middleware(app, graph_config=graph_config)
+setup_middleware(app, graph_config=graph_config, container=container)
 
 # attach_injector(app, injector=injector)
 setup_fastapi(container=container, app=app)

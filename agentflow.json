@@ -5,8 +5,11 @@
   "auth": null,
   "rate_limit": {
     "enabled": true,
+    "backend": "memory",
     "requests": 100,
     "window": 60,
-    "by": "ip"
+    "by": "ip",
+    "trusted_proxy_headers": false,
+    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
   }
 }
