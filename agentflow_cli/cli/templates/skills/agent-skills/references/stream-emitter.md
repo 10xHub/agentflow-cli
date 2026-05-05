@@ -68,12 +68,12 @@ def my_tool(
     """Tool that reports progress during streaming."""
     if emit:
         emit.progress("Starting work...")
-    
+
     # ... do work ...
-    
+
     if emit:
         emit.progress("Finalizing...", data={"step": 2})
-    
+
     return "result"
 ```
 
