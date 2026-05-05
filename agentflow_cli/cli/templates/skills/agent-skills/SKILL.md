@@ -12,6 +12,7 @@ metadata:
     - references/media-and-files.md
     - references/memory-and-store.md
     - references/streaming.md
+    - references/stream-emitter.md
     - references/production-runtime.md
     - references/api-client.md
     - references/remote-tools.md
@@ -65,6 +66,7 @@ Treat `agentflow-docs/docs` as the first source of truth for public package name
    - Multimodal files and media stores: `references/media-and-files.md`
    - Long-term memory stores: `references/memory-and-store.md`
    - Streaming, chunks, and SSE: `references/streaming.md`
+   - Stream emitter for tool progress updates: `references/stream-emitter.md`
    - API server and deployment runtime: `references/production-runtime.md`
    - REST and TypeScript client surface: `references/api-client.md`
    - Browser/client-side tool execution: `references/remote-tools.md`
