@@ -1,0 +1,9 @@
+{
+  "agent": "graph.agent:app",
+  "env": ".env",
+  "auth": {
+    "method": "custom",
+    "path": "auth.agent_auth:AgentAuth"
+  },
+  "thread_name_generator": null
+}

@@ -1,0 +1,6 @@
+{
+  "agent": "graph.agent:app",
+  "env": ".env",
+  "auth": null,
+  "thread_name_generator": null
+}
