@@ -10,20 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
 authors = [
-        {name = "Your Name", email = "you@example.com"},
-]
-maintainers = [
-        {name = "Your Name", email = "you@example.com"},
-]
-keywords = ["weather", "agent", "api", "fastapi", "cli", "agentflow"]
-classifiers = [
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
+    {name = "Your Name", email = "you@example.com"},
 ]
 dependencies = [
     "10xscale-agentflow",
@@ -39,9 +26,6 @@ test = [
     "pytest-env",
 ]
 
-[project.scripts]
-agentflow = "agentflow_cli.cli:main"
-
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -54,40 +38,23 @@ lint.ignore = [
     "UP006", "UP007", "RUF012", "G004", "B904", "B008", "ISC001",
 ]
 lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-exclude = [
-    "venv/*",
-]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 10
+exclude = ["venv/*"]
 
 [tool.ruff.lint.per-file-ignores]
-"bin/*.py" = ["E402", "S603", "T201", "S101"]
-"*/tests/*.py" = ["E402", "S603", "T201", "S101"]
-"*/test/*.py" = ["E402", "S603", "T201", "S101"]
-"scripts/*.py" = ["E402", "S603", "T201", "S101", "INP001"]
-"*/__init__.py" = ["E402", "S603", "T201", "S101"]
-"*/migrations/*.py" = ["E402", "S603", "T201", "S101"]
+"*/tests/*.py" = ["S101", "T201"]
+"*/__init__.py" = ["E402", "S101"]
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
 
-[tool.ruff.lint.pylint]
-max-args = 10
-
 [tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
 docstring-code-format = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.bandit]
-exclude_dirs = ["*/tests/*", "*/agentflow_cli/tests/*"]
-skips = ["B101", "B611", "B601", "B608"]
+skips = ["B101"]
 
 [tool.pytest.ini_options]
 env = ["ENVIRONMENT=pytest"]
@@ -103,18 +70,12 @@ addopts = [
 source = ["graph"]
 branch = true
 omit = [
-    "*/__init__.py", "*/tests/*", "*/migrations/*", "*/scripts/*", "*/venv/*", "*/.venv/*",
+    "*/__init__.py", "*/tests/*", "*/venv/*", "*/.venv/*",
 ]
 
 [tool.coverage.report]
 exclude_lines = [
-    "if __name__ == '__main__':", "pragma: no cover", "@abc.abstractmethod", "@abstractmethod",
+    "if __name__ == '__main__':", "pragma: no cover", "@abstractmethod",
     "raise NotImplementedError",
 ]
 show_missing = true
-
-[tool.coverage.paths]
-source = ["graph", "*/site-packages/graph"]
-
-[tool.pytest-env]
-ENVIRONMENT = "pytest"
