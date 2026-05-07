@@ -6,21 +6,19 @@ from agentflow.core.state.message import Message
 from agentflow.utils.constants import END
 
 from graph.nodes.main_node import agent
-from graph.state import FashionState
-from graph.utils.tool_dicision import should_use_tools
+from graph.utils.tool_decision import should_use_tools
 
 
-def test_main_agent_is_configured_for_fashion_catalog_sales() -> None:
-    assert agent.model == "gemini-2.5-flash"
+def test_main_agent_is_configured_for_weather_assistant() -> None:
+    assert agent.model == "gemini-3-flash-preview"
     assert agent.provider == "google"
     assert agent.trim_context is True
+    assert agent.tool_node == "TOOL"
 
-    system_prompt = agent.system_prompt[0]["content"]
-    assert "{company_name}" in system_prompt
-    assert "{preferred_occasions}" in system_prompt
-    assert "{user_preferences}" in system_prompt
-    assert "product catalog" in system_prompt
-
+    system_prompt_text = " ".join(
+        block["content"] for block in agent.system_prompt if "content" in block
+    )
+    assert "helpful assistant" in system_prompt_text.lower()
 
 
 def test_should_end_when_no_context_exists() -> None:
@@ -36,8 +34,8 @@ def test_should_route_assistant_tool_calls_to_tool_node() -> None:
                 tools_calls=[
                     {
                         "id": "call_1",
-                        "name": "search_catalog_products",
-                        "args": {"text": "sari"},
+                        "name": "get_weather",
+                        "args": {"location": "London"},
                     }
                 ],
             )

@@ -3,30 +3,30 @@ from __future__ import annotations
 from agentflow.qa import QuickTest
 from agentflow.qa.evaluation import CriterionResult, EvalCaseResult, EvalReport, EvalSummary
 
-from evals.fashion_agent_eval import (
+from evals.weather_agents import (
     EVAL_REPORT_DIR,
-    build_fashion_agent_eval_config,
-    build_fashion_agent_eval_set,
-    write_fashion_agent_eval_reports,
+    build_weather_agent_eval_config,
+    build_weather_agent_eval_set,
+    write_weather_agent_eval_reports,
 )
 
 
-def test_fashion_agent_eval_set_covers_core_sales_behaviors() -> None:
-    eval_set = build_fashion_agent_eval_set()
+def test_weather_agent_eval_set_covers_core_weather_behaviors() -> None:
+    eval_set = build_weather_agent_eval_set()
 
     case_ids = {case.eval_id for case in eval_set.eval_cases}
     case_names = {case.name for case in eval_set.eval_cases}
 
-    assert eval_set.name == "fashion-agent-regression"
+    assert eval_set.name == "weather-agent-regression"
     assert len(eval_set.eval_cases) == 4
-    assert "greeting_mentions_company" in case_names
-    assert "catalog_search_maroon_silk_wedding" in case_ids
-    assert "preference_capture" in case_ids
-    assert "virtual_try_on_photo_required" in case_ids
+    assert "greeting_response" in case_names
+    assert "weather_london" in case_ids
+    assert "weather_new_york" in case_ids
+    assert "weather_tokyo" in case_ids
 
 
-def test_fashion_agent_eval_config_uses_deterministic_criteria() -> None:
-    config = build_fashion_agent_eval_config()
+def test_weather_agent_eval_config_uses_deterministic_criteria() -> None:
+    config = build_weather_agent_eval_config()
 
     assert config.mock_mode is True
     assert set(config.criteria) == {"response", "tool_usage", "node_order"}
@@ -37,17 +37,17 @@ def test_fashion_agent_eval_config_uses_deterministic_criteria() -> None:
     assert config.reporter.junit_xml is True
 
 
-def test_write_fashion_agent_eval_reports_creates_report_artifacts(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("evals.fashion_agent_eval.EVAL_REPORT_DIR", tmp_path)
+def test_write_weather_agent_eval_reports_creates_report_artifacts(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr("evals.weather_agents.EVAL_REPORT_DIR", tmp_path)
     report = EvalReport(
-        eval_set_id="fashion-agent-regression",
-        eval_set_name="fashion-agent-regression",
+        eval_set_id="weather-agent-regression",
+        eval_set_name="weather-agent-regression",
         results=[
             EvalCaseResult(
                 eval_id="sample",
                 name="sample",
                 passed=True,
-                actual_response="Fashionista Inc.",
+                actual_response="The weather in London is sunny",
                 criterion_results=[
                     CriterionResult(
                         criterion="response",
@@ -67,22 +67,22 @@ def test_write_fashion_agent_eval_reports_creates_report_artifacts(tmp_path, mon
         ),
     )
 
-    output = write_fashion_agent_eval_reports(report)
+    output = write_weather_agent_eval_reports(report)
 
     assert output.json_path is not None
     assert output.html_path is not None
     assert output.junit_path is not None
-    assert "fashion-agent-regression" in tmp_path.joinpath(output.json_path).read_text(
+    assert "weather-agent-regression" in tmp_path.joinpath(output.json_path).read_text(
         encoding="utf-8"
     )
 
 
-def test_agentflow_quick_test_smoke_for_expected_greeting_behavior() -> None:
+def test_agentflow_quick_test_smoke_for_expected_weather_greeting() -> None:
     result = QuickTest.single_turn(
-        agent_response="Welcome to Fashionista Inc. How can I help you find the right look?",
-        user_message="Hello",
+        agent_response="Hello! I can help you check the weather anywhere. What location are you interested in?",
+        user_message="Hi",
     )
 
     import asyncio
 
-    asyncio.run(result).assert_contains("Fashionista Inc.").assert_no_errors()
+    asyncio.run(result).assert_contains("weather").assert_no_errors()

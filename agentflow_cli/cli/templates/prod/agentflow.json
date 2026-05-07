@@ -5,6 +5,15 @@
     "method": "custom",
     "path": "auth.agent_auth:AgentAuth"
   },
-  "thread_name_generator": null,
-  "injectq": "graph.agent:container"
+  "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
+  "injectq": "graph.agent:container",
+  "rate_limit": {
+    "enabled": true,
+    "backend": "memory",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "trusted_proxy_headers": false,
+    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  }
 }
