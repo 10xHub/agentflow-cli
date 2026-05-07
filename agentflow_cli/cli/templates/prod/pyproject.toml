@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentflow-cli-app"
-version = "0.1.0"
-description = "Pyagenity API application"
+name = "Weather Agent APP"
+version = "1.0.0"
+description = "A Weather Agent application built with AgentFlow."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
@@ -15,7 +15,7 @@ authors = [
 maintainers = [
         {name = "Your Name", email = "you@example.com"},
 ]
-keywords = ["pyagenity", "api", "fastapi", "cli", "agentflow"]
+keywords = ["weather", "agent", "api", "fastapi", "cli", "agentflow"]
 classifiers = [
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",

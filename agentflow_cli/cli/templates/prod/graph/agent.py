@@ -18,7 +18,6 @@ checkpointer = InMemoryCheckpointer()
 
 container = InjectQ.get_instance()
 
-# context manager
 context_manager = MessageContextManager(
     max_messages=20,
     remove_tool_msgs=True,

@@ -14,11 +14,7 @@ from agentflow.qa.evaluation import (
     ReporterOutput,
     TrajectoryCollector,
 )
-from dotenv import load_dotenv
 from graph.agent import app
-
-
-load_dotenv()  # Load environment variables from .env file
 
 
 EVAL_REPORT_DIR = Path("eval_reports")
@@ -97,21 +93,22 @@ def build_weather_agent_eval_config() -> EvalConfig:
     )
 
 
-def run_weather_agent_eval():
+def run_weather_agent_eval(config: EvalConfig | None = None):
     """Run the current compiled graph against the weather-agent eval set."""
+    config = config or build_weather_agent_eval_config()
     collector = TrajectoryCollector(capture_all_events=True)
     return QuickEval.run_sync(
         graph=app,
         collector=collector,
         eval_set=build_weather_agent_eval_set(),
-        config=build_weather_agent_eval_config(),
+        config=config,
     )
 
 
 def write_weather_agent_eval_reports(report=None) -> ReporterOutput:
     """Write JSON, HTML, and JUnit XML report files for a completed eval report."""
-    eval_report = report or run_weather_agent_eval()
     config = build_weather_agent_eval_config()
+    eval_report = report or run_weather_agent_eval(config=config)
     EVAL_REPORT_DIR.mkdir(parents=True, exist_ok=True)
     return ReporterManager(config.reporter).run_all(eval_report, output_dir=str(EVAL_REPORT_DIR))
 

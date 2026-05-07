@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from agentflow.qa import QuickTest
 from agentflow.qa.evaluation import CriterionResult, EvalCaseResult, EvalReport, EvalSummary
 
@@ -82,7 +84,5 @@ def test_agentflow_quick_test_smoke_for_expected_weather_greeting() -> None:
         agent_response="Hello! I can help you check the weather anywhere. What location are you interested in?",
         user_message="Hi",
     )
-
-    import asyncio
 
     asyncio.run(result).assert_contains("weather").assert_no_errors()

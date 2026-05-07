@@ -1,13 +1,4 @@
-"""Lifecycle hooks for the weather agent graph.
-
-The interesting hook is :meth:`AgentLifecycleHook.on_graph_start` — it
-hydrates ``WeatherState`` from the org config that ``AgentAuth`` has
-attached to ``context.config['user']['organization']``. State is
-refreshed only when stale; cache locality lives inside
-``graph/interservice/tenant_api.py``.
-"""
-
-from __future__ import annotations
+"""Lifecycle hooks for the weather agent graph."""
 
 import logging
 from typing import Any
