@@ -135,7 +135,6 @@ class InitCommand(BaseCommand):
             "setup_type": "production" if is_prod else "quick_start",
             "auth": "none",
             "rate_limit": "none",
-            "python_version": "3.12",
         }
 
         if not is_prod:
@@ -165,14 +164,41 @@ class InitCommand(BaseCommand):
             "Redis Based": "redis",
         }[rl_choice]
 
-        py_choice = questionary.select(
-            "Minimum Python version?",
-            choices=["3.12", "3.11", "3.10"],
-            default="3.12",
-        ).ask()
-        if py_choice is None:
-            return None
-        context["python_version"] = py_choice
+        if context["rate_limit"] != "none":
+            rl_requests = questionary.text(
+                "Max requests per window?",
+                default="100",
+                validate=lambda v: v.isdigit() and int(v) > 0 or "Enter a positive integer",
+            ).ask()
+            if rl_requests is None:
+                return None
+            context["rl_requests"] = int(rl_requests)
+
+            rl_window = questionary.text(
+                "Window size (seconds)?",
+                default="60",
+                validate=lambda v: v.isdigit() and int(v) > 0 or "Enter a positive integer",
+            ).ask()
+            if rl_window is None:
+                return None
+            context["rl_window"] = int(rl_window)
+
+            rl_by = questionary.select(
+                "Limit by?",
+                choices=["Per IP (recommended)", "Global"],
+                default="Per IP (recommended)",
+            ).ask()
+            if rl_by is None:
+                return None
+            context["rl_by"] = "ip" if "IP" in rl_by else "global"
+
+            rl_proxy = questionary.confirm(
+                "Behind a reverse proxy? (reads real IP from forwarded headers)",
+                default=False,
+            ).ask()
+            if rl_proxy is None:
+                return None
+            context["rl_trusted_proxy"] = rl_proxy
 
         return context
 
@@ -199,9 +225,16 @@ class InitCommand(BaseCommand):
             rows.append(("Auth", "None" if auth == "none" else auth.upper()))
 
             rl = context["rate_limit"]
-            rows.append(("Rate limit", "None" if rl == "none" else rl.capitalize()))
-
-            rows.append(("Python", f">={context['python_version']}"))
+            if rl == "none":
+                rows.append(("Rate limit", "None"))
+            else:
+                rl_by = "Global" if context.get("rl_by") == "global" else "Per IP"
+                proxy = " · proxy headers on" if context.get("rl_trusted_proxy") else ""
+                rows.append((
+                    "Rate limit",
+                    f"{rl.capitalize()} · {context.get('rl_requests', 100)} req / "
+                    f"{context.get('rl_window', 60)}s · {rl_by}{proxy}",
+                ))
 
         label_width = max(len(k) for k, _ in rows) + 2
         for label, value in rows:
@@ -284,10 +317,10 @@ class InitCommand(BaseCommand):
             config["rate_limit"] = {
                 "enabled": True,
                 "backend": rate_limit,
-                "requests": 100,
-                "window": 60,
-                "by": "ip",
-                "trusted_proxy_headers": False,
+                "requests": context.get("rl_requests", 100),
+                "window": context.get("rl_window", 60),
+                "by": context.get("rl_by", "ip"),
+                "trusted_proxy_headers": context.get("rl_trusted_proxy", False),
                 "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
             }
 
