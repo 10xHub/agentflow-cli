@@ -202,20 +202,13 @@ def init(
         ".",
         "--path",
         "-p",
-        help="Directory to initialize config and graph files in",
+        help="Directory to initialize the agent project in",
     ),
     force: bool = typer.Option(
         False,
         "--force",
         "-f",
         help="Overwrite existing files if they exist",
-    ),
-    prod: bool = typer.Option(
-        False,
-        "--prod",
-        help=(
-            "Initialize production-ready project (adds pyproject.toml and .pre-commit-config.yaml)"
-        ),
     ),
     verbose: bool = typer.Option(
         False,
@@ -230,13 +223,12 @@ def init(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Initialize default config and graph files (agentflow.json and graph/react.py)."""
-    # Setup logging
+    """Interactively initialize a new agent project."""
     setup_cli_logging(verbose=verbose, quiet=quiet)
 
     try:
         command = InitCommand(output)
-        exit_code = command.execute(path=path, force=force, prod=prod)
+        exit_code = command.execute(path=path, force=force)
         sys.exit(exit_code)
     except Exception as e:
         sys.exit(handle_exception(e))

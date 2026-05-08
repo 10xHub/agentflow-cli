@@ -44,6 +44,7 @@ dependencies = [
     "uvicorn",
     "typer",
     "python-dotenv",
+    "questionary",
 ]
 
 [project.urls]
