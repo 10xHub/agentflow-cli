@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 from typing import Any
 
+from agentflow_cli import BaseAuth
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
-
-from agentflow_cli import BaseAuth
 
 
 class AgentAuth(BaseAuth):

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 from agentflow.qa.evaluation import (
@@ -14,6 +12,7 @@ from agentflow.qa.evaluation import (
     ReporterOutput,
     TrajectoryCollector,
 )
+
 from graph.agent import app
 
 
