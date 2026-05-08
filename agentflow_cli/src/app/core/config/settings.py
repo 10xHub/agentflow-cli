@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     PERMISSIONS_POLICY: str | None = None  # Uses default if None
     CSP_POLICY: str | None = None  # Uses default if None
 
-    SUMMARY: str = "Pyagenity Backend"
+    SUMMARY: str = "Agentflow Backend"
 
     #################################
     ###### CORS Config ##############

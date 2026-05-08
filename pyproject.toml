@@ -44,6 +44,7 @@ dependencies = [
     "uvicorn",
     "typer",
     "python-dotenv",
+    "questionary",
 ]
 
 [project.urls]
@@ -140,6 +141,8 @@ lint.ignore = [
 lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 exclude = [
     "venv/*",
+    "*/agentflow-cli/cli/templates/prod/*",
+    "*/agentflow_cli/cli/templates/dev/*",
 ]
 
 
@@ -154,6 +157,8 @@ max-complexity = 10
 "scripts/*.py" = ["E402", "S603", "T201", "S101", "INP001"]
 "*/__init__.py" = ["E402", "S603", "T201", "S101"]
 "*/migrations/*.py" = ["E402", "S603", "T201", "S101"]
+"agentflow_cli/cli/templates/prod/**" = ["S101", "PLR2004", "E402", "S603", "T201", "INP001"]
+"agentflow_cli/cli/templates/dev/**" = ["S101", "PLR2004", "E402", "S603", "T201", "INP001"]
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
@@ -168,7 +173,7 @@ line-ending = "auto"
 docstring-code-format = true
 
 [tool.bandit]
-exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*"]
+exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*", "*/agentflow_cli/cli/templates/prod/*", "*/agentflow_cli/cli/templates/dev/*",]
 skips = ["B101", "B611", "B601"]
 
 
@@ -211,6 +216,8 @@ omit = [
     "*/scripts/*",
     "*/venv/*",
     "*/.venv/*",
+    "*/agentflow_cli/cli/templates/prod/*",
+    "*/agentflow_cli/cli/templates/dev/*",
 ]
 
 [tool.coverage.report]

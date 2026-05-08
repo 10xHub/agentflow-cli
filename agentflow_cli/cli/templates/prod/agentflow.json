@@ -1,8 +1,12 @@
 {
-  "agent": "graph.react:app",
-  "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
+  "agent": "graph.agent:app",
   "env": ".env",
-  "auth": null,
+  "auth": {
+    "method": "custom",
+    "path": "auth.agent_auth:AgentAuth"
+  },
+  "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
+  "injectq": "graph.agent:container",
   "rate_limit": {
     "enabled": true,
     "backend": "memory",
