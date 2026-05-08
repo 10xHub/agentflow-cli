@@ -230,30 +230,26 @@ class InitCommand(BaseCommand):
             else:
                 rl_by = "Global" if context.get("rl_by") == "global" else "Per IP"
                 proxy = " · proxy headers on" if context.get("rl_trusted_proxy") else ""
-                rows.append((
-                    "Rate limit",
-                    f"{rl.capitalize()} · {context.get('rl_requests', 100)} req / "
-                    f"{context.get('rl_window', 60)}s · {rl_by}{proxy}",
-                ))
+                rows.append(
+                    (
+                        "Rate limit",
+                        f"{rl.capitalize()} · {context.get('rl_requests', 100)} req / "
+                        f"{context.get('rl_window', 60)}s · {rl_by}{proxy}",
+                    )
+                )
 
         label_width = max(len(k) for k, _ in rows) + 2
         for label, value in rows:
             padded = (label + " ").ljust(label_width, "·")
             typer.echo(
-                "  "
-                + Colors.colorize(padded, "cyan")
-                + "  "
-                + Colors.colorize(value, "white")
+                "  " + Colors.colorize(padded, "cyan") + "  " + Colors.colorize(value, "white")
             )
         typer.echo(_DIVIDER)
 
     def _print_file_line(self, dest: Path, base_path: Path) -> None:
         rel = dest.relative_to(base_path)
         typer.echo(
-            "    "
-            + Colors.colorize("✓", "green")
-            + "  "
-            + Colors.colorize(str(rel), "white")
+            "    " + Colors.colorize("✓", "green") + "  " + Colors.colorize(str(rel), "white")
         )
 
     def _print_next_steps(self, context: dict, is_prod: bool) -> None:

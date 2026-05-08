@@ -114,6 +114,6 @@ def write_weather_agent_eval_reports(report=None) -> ReporterOutput:
 
 if __name__ == "__main__":
     output = write_weather_agent_eval_reports()
-    print(f"JSON report: {output.json_path}")
-    print(f"HTML report: {output.html_path}")
-    print(f"JUnit report: {output.junit_path}")
+    print(f"JSON report: {output.json_path}")  # noqa: T201
+    print(f"HTML report: {output.html_path}")  # noqa: T201
+    print(f"JUnit report: {output.junit_path}")  # noqa: T201

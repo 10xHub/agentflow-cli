@@ -12,7 +12,6 @@ class AgentAuth(BaseAuth):
         response: Response,
         credential: HTTPAuthorizationCredentials,
     ) -> dict[str, Any] | None:
-
         # TODO: Implement actual authentication logic here
 
         return {

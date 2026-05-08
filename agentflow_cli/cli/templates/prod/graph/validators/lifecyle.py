@@ -34,7 +34,7 @@ class AgentLifecycleHook(GraphLifecycleHook[WeatherState]):
         """
         return None
 
-    async def on_graph_error(
+    async def on_graph_error(  # noqa: PLR0913
         self,
         context: GraphLifecycleContext,
         error: Exception,

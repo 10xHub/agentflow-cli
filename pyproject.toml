@@ -169,7 +169,7 @@ line-ending = "auto"
 docstring-code-format = true
 
 [tool.bandit]
-exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*"]
+exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*", "agentflow_cli/cli/templates/prod/*", "agentflow_cli/cli/templates/dev/*",]
 skips = ["B101", "B611", "B601"]
 
 
@@ -212,6 +212,8 @@ omit = [
     "*/scripts/*",
     "*/venv/*",
     "*/.venv/*",
+    "agentflow_cli/cli/templates/prod/*/",
+    "agentflow_cli/cli/templates/dev/*/",
 ]
 
 [tool.coverage.report]
