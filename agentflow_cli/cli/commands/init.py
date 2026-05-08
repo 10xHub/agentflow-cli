@@ -1,5 +1,6 @@
 """Init command implementation."""
 
+import contextlib
 import json
 import re
 from pathlib import Path
@@ -111,7 +112,7 @@ class InitCommand(BaseCommand):
     # Prompts
     # ------------------------------------------------------------------
 
-    def _prompt_user(self) -> dict | None:
+    def _prompt_user(self) -> dict | None:  # noqa: PLR0911
         agent_name = questionary.text(
             "What is your agent name?",
             default="MyAgent",
@@ -334,9 +335,7 @@ class InitCommand(BaseCommand):
             return False
         # auth/ is only included for custom auth; skip for none and jwt
         rel_parts = src.relative_to(template_dir).parts
-        if rel_parts[0] == _AUTH_DIR and context["auth"] != "custom":
-            return True
-        return False
+        return rel_parts[0] == _AUTH_DIR and context["auth"] != "custom"
 
     def _render(self, src: Path, context: dict, is_prod: bool) -> str:
         content = src.read_text(encoding="utf-8")
@@ -349,10 +348,8 @@ class InitCommand(BaseCommand):
                 keep_jwt=context["auth"] == "jwt",
             )
 
-        try:
+        with contextlib.suppress(Exception):
             content = Template(content).safe_substitute(context)
-        except Exception:
-            pass
 
         return content
 
