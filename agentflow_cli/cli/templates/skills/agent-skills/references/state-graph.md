@@ -61,7 +61,7 @@ Compile with `interrupt_before=["NODE"]` or `interrupt_after=["NODE"]`. Resume b
 
 ## Source Map
 
-- StateGraph: `agentflow/agentflow/core/graph/state_graph.py`
-- Compiled graph: `agentflow/agentflow/core/graph/compiled_graph.py`
-- Graph errors: `agentflow/agentflow/core/exceptions`
-- Constants: `agentflow/agentflow/utils/constants.py`
+- StateGraph: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/state_graph.py
+- Compiled graph: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/compiled_graph.py
+- Graph errors: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/core/exceptions
+- Constants: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/constants.py

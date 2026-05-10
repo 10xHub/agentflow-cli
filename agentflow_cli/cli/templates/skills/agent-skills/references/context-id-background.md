@@ -73,10 +73,8 @@ Use these when a process needs to stop streams, wait for background tasks, and c
 
 ## Source Map
 
-- Context managers: `agentflow/agentflow/core/state/message_context_manager.py`
-- ID generators: `agentflow/agentflow/utils/id_generator.py`
-- Background tasks: `agentflow/agentflow/utils/background_task_manager.py`
-- Shutdown utilities: `agentflow/agentflow/utils/shutdown.py`
-- Main docs: `agentflow-docs/docs/reference/python/context-manager.md`
-- Main docs: `agentflow-docs/docs/reference/python/id-generator.md`
-- Main docs: `agentflow-docs/docs/reference/python/background-tasks.md`
+- Context managers: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/message_context_manager.py
+- ID generators: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/id_generator.py
+- Background tasks: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/background_task_manager.py
+- Shutdown utilities: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/shutdown.py
+- Docs: https://agentflow.10xscale.ai/

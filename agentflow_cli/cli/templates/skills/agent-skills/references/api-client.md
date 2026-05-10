@@ -2,15 +2,11 @@
 
 Use this when aligning REST routes, schemas, generated docs, or the TypeScript npm SDK. The public npm package is `@10xscale/agentflow-client`; install it with `npm install @10xscale/agentflow-client`.
 
-Check current docs first:
-
-- `agentflow-docs/docs/get-started/connect-client.md`
-- `agentflow-docs/docs/beginner/call-from-typescript.md`
-- `agentflow-docs/docs/concepts/architecture.md`
+Check current docs first: https://agentflow.10xscale.ai/
 
 ## API Routers
 
-Active routers are included from `agentflow-api/agentflow_cli/src/app/routers/setup_router.py`:
+Active routers are included from https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/setup_router.py:
 
 - Graph router
 - Checkpointer/thread router
@@ -32,7 +28,7 @@ Memory/file routes are summarized in their topic references.
 
 ## TypeScript SDK Facade
 
-`AgentFlowClient` is exported by `@10xscale/agentflow-client`. Its source facade is `agentflow-client/src/client.ts`, and it wraps:
+`AgentFlowClient` is exported by `@10xscale/agentflow-client`. Its source facade is https://github.com/10xHub/agentflow-client/blob/main/src/client.ts, and it wraps:
 
 - Connectivity and metadata: `ping`, `graph`, `graphStateSchema`
 - Execution: `invoke`, `stream`, `stopGraph`, `fixGraph`, `setup`
@@ -53,15 +49,14 @@ For remote tools, read `remote-tools.md`; that flow has a client-managed executi
 
 ## Rules
 
-- Use `@10xscale/agentflow-client` in user-facing examples and docs; use `agentflow-client/src` only when referring to repository source.
+- Use `@10xscale/agentflow-client` in user-facing examples and docs.
 - The TypeScript SDK calls a running Agentflow API server. It does not import or execute Python graph code.
-- Keep endpoint schema changes mirrored in `agentflow-client/src/endpoints`.
-- Keep exports in `agentflow-client/src/index.ts` aligned when adding public types.
+- Keep endpoint schema changes mirrored in the client endpoints directory.
 - Test both endpoint helpers and the `AgentFlowClient` facade for client-visible changes.
 
 ## Source Map
 
-- Client facade: `agentflow-client/src/client.ts`
-- Client endpoints: `agentflow-client/src/endpoints`
-- Client message model: `agentflow-client/src/message.ts`
-- API schemas/services: `agentflow-api/agentflow_cli/src/app/routers`
+- Client facade: https://github.com/10xHub/agentflow-client/blob/main/src/client.ts
+- Client endpoints: https://github.com/10xHub/agentflow-client/tree/main/src/endpoints
+- Client message model: https://github.com/10xHub/agentflow-client/blob/main/src/message.ts
+- API schemas/services: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers

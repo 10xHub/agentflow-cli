@@ -1,6 +1,6 @@
 # Architecture
 
-Use this when deciding where a change belongs or explaining how Agentflow packages interact. Check `agentflow-docs/docs/concepts/architecture.md` and `agentflow-docs/docs/get-started/installation.md` first for public package names.
+Use this when deciding where a change belongs or explaining how Agentflow packages interact. Check https://agentflow.10xscale.ai/ first for public package names.
 
 ## Published Packages
 
@@ -15,7 +15,7 @@ Use this when deciding where a change belongs or explaining how Agentflow packag
 - `10xscale-agentflow`: Core Python SDK. Owns `StateGraph`, `Agent`, `ToolNode`, `AgentState`, `Message`, checkpointers, stores, media, prebuilt agents/tools, runtime publishers, QA helpers, and skills support.
 - `10xscale-agentflow-cli`: Python API and CLI SDK. Owns `agentflow api`, `agentflow play`, `agentflow init`, `agentflow build`, routers, auth/middleware, config loading, and graph service execution.
 - `@10xscale/agentflow-client`: TypeScript npm SDK. Owns typed methods for invoke, stream, threads, memory store, files, graph metadata, remote tools, and auth/request helpers. It calls a running Agentflow API server and does not run Python graphs.
-- `agentflow-docs/docs`: Main user-facing docs, concepts, how-to guides, and reference material. Prefer these docs over legacy docs for public behavior.
+- https://agentflow.10xscale.ai/: Main user-facing docs, concepts, how-to guides, and reference material.
 - `agentflow-playground` / UI packages: Interactive graph and agent testing surfaces.
 
 ## Request Flow
@@ -38,18 +38,16 @@ Use this when deciding where a change belongs or explaining how Agentflow packag
 
 ## Source Map
 
-- Core graph: `agentflow/agentflow/core/graph`
-- State/message models: `agentflow/agentflow/core/state`
-- Checkpointers: `agentflow/agentflow/storage/checkpointer`
-- Memory stores: `agentflow/agentflow/storage/store`
-- Media stores/resolvers: `agentflow/agentflow/storage/media`
-- API routers: `agentflow-api/agentflow_cli/src/app/routers`
-- API loader/config: `agentflow-api/agentflow_cli/src/app/loader.py`, `agentflow-api/agentflow_cli/src/app/core/config`
-- TS client facade: `agentflow-client/src/client.ts`
+- Core graph: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/core/graph
+- State/message models: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/core/state
+- Checkpointers: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/storage/checkpointer
+- Memory stores: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/storage/store
+- Media stores/resolvers: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/storage/media
+- API routers: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers
+- API loader: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/loader.py
+- API config: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/core/config
+- TS client facade: https://github.com/10xHub/agentflow-client/blob/main/src/client.ts
 
 ## Public Docs Map
 
-- Package overview: `agentflow-docs/docs/concepts/architecture.md`
-- Install commands and package roles: `agentflow-docs/docs/get-started/installation.md`
-- API serving: `agentflow-docs/docs/get-started/expose-with-api.md`
-- TypeScript client usage: `agentflow-docs/docs/get-started/connect-client.md` and `agentflow-docs/docs/beginner/call-from-typescript.md`
+- Docs: https://agentflow.10xscale.ai/

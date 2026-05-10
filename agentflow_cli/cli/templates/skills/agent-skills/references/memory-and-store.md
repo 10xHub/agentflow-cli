@@ -64,7 +64,7 @@ TypeScript client methods include `storeMemory`, `searchMemory`, `getMemory`, `u
 
 ## Source Map
 
-- Store interfaces/backends: `agentflow/agentflow/storage/store`
-- Memory tool: `agentflow/agentflow/prebuilt/tools/memory.py`
-- API store router: `agentflow-api/agentflow_cli/src/app/routers/store`
-- TS memory endpoints: `agentflow-client/src/endpoints/*Memory.ts`
+- Store interfaces/backends: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/storage/store
+- Memory tool: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/prebuilt/tools/memory.py
+- API store router: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/store
+- TS memory endpoints: https://github.com/10xHub/agentflow-client/tree/main/src/endpoints

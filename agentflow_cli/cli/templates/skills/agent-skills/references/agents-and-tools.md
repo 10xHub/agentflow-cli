@@ -57,9 +57,9 @@ Use `agentflow.utils.tool` to add metadata such as name, description, tags, prov
 
 ## Source Map
 
-- Agent implementation: `agentflow/agentflow/core/graph/agent.py`
-- Tool node and graph exports: `agentflow/agentflow/core/graph`
-- Tool result: `agentflow/agentflow/core/state/tool_result.py`
-- Tool decorator: `agentflow/agentflow/utils/decorators.py`
-- Skill integration: `agentflow/agentflow/core/skills`
-- Prebuilt tools: `agentflow/agentflow/prebuilt/tools`
+- Agent implementation: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/agent.py
+- Tool node and graph exports: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/core/graph
+- Tool result: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/tool_result.py
+- Tool decorator: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/decorators.py
+- Skill integration: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/core/skills
+- Prebuilt tools: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/prebuilt/tools

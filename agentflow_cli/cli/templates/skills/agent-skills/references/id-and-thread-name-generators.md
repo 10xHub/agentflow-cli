@@ -61,11 +61,9 @@ Keep thread name generation:
 
 ## Source Map
 
-- Python ID generators: `agentflow/agentflow/utils/id_generator.py`
-- API Snowflake generator: `agentflow-api/agentflow_cli/src/app/utils/snowflake_id_generator.py`
-- Thread name generator: `agentflow-api/agentflow_cli/src/app/utils/thread_name_generator.py`
-- Graph service thread naming: `agentflow-api/agentflow_cli/src/app/routers/graph/services/graph_service.py`
-- Settings: `agentflow-api/agentflow_cli/src/app/core/config/settings.py`
-- Main docs: `agentflow-docs/docs/reference/python/id-generator.md`
-- API docs: `agentflow-docs/docs/reference/api-cli/id-generator.md`
-- API docs: `agentflow-docs/docs/reference/api-cli/thread-name-generator.md`
+- Python ID generators: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/id_generator.py
+- API Snowflake generator: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/utils/snowflake_id_generator.py
+- Thread name generator: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/utils/thread_name_generator.py
+- Graph service thread naming: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/graph/services/graph_service.py
+- Settings: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/settings.py
+- Docs: https://agentflow.10xscale.ai/

@@ -4,7 +4,7 @@ Use this when changing API routes, response envelopes, schemas, Swagger docs, or
 
 ## Active Routers
 
-Registered in `agentflow-api/agentflow_cli/src/app/routers/setup_router.py`:
+Registered in https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/setup_router.py:
 
 - graph
 - checkpointer / threads
@@ -83,11 +83,11 @@ Common status expectations:
 
 ## Source Map
 
-- Route setup: `agentflow-api/agentflow_cli/src/app/routers/setup_router.py`
-- Graph router/schema/service: `agentflow-api/agentflow_cli/src/app/routers/graph`
-- Checkpointer router: `agentflow-api/agentflow_cli/src/app/routers/checkpointer`
-- Store router: `agentflow-api/agentflow_cli/src/app/routers/store`
-- Media router: `agentflow-api/agentflow_cli/src/app/routers/media`
-- Error handlers: `agentflow-api/agentflow_cli/src/app/core/exceptions/handle_errors.py`
-- Response helper: `agentflow-api/agentflow_cli/src/app/utils/response_helper.py`
-- Main docs: `agentflow-docs/docs/reference/rest-api`
+- Route setup: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/setup_router.py
+- Graph router/schema/service: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/graph
+- Checkpointer router: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/checkpointer
+- Store router: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/store
+- Media router: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/media
+- Error handlers: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/exceptions/handle_errors.py
+- Response helper: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/utils/response_helper.py
+- Docs: https://agentflow.10xscale.ai/

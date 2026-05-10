@@ -4,7 +4,7 @@ Use this when changing `@10xscale/agentflow-client` authentication, request head
 
 ## Auth Helpers
 
-Public auth types and helpers live in `agentflow-client/src/request.ts`.
+Public auth types and helpers live in https://github.com/10xHub/agentflow-client/blob/main/src/request.ts.
 
 Auth union:
 
@@ -88,8 +88,7 @@ Error instances expose:
 
 ## Source Map
 
-- Auth/request helpers: `agentflow-client/src/request.ts`
-- Error classes: `agentflow-client/src/errors.ts`
-- Client facade: `agentflow-client/src/client.ts`
-- Docs: `agentflow-docs/docs/reference/client/auth.md`
-- Docs: `agentflow-docs/docs/troubleshooting/client.md`
+- Auth/request helpers: https://github.com/10xHub/agentflow-client/blob/main/src/request.ts
+- Error classes: https://github.com/10xHub/agentflow-client/blob/main/src/errors.ts
+- Client facade: https://github.com/10xHub/agentflow-client/blob/main/src/client.ts
+- Docs: https://agentflow.10xscale.ai/

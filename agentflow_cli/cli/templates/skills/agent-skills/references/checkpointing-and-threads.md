@@ -56,8 +56,8 @@ The API exposes thread state/message/thread operations under `/v1/threads...` ro
 
 ## Source Map
 
-- Base API: `agentflow/agentflow/storage/checkpointer/base_checkpointer.py`
-- In-memory backend: `agentflow/agentflow/storage/checkpointer/in_memory_checkpointer.py`
-- Postgres backend: `agentflow/agentflow/storage/checkpointer/pg_checkpointer.py`
-- API router: `agentflow-api/agentflow_cli/src/app/routers/checkpointer`
-- TS endpoints: `agentflow-client/src/endpoints/thread*.ts`
+- Base API: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/storage/checkpointer/base_checkpointer.py
+- In-memory backend: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/storage/checkpointer/in_memory_checkpointer.py
+- Postgres backend: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/storage/checkpointer/pg_checkpointer.py
+- API router: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/checkpointer
+- TS endpoints: https://github.com/10xHub/agentflow-client/tree/main/src/endpoints

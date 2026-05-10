@@ -6,14 +6,13 @@ Use this when changing OpenAI, Google Gemini, Vertex AI, reasoning, response con
 
 `Agent` supports OpenAI and Google provider flows through provider-specific internal modules:
 
-- OpenAI: `agentflow/agentflow/core/graph/agent_internal/openai.py`
-- Google: `agentflow/agentflow/core/graph/agent_internal/google.py`
-- Provider inference/helpers: `agentflow/agentflow/core/graph/agent_internal/providers.py`
+- OpenAI: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/agent_internal/openai.py
+- Google: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/agent_internal/google.py
+- Provider inference/helpers: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/agent_internal/providers.py
 
 Provider docs live in:
 
-- `agentflow-docs/docs/providers/openai.md`
-- `agentflow-docs/docs/providers/google.md`
+- Docs: https://agentflow.10xscale.ai/
 
 ## Environment Variables
 
@@ -74,8 +73,7 @@ Tool execution precedence in `ToolNode` is MCP, Composio, LangChain, then local 
 
 ## Source Map
 
-- Agent internals: `agentflow/agentflow/core/graph/agent_internal`
-- LLM adapters: `agentflow/agentflow/runtime/adapters/llm`
-- Tool adapters: `agentflow/agentflow/runtime/adapters/tools`
-- Provider docs: `agentflow-docs/docs/providers`
-- Agent docs: `agentflow-docs/docs/reference/python/agent.md`
+- Agent internals: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/core/graph/agent_internal
+- LLM adapters: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/runtime/adapters/llm
+- Tool adapters: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/runtime/adapters/tools
+- Docs: https://agentflow.10xscale.ai/

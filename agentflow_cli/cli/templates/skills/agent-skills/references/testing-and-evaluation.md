@@ -58,9 +58,7 @@ Use `TrajectoryCollector` plus `make_trajectory_callback` to record node/tool ex
 
 ## Source Map
 
-- Testing package: `agentflow/agentflow/qa/testing`
-- Evaluation package: `agentflow/agentflow/qa/evaluation`
-- Public exports: `agentflow/agentflow/qa/__init__.py`
-- Main docs: `agentflow-docs/docs/reference/python/testing.md`
-- Main docs: `agentflow-docs/docs/reference/python/evaluation.md`
-- Tutorial docs: `agentflow-docs/docs/tutorials/from-examples/testing.md`
+- Testing package: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/qa/testing
+- Evaluation package: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/qa/evaluation
+- Public exports: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/qa/__init__.py
+- Docs: https://agentflow.10xscale.ai/

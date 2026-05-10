@@ -49,8 +49,8 @@ Production should set `MODE=production`, configure CORS origins, and use real au
 
 ## Source Map
 
-- App startup: `agentflow-api/agentflow_cli/src/app/main.py`
-- Route setup: `agentflow-api/agentflow_cli/src/app/routers/setup_router.py`
-- Graph service: `agentflow-api/agentflow_cli/src/app/routers/graph/services`
-- Config/middleware/auth: `agentflow-api/agentflow_cli/src/app/core`
-- CLI commands: `agentflow-api/agentflow_cli/cli`
+- App startup: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/main.py
+- Route setup: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/setup_router.py
+- Graph service: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/graph/services
+- Config/middleware/auth: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/core
+- CLI commands: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/cli

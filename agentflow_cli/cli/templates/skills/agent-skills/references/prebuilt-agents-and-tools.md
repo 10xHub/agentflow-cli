@@ -52,9 +52,8 @@ Use `Command(goto=...)` directly for explicit runtime routing when not using the
 
 ## Source Map
 
-- Exports: `agentflow/agentflow/prebuilt/__init__.py`
-- Agents: `agentflow/agentflow/prebuilt/agent`
-- Tools: `agentflow/agentflow/prebuilt/tools`
-- Handoff tool: `agentflow/agentflow/prebuilt/tools/handoff.py`
-- Main docs: `agentflow-docs/docs/reference/python/command-handoff.md`
-- How-to: `agentflow-docs/docs/how-to/python/handoff-between-agents.md`
+- Exports: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/prebuilt/__init__.py
+- Agents: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/prebuilt/agent
+- Tools: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/prebuilt/tools
+- Handoff tool: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/prebuilt/tools/handoff.py
+- Docs: https://agentflow.10xscale.ai/

@@ -186,9 +186,9 @@ class MyRateLimitBackend(BaseRateLimitBackend):
 
 ## Source Map
 
-- Middleware: `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/`
-- Base class: `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/base.py`
-- Rate-limit config model: `agentflow-api/agentflow_cli/src/app/core/config/graph_config.py`
-- Middleware setup: `agentflow-api/agentflow_cli/src/app/core/config/setup_middleware.py`
-- Docs: `agentflow-api/docs/rate-limiting.md`
-- Configuration reference: `agentflow-api/docs/configuration.md` — "Rate Limiting" section
+- Middleware: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/core/middleware/rate_limit
+- Base class: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/middleware/rate_limit/base.py
+- Rate-limit config model: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/graph_config.py
+- Middleware setup: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/setup_middleware.py
+- Docs: https://github.com/10xHub/agentflow-cli/blob/main/docs/rate-limiting.md
+- Configuration reference: https://github.com/10xHub/agentflow-cli/blob/main/docs/configuration.md — "Rate Limiting" section

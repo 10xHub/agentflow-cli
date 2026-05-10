@@ -49,7 +49,7 @@ agentflow = agentflow_cli.cli.main:main
   - `2` / `claude`: `.claude/skills/agentflow`
   - `3` / `github`: `.github/instructions/agentflow.instructions.md` and `.github/skills/agentflow`
 - Options include `--agent/-a`, `--path/-p`, `--force/-f`, `--verbose/-v`, and `--quiet/-q`.
-- Source templates: `agentflow-api/agentflow_cli/cli/templates/skills/agent-skills` and `agentflow-api/agentflow_cli/cli/templates/skills/copilot`.
+- Source templates: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/cli/templates/skills
 
 `agentflow version`
 
@@ -58,16 +58,14 @@ agentflow = agentflow_cli.cli.main:main
 ## Rules
 
 - Use docs package names in user-facing text.
-- Keep command options aligned with `agentflow-docs/docs/reference/api-cli/commands.md`.
+- Keep command options aligned with https://agentflow.10xscale.ai/
 - If command defaults change, update docs, templates, and tests together.
-- Generated skill templates live under `agentflow-api/agentflow_cli/cli/templates/skills`.
+- Generated skill templates live under https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/cli/templates/skills
 
 ## Source Map
 
-- CLI main: `agentflow-api/agentflow_cli/cli/main.py`
-- Commands: `agentflow-api/agentflow_cli/cli/commands`
-- CLI config/output/validation: `agentflow-api/agentflow_cli/cli/core`
-- Templates: `agentflow-api/agentflow_cli/cli/templates`
-- Main docs: `agentflow-docs/docs/reference/api-cli/commands.md`
-- How-to init: `agentflow-docs/docs/how-to/api-cli/initialize-project.md`
-- How-to server: `agentflow-docs/docs/how-to/api-cli/run-api-server.md`
+- CLI main: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/cli/main.py
+- Commands: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/cli/commands
+- CLI config/output/validation: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/cli/core
+- Templates: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/cli/templates
+- Docs: https://agentflow.10xscale.ai/

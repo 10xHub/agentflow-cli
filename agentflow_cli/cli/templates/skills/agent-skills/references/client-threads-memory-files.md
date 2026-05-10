@@ -73,10 +73,8 @@ Use returned `file_id` in multimodal messages through `MediaRef(kind: "file_id",
 
 ## Source Map
 
-- Client facade: `agentflow-client/src/client.ts`
-- Thread endpoints: `agentflow-client/src/endpoints/thread*.ts`, `threads.ts`, `deleteThread.ts`
-- Memory endpoints: `agentflow-client/src/endpoints/*Memory.ts`, `forgetMemories.ts`
-- File endpoint: `agentflow-client/src/endpoints/files.ts`
-- Docs: `agentflow-docs/docs/reference/client/threads.md`
-- Docs: `agentflow-docs/docs/reference/client/memory.md`
-- Docs: `agentflow-docs/docs/reference/client/files.md`
+- Client facade: https://github.com/10xHub/agentflow-client/blob/main/src/client.ts
+- Thread endpoints: https://github.com/10xHub/agentflow-client/tree/main/src/endpoints
+- Memory endpoints: https://github.com/10xHub/agentflow-client/tree/main/src/endpoints
+- File endpoint: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/files.ts
+- Docs: https://agentflow.10xscale.ai/

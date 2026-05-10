@@ -47,7 +47,7 @@ TypeScript:
 
 ## Source Map
 
-- Stream chunks: `agentflow/agentflow/core/state/stream_chunks.py`
-- Compiled graph streaming: `agentflow/agentflow/core/graph/compiled_graph.py`
-- Graph API router/service: `agentflow-api/agentflow_cli/src/app/routers/graph`
-- TS stream endpoint: `agentflow-client/src/endpoints/stream.ts`
+- Stream chunks: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/stream_chunks.py
+- Compiled graph streaming: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/compiled_graph.py
+- Graph API router/service: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/graph
+- TS stream endpoint: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/stream.ts

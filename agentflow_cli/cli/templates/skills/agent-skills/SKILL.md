@@ -1,6 +1,6 @@
 ---
 name: agentflow
-description: Use for building, debugging, documenting, or extending Agentflow agents, tools, graphs, API/CLI services, TypeScript clients, memory, checkpointing, streaming, media, dependency injection, production runtime, and multi-agent workflows in this repository.
+description: Expert guidance for building, debugging, and extending applications with AgentFlow (10xscale-agentflow). TRIGGER when: code imports from agentflow (e.g. `from agentflow import`, `StateGraph`, `Agent`, `ToolNode`, `AgentState`); user references `agentflow.json` or CLI commands (`agentflow init`, `agentflow api`, `agentflow play`, `agentflow build`, `agentflow skills`); user is building graph-based multi-agent workflows, tools, memory, checkpointing, or streaming with this framework. SKIP: generic Python or multi-agent questions not referencing agentflow; other frameworks (LangGraph, CrewAI, AutoGen) unless comparing.
 metadata:
   resources:
     - references/architecture.md
@@ -45,15 +45,15 @@ metadata:
 
 Use this skill when working in this Agentflow monorepo. Agentflow is a multi-agent framework that wraps official OpenAI and Google SDK capabilities behind a unified graph, agent, tool, state, storage, API, CLI, and TypeScript client interface.
 
-Treat `agentflow-docs/docs` as the first source of truth for public package names, install commands, and user-facing behavior. Use implementation source after the docs establish the intended API.
+Treat https://agentflow.10xscale.ai/ as the first source of truth for public package names, install commands, and user-facing behavior. Use implementation source after the docs establish the intended API.
 
 ## Workflow
 
 1. Identify the published package or docs surface involved:
-   - PyPI core Python SDK: `10xscale-agentflow` (`pip install 10xscale-agentflow`), source in `agentflow/agentflow`
-   - PyPI API/CLI SDK: `10xscale-agentflow-cli` (`pip install 10xscale-agentflow-cli`), source in `agentflow-api/agentflow_cli`
-   - npm TypeScript SDK: `@10xscale/agentflow-client` (`npm install @10xscale/agentflow-client`), source in `agentflow-client/src`
-   - Main docs: `agentflow-docs/docs`
+   - PyPI core Python SDK: `10xscale-agentflow` (`pip install 10xscale-agentflow`), source at https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow
+   - PyPI API/CLI SDK: `10xscale-agentflow-cli` (`pip install 10xscale-agentflow-cli`), source at https://github.com/10xHub/Agentflow/tree/main/agentflow-api/agentflow_cli
+   - npm TypeScript SDK: `@10xscale/agentflow-client` (`npm install @10xscale/agentflow-client`), source at https://github.com/10xHub/Agentflow/tree/main/agentflow-client/src
+   - Main docs: https://agentflow.10xscale.ai/
    - Playground/UI: `agentflow play` command after installed cli
 
 2. Read the matching reference file before changing behavior:
@@ -92,7 +92,7 @@ Treat `agentflow-docs/docs` as the first source of truth for public package name
    - Persist conversation state with checkpointers; use stores only for cross-thread memory.
    - Put business services in `InjectQ` instead of global variables.
    - Keep API/CLI graph modules storage-agnostic and wire dependencies through `agentflow.json`.
-4. Verify against source when implementation details matter. Public names and expected behavior should match `agentflow-docs/docs`; source under `agentflow/`, `agentflow-api/`, and `agentflow-client/src/` explains how that behavior is implemented.
+4. Verify against source when implementation details matter. Public names and expected behavior should match https://agentflow.10xscale.ai/; source under https://github.com/10xHub/Agentflow (core), https://github.com/10xHub/agentflow-cli (API/CLI), and https://github.com/10xHub/agentflow-client (TypeScript) explains how that behavior is implemented.
 
 ## Local Conventions
 

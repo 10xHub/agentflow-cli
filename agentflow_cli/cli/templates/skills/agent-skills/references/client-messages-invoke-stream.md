@@ -4,7 +4,7 @@ Use this when changing TypeScript message classes, invoke behavior, streaming be
 
 ## Message Model
 
-Message and content block classes live in `agentflow-client/src/message.ts`.
+Message and content block classes live in https://github.com/10xHub/agentflow-client/blob/main/src/message.ts.
 
 Core classes:
 
@@ -107,11 +107,9 @@ Use `client.stopGraph(threadId, config?)` to request cancellation for a running 
 
 ## Source Map
 
-- Message classes: `agentflow-client/src/message.ts`
-- Client facade: `agentflow-client/src/client.ts`
-- Invoke endpoint: `agentflow-client/src/endpoints/invoke.ts`
-- Stream endpoint: `agentflow-client/src/endpoints/stream.ts`
-- Stop graph endpoint: `agentflow-client/src/endpoints/stopGraph.ts`
-- Docs: `agentflow-docs/docs/reference/client/message.md`
-- Docs: `agentflow-docs/docs/reference/client/invoke.md`
-- Docs: `agentflow-docs/docs/reference/client/stream.md`
+- Message classes: https://github.com/10xHub/agentflow-client/blob/main/src/message.ts
+- Client facade: https://github.com/10xHub/agentflow-client/blob/main/src/client.ts
+- Invoke endpoint: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/invoke.ts
+- Stream endpoint: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/stream.ts
+- Stop graph endpoint: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/stopGraph.ts
+- Docs: https://agentflow.10xscale.ai/

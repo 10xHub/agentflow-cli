@@ -52,7 +52,7 @@ The API loader imports these and binds them for graph execution.
 
 ## Source Map
 
-- DI docs source: `agentflow-docs/docs/concepts/dependency-injection.md`
-- API loader: `agentflow-api/agentflow_cli/src/app/loader.py`
-- Graph config: `agentflow-api/agentflow_cli/src/app/core/config/graph_config.py`
-- Tool/node call helpers: `agentflow/agentflow/utils/callable_utils.py`
+- Docs: https://agentflow.10xscale.ai/
+- API loader: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/loader.py
+- Graph config: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/graph_config.py
+- Tool/node call helpers: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/callable_utils.py

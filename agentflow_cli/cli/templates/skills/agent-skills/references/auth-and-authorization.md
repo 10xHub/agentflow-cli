@@ -79,10 +79,9 @@ const client = new AgentFlowClient({
 
 ## Source Map
 
-- Base auth: `agentflow-api/agentflow_cli/src/app/core/auth/base_auth.py`
-- JWT auth: `agentflow-api/agentflow_cli/src/app/core/auth/jwt_auth.py`
-- Auth backend loader: `agentflow-api/agentflow_cli/src/app/core/auth/auth_backend.py`
-- Authorization: `agentflow-api/agentflow_cli/src/app/core/auth/authorization.py`
-- Permission dependency: `agentflow-api/agentflow_cli/src/app/core/auth/permissions.py`
-- Main docs: `agentflow-docs/docs/reference/api-cli/auth.md`
-- Production docs: `agentflow-docs/docs/how-to/production/auth-and-authorization.md`
+- Base auth: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/base_auth.py
+- JWT auth: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/jwt_auth.py
+- Auth backend loader: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/auth_backend.py
+- Authorization: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/authorization.py
+- Permission dependency: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/permissions.py
+- Docs: https://agentflow.10xscale.ai/

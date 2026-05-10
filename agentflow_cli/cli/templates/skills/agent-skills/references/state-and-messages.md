@@ -61,8 +61,8 @@ Use `ToolResult(message=..., state={...})` when a tool must both return text to 
 
 ## Source Map
 
-- State models: `agentflow/agentflow/core/state/agent_state.py`
-- Message model: `agentflow/agentflow/core/state/message.py`
-- Content blocks: `agentflow/agentflow/core/state/message_block.py`
-- Reducers: `agentflow/agentflow/core/state/reducers.py`
-- TS message class: `agentflow-client/src/message.ts`
+- State models: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/agent_state.py
+- Message model: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/message.py
+- Content blocks: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/message_block.py
+- Reducers: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/reducers.py
+- TS message class: https://github.com/10xHub/agentflow-client/blob/main/src/message.ts

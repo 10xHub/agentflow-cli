@@ -70,9 +70,8 @@ ACP support is in `agentflow/agentflow/runtime/protocols/acp.py`. Treat it as a 
 
 ## Source Map
 
-- Runtime exports: `agentflow/agentflow/runtime/__init__.py`
-- Publishers: `agentflow/agentflow/runtime/publisher`
-- A2A protocol: `agentflow/agentflow/runtime/protocols/a2a`
-- ACP protocol: `agentflow/agentflow/runtime/protocols/acp.py`
-- Main docs: `agentflow-docs/docs/reference/python/publishers.md`
-- Examples docs: `agentflow-docs/docs/tutorials/from-examples/graceful-shutdown.md`
+- Runtime exports: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/runtime/__init__.py
+- Publishers: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/runtime/publisher
+- A2A protocol: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/runtime/protocols/a2a
+- ACP protocol: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/runtime/protocols/acp.py
+- Docs: https://agentflow.10xscale.ai/

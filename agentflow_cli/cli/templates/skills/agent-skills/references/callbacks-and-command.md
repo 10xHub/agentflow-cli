@@ -254,13 +254,13 @@ def router_node(state, config):
 
 ## Source Map
 
-- Callback system (invocation hooks + graph lifecycle hooks): `agentflow/agentflow/utils/callbacks.py`
-- Default validators: `agentflow/agentflow/utils/validators.py`
-- Graph compile callback argument: `agentflow/agentflow/core/graph/state_graph.py`
-- Command API: `agentflow/agentflow/utils/command.py`
-- Command execution paths: `agentflow/agentflow/core/graph/compiled_graph.py`
-- Lifecycle hook fire points — invoke path: `agentflow/agentflow/core/graph/utils/invoke_handler.py`
-- Lifecycle hook fire points — stream path: `agentflow/agentflow/core/graph/utils/stream_handler.py`
-- Lifecycle hook fire points — interrupt/resume: `agentflow/agentflow/core/graph/utils/heandler_utils.py`
-- Lifecycle hook fire points — checkpoint: `agentflow/agentflow/core/graph/utils/utils.py`
-- Legacy docs: `agentflow-docs/docs-mkdocs-legacy/reference/library/Command.md`
+- Callback system (invocation hooks + graph lifecycle hooks): https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/callbacks.py
+- Default validators: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/validators.py
+- Graph compile callback argument: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/state_graph.py
+- Command API: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/command.py
+- Command execution paths: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/compiled_graph.py
+- Lifecycle hook fire points — invoke path: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/utils/invoke_handler.py
+- Lifecycle hook fire points — stream path: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/utils/stream_handler.py
+- Lifecycle hook fire points — interrupt/resume: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/utils/heandler_utils.py
+- Lifecycle hook fire points — checkpoint: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/utils/utils.py
+- Legacy docs: https://github.com/10xHub/Agentflow/blob/main/agentflow-docs/docs-mkdocs-legacy/reference/library/Command.md

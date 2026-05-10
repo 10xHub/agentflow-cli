@@ -77,14 +77,13 @@ Production mode warns about unsafe defaults such as:
 
 ## Source Map
 
-- Settings: `agentflow-api/agentflow_cli/src/app/core/config/settings.py`
-- Middleware setup: `agentflow-api/agentflow_cli/src/app/core/config/setup_middleware.py`
-- Request limits: `agentflow-api/agentflow_cli/src/app/core/middleware/request_limits.py`
-- Security headers: `agentflow-api/agentflow_cli/src/app/core/middleware/security_headers.py`
-- Rate limit middleware: `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/`
-- Rate limit base class: `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/base.py`
-- Sentry: `agentflow-api/agentflow_cli/src/app/core/config/sentry_config.py`
-- Log sanitizer: `agentflow-api/agentflow_cli/src/app/core/utils/log_sanitizer.py`
-- Main docs: `agentflow-docs/docs/reference/api-cli/environment.md`
-- Production docs: `agentflow-docs/docs/how-to/production/environment-variables.md`
-- Rate limiting docs: `agentflow-api/docs/rate-limiting.md`
+- Settings: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/settings.py
+- Middleware setup: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/setup_middleware.py
+- Request limits: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/middleware/request_limits.py
+- Security headers: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/middleware/security_headers.py
+- Rate limit middleware: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/core/middleware/rate_limit
+- Rate limit base class: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/middleware/rate_limit/base.py
+- Sentry: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/sentry_config.py
+- Log sanitizer: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/utils/log_sanitizer.py
+- Docs: https://agentflow.10xscale.ai/
+- Rate limiting docs: https://github.com/10xHub/agentflow-cli/blob/main/docs/rate-limiting.md

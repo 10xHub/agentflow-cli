@@ -62,8 +62,7 @@ For production:
 
 ## Source Map
 
-- Callback system: `agentflow/agentflow/utils/callbacks.py`
-- Validators: `agentflow/agentflow/utils/validators.py`
-- API error handlers: `agentflow-api/agentflow_cli/src/app/core/exceptions/handle_errors.py`
-- Main docs: `agentflow-docs/docs/reference/python/callback-manager.md`
-- How-to: `agentflow-docs/docs/how-to/python/protect-against-prompt-injection.md`
+- Callback system: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/callbacks.py
+- Validators: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/validators.py
+- API error handlers: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/exceptions/handle_errors.py
+- Docs: https://agentflow.10xscale.ai/

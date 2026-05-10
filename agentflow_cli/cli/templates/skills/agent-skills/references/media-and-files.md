@@ -61,6 +61,6 @@ TypeScript client methods:
 
 ## Source Map
 
-- Media config/resolver: `agentflow/agentflow/storage/media`
-- Media router: `agentflow-api/agentflow_cli/src/app/routers/media`
-- TS files endpoint: `agentflow-client/src/endpoints/files.ts`
+- Media config/resolver: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/storage/media
+- Media router: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/src/app/routers/media
+- TS files endpoint: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/files.ts

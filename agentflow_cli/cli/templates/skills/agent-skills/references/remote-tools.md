@@ -53,16 +53,16 @@ The client controls the recursion loop and stops when no remote tool calls remai
 
 Python:
 
-- `RemoteToolCallBlock`: `agentflow/agentflow/core/state/message_block.py`
+- `RemoteToolCallBlock`: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/message_block.py
 - `ToolResultBlock`: same module
 - `ToolNode.remote_tool_names`: checked during tool execution
 
 TypeScript:
 
-- `RemoteTool`: `agentflow-client/src/endpoints/setupGraph.ts`
-- `ToolRegistration`: `agentflow-client/src/tools.ts`
-- `ToolExecutor`: `agentflow-client/src/tools.ts`
-- `RemoteToolCallBlock`: `agentflow-client/src/message.ts`
+- `RemoteTool`: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/setupGraph.ts
+- `ToolRegistration`: https://github.com/10xHub/agentflow-client/blob/main/src/tools.ts
+- `ToolExecutor`: https://github.com/10xHub/agentflow-client/blob/main/src/tools.ts
+- `RemoteToolCallBlock`: https://github.com/10xHub/agentflow-client/blob/main/src/message.ts
 
 ## Rules
 
@@ -75,12 +75,12 @@ TypeScript:
 
 ## Source Map
 
-- API setup schema: `agentflow-api/agentflow_cli/src/app/routers/graph/schemas/graph_schemas.py`
-- API setup route: `agentflow-api/agentflow_cli/src/app/routers/graph/router.py`
-- API setup service: `agentflow-api/agentflow_cli/src/app/routers/graph/services/graph_service.py`
-- Python block model: `agentflow/agentflow/core/state/message_block.py`
-- Python remote handling: `agentflow/agentflow/core/graph/tool_node/base.py`
-- TS setup endpoint: `agentflow-client/src/endpoints/setupGraph.ts`
-- TS invoke loop: `agentflow-client/src/endpoints/invoke.ts`
-- TS stream loop: `agentflow-client/src/endpoints/stream.ts`
-- TS executor: `agentflow-client/src/tools.ts`
+- API setup schema: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/graph/schemas/graph_schemas.py
+- API setup route: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/graph/router.py
+- API setup service: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/routers/graph/services/graph_service.py
+- Python block model: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/state/message_block.py
+- Python remote handling: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/tool_node/base.py
+- TS setup endpoint: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/setupGraph.ts
+- TS invoke loop: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/invoke.ts
+- TS stream loop: https://github.com/10xHub/agentflow-client/blob/main/src/endpoints/stream.ts
+- TS executor: https://github.com/10xHub/agentflow-client/blob/main/src/tools.ts

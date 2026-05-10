@@ -66,9 +66,8 @@ Common full shape:
 
 ## Source Map
 
-- Graph config: `agentflow-api/agentflow_cli/src/app/core/config/graph_config.py`
-- Loader: `agentflow-api/agentflow_cli/src/app/loader.py`
-- App startup: `agentflow-api/agentflow_cli/src/app/main.py`
-- Main docs: `agentflow-docs/docs/reference/api-cli/configuration.md`
-- How-to: `agentflow-docs/docs/how-to/api-cli/configure-agentflow-json.md`
+- Graph config: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/config/graph_config.py
+- Loader: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/loader.py
+- App startup: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/main.py
+- Docs: https://agentflow.10xscale.ai/
 - Rate limit config details: `references/rate-limiting.md`
