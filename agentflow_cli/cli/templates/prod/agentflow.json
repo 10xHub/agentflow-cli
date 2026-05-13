@@ -15,5 +15,16 @@
     "by": "ip",
     "trusted_proxy_headers": false,
     "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  },
+  "test": {
+    "path": "tests",
+    "coverage": true,
+    "coverage_threshold": 70
+  },
+  "evaluation": {
+    "directory": "evals",
+    "output_dir": "eval_reports",
+    "threshold": 0.75,
+    "timestamp_files": true
   }
 }

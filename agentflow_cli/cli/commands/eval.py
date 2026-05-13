@@ -72,30 +72,42 @@ class EvalCommand(BaseCommand):
     # Per-file runner (sync wrapper — avoids nested asyncio.run() issues)
     # ------------------------------------------------------------------
 
+    def _default_config(self) -> Any:
+        from agentflow.qa.evaluation import CriterionConfig, EvalConfig, MatchType
+
+        return EvalConfig(
+            criteria={
+                "response": CriterionConfig(threshold=0.6, match_type=MatchType.ANY_ORDER),
+                "tool_usage": CriterionConfig(
+                    threshold=1.0, match_type=MatchType.EXACT, check_args=False
+                ),
+                "node_order": CriterionConfig(threshold=0.8, match_type=MatchType.IN_ORDER),
+            },
+        )
+
     def _run_file_sync(self, path: Path) -> EvalReport | None:
         """Load and run a single eval file. Returns EvalReport or None if skipped."""
         self.output.info(f"Running: {path.name}", emoji=False)
         mod = self._load_module(path)
 
-        # Option A: run() function — module has full control
+        # Option A: run() — module has full control
         if hasattr(mod, "run"):
             result = mod.run()
             if inspect.isawaitable(result):
                 return asyncio.run(result)
             return result  # type: ignore[return-value]
 
-        # Option B: get_eval_set() + get_eval_config() — CLI loads agent
-        if hasattr(mod, "get_eval_set") and hasattr(mod, "get_eval_config"):
-            return self._run_with_evaluator(mod, mod.get_eval_set(), mod.get_eval_config())
+        # Option B: get_eval_set() — config is optional; CLI fills in the default
+        if hasattr(mod, "get_eval_set"):
+            if hasattr(mod, "get_eval_config"):
+                config = mod.get_eval_config()
+            elif hasattr(mod, "EVAL_CONFIG"):
+                config = mod.EVAL_CONFIG
+            else:
+                config = self._default_config()
+            return self._run_with_evaluator(mod, mod.get_eval_set(), config)
 
-        # Option C: EVAL_CONFIG constant + get_eval_set()
-        if hasattr(mod, "EVAL_CONFIG") and hasattr(mod, "get_eval_set"):
-            return self._run_with_evaluator(mod, mod.get_eval_set(), mod.EVAL_CONFIG)
-
-        self.output.warning(
-            f"Skipping {path.name} — no run(), get_eval_set()+get_eval_config(), "
-            "or EVAL_CONFIG+get_eval_set() found."
-        )
+        self.output.warning(f"Skipping {path.name} — no run() or get_eval_set() found.")
         return None
 
     def _run_with_evaluator(self, mod: Any, eval_set: Any, config: Any) -> EvalReport:
