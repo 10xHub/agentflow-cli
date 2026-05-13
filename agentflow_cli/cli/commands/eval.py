@@ -11,6 +11,13 @@ import webbrowser
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agentflow.qa.evaluation import CriterionConfig, EvalConfig, MatchType
+from agentflow.qa.evaluation.collectors.trajectory_collector import TrajectoryCollector
+from agentflow.qa.evaluation.config.eval_config import ReporterConfig
+from agentflow.qa.evaluation.eval_result import EvalReport as ER
+from agentflow.qa.evaluation.evaluator import AgentEvaluator
+from agentflow.qa.evaluation.reporters.manager import ReporterManager
+
 from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.core.config import ConfigManager
 
@@ -73,8 +80,6 @@ class EvalCommand(BaseCommand):
     # ------------------------------------------------------------------
 
     def _default_config(self) -> Any:
-        from agentflow.qa.evaluation import CriterionConfig, EvalConfig, MatchType
-
         return EvalConfig(
             criteria={
                 "response": CriterionConfig(threshold=0.6, match_type=MatchType.ANY_ORDER),
@@ -94,7 +99,7 @@ class EvalCommand(BaseCommand):
         if hasattr(mod, "run"):
             result = mod.run()
             if inspect.isawaitable(result):
-                return asyncio.run(result)
+                return asyncio.run(result)  # type: ignore[arg-type]
             return result  # type: ignore[return-value]
 
         # Option B: get_eval_set() — config is optional; CLI fills in the default
@@ -111,9 +116,6 @@ class EvalCommand(BaseCommand):
         return None
 
     def _run_with_evaluator(self, mod: Any, eval_set: Any, config: Any) -> EvalReport:
-        from agentflow.qa.evaluation.collectors.trajectory_collector import TrajectoryCollector
-        from agentflow.qa.evaluation.evaluator import AgentEvaluator
-
         # Prefer the graph already imported in the module (most common pattern)
         graph = getattr(mod, "app", None) or self._load_agent_from_config()
         collector = TrajectoryCollector(capture_all_events=True)
@@ -127,8 +129,6 @@ class EvalCommand(BaseCommand):
     def _merge_reports(self, reports: list[EvalReport]) -> EvalReport:
         if len(reports) == 1:
             return reports[0]
-
-        from agentflow.qa.evaluation.eval_result import EvalReport as ER
 
         all_results = []
         for r in reports:
@@ -153,7 +153,9 @@ class EvalCommand(BaseCommand):
                 eval_cfg = config_manager.get_evaluation_config()
                 directory = eval_cfg.get("directory", "evals")
             except Exception:
-                pass
+                self.logger.warning(
+                    "Failed to load eval directory from config; using default 'evals/'"
+                )
         return Path.cwd() / directory
 
     # ------------------------------------------------------------------
@@ -183,7 +185,9 @@ class EvalCommand(BaseCommand):
                 if threshold is None:
                     threshold = eval_cfg.get("threshold")
             except Exception:
-                pass
+                self.logger.warning(
+                    "Failed to load eval config from agentflow.json; using defaults"
+                )
 
         # Resolve target path
         if target:
@@ -227,8 +231,7 @@ class EvalCommand(BaseCommand):
         # Determine exit code
         if threshold is not None and merged.summary.pass_rate < threshold:
             self.output.error(
-                f"Pass rate {merged.summary.pass_rate:.1%} is below "
-                f"threshold {threshold:.1%}"
+                f"Pass rate {merged.summary.pass_rate:.1%} is below threshold {threshold:.1%}"
             )
             return_code = 1
         else:
@@ -236,9 +239,6 @@ class EvalCommand(BaseCommand):
 
         # Always generate file reports unless --no-report
         if not no_report:
-            from agentflow.qa.evaluation.config.eval_config import ReporterConfig
-            from agentflow.qa.evaluation.reporters.manager import ReporterManager
-
             manager = ReporterManager(
                 ReporterConfig(
                     output_dir=output_dir,

@@ -1,6 +1,6 @@
 """Test command implementation — thin pytest wrapper."""
 
-import subprocess
+import subprocess  # nosec: B404
 import sys
 import webbrowser
 from pathlib import Path
@@ -34,8 +34,8 @@ class TestCommand(BaseCommand):
             try:
                 config_manager.load_config(str(discovered))
                 cfg = config_manager.get_test_config()
-            except Exception:  # noqa: S110
-                pass  # config absent or invalid — proceed with CLI defaults
+            except Exception:  # nosec: B110
+                self.logger.warning("Failed to load test configuration from %s", discovered)
 
         # Explicit CLI path wins; fall back to agentflow.json; None = pytest auto-discovery
         resolved_path: str | None = path or cfg.get("path") or None
@@ -72,7 +72,7 @@ class TestCommand(BaseCommand):
 
         self.logger.info("Running: %s", " ".join(cmd))
 
-        result = subprocess.run(cmd, cwd=project_root)  # noqa: PLW1510, S603
+        result = subprocess.run(cmd, cwd=project_root, check=False)  # nosec: B603  # noqa: S603
 
         if result.returncode == 0:
             self.output.success("All tests passed.")

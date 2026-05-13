@@ -402,8 +402,8 @@ def test(
         sys.exit(handle_exception(e))
 
 
-@app.command()
-def eval(
+@app.command(name="eval")
+def eval_cmd(
     target: str | None = typer.Argument(
         None,
         help="File or directory to evaluate (default: evals/ from agentflow.json or cwd)",
@@ -423,7 +423,7 @@ def eval(
         None,
         "--threshold",
         "-t",
-        help="Fail if overall pass rate is below this value (0.0–1.0)",
+        help="Fail if overall pass rate is below this value (0.0-1.0)",
     ),
     open_report: bool = typer.Option(
         False,
