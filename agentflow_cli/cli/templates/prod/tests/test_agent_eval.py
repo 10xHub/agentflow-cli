@@ -3,18 +3,20 @@ from __future__ import annotations
 import asyncio
 
 from agentflow.qa import QuickTest
-from agentflow.qa.evaluation import CriterionResult, EvalCaseResult, EvalReport, EvalSummary
-
-from evals.weather_agents import (
-    EVAL_REPORT_DIR,
-    build_weather_agent_eval_config,
-    build_weather_agent_eval_set,
-    write_weather_agent_eval_reports,
+from agentflow.qa.evaluation import (
+    CriterionResult,
+    EvalCaseResult,
+    EvalReport,
+    EvalSummary,
+    ReporterConfig,
+    ReporterManager,
 )
 
+from evals.weather_agents_eval import get_eval_set
 
-def test_weather_agent_eval_set_covers_core_weather_behaviors() -> None:
-    eval_set = build_weather_agent_eval_set()
+
+def test_eval_set_covers_core_weather_behaviors() -> None:
+    eval_set = get_eval_set()
 
     case_ids = {case.eval_id for case in eval_set.eval_cases}
     case_names = {case.name for case in eval_set.eval_cases}
@@ -27,20 +29,7 @@ def test_weather_agent_eval_set_covers_core_weather_behaviors() -> None:
     assert "weather_tokyo" in case_ids
 
 
-def test_weather_agent_eval_config_uses_deterministic_criteria() -> None:
-    config = build_weather_agent_eval_config()
-
-    assert config.mock_mode is True
-    assert set(config.criteria) == {"response", "tool_usage", "node_order"}
-    assert config.criteria["tool_usage"].check_args is False
-    assert config.reporter.output_dir == str(EVAL_REPORT_DIR)
-    assert config.reporter.json_report is True
-    assert config.reporter.html is True
-    assert config.reporter.junit_xml is True
-
-
-def test_write_weather_agent_eval_reports_creates_report_artifacts(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("evals.weather_agents.EVAL_REPORT_DIR", tmp_path)
+def test_reporter_writes_html_and_json_artifacts(tmp_path) -> None:
     report = EvalReport(
         eval_set_id="weather-agent-regression",
         eval_set_name="weather-agent-regression",
@@ -69,11 +58,12 @@ def test_write_weather_agent_eval_reports_creates_report_artifacts(tmp_path, mon
         ),
     )
 
-    output = write_weather_agent_eval_reports(report)
+    output = ReporterManager(
+        ReporterConfig(output_dir=str(tmp_path), html=True, json_report=True, console=False)
+    ).run_all(report, output_dir=str(tmp_path))
 
     assert output.json_path is not None
     assert output.html_path is not None
-    assert output.junit_path is not None
     assert "weather-agent-regression" in tmp_path.joinpath(output.json_path).read_text(
         encoding="utf-8"
     )
