@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.commands.build import BuildCommand
+from agentflow_cli.cli.commands.eval import EvalCommand
 from agentflow_cli.cli.commands.init import InitCommand
 from agentflow_cli.cli.commands.skills import SkillsCommand
 from agentflow_cli.cli.commands.test import TestCommand
@@ -368,14 +369,14 @@ def skills(
 )
 def test(
     ctx: typer.Context,
-    path: str | None = typer.Argument(None, help="Path to tests directory or file (omit to let pytest auto-discover)"),
+    path: str | None = typer.Argument(
+        None, help="Path to tests directory or file (omit to let pytest auto-discover)"
+    ),
     coverage: bool = typer.Option(False, "--coverage", "-C", help="Run with coverage"),
     html: bool = typer.Option(
         False, "--html", help="Open HTML coverage report after run (requires --coverage)"
     ),
-    keyword: str | None = typer.Option(
-        None, "-k", help="Only run tests matching this expression"
-    ),
+    keyword: str | None = typer.Option(None, "-k", help="Only run tests matching this expression"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress all output except errors"),
 ) -> None:
@@ -395,6 +396,65 @@ def test(
             verbose=verbose,
             quiet=quiet,
             extra_args=tuple(ctx.args),
+        )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command()
+def eval(
+    target: str | None = typer.Argument(
+        None,
+        help="File or directory to evaluate (default: evals/ from agentflow.json or cwd)",
+    ),
+    output_dir: str = typer.Option(
+        "eval_reports",
+        "--output",
+        "-o",
+        help="Directory for generated report files",
+    ),
+    no_report: bool = typer.Option(
+        False,
+        "--no-report",
+        help="Skip file report generation (console summary only)",
+    ),
+    threshold: float | None = typer.Option(
+        None,
+        "--threshold",
+        "-t",
+        help="Fail if overall pass rate is below this value (0.0–1.0)",
+    ),
+    open_report: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the HTML report in the default browser after the run",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress all output except errors"),
+) -> None:
+    """Run agent evaluations.
+
+    Discovers *_eval.py / eval_*.py files in the target directory (default: evals/).
+    Always generates HTML + JSON reports in eval_reports/ unless --no-report is set.
+
+    Each eval file must expose one of:
+      run()                           # full control, returns EvalReport
+      get_eval_set() + get_eval_config()  # CLI loads agent from agentflow.json
+      EVAL_CONFIG + get_eval_set()        # same, config as a constant
+    """
+    setup_cli_logging(verbose=verbose, quiet=quiet)
+
+    try:
+        command = EvalCommand(output)
+        exit_code = command.execute(
+            target=target,
+            output_dir=output_dir,
+            no_report=no_report,
+            threshold=threshold,
+            open_report=open_report,
+            verbose=verbose,
+            quiet=quiet,
         )
         sys.exit(exit_code)
     except Exception as e:

@@ -225,6 +225,17 @@ class ConfigManager:
             return {}
         return raw
 
+    def get_evaluation_config(self) -> dict[str, Any]:
+        """Return the optional 'evaluation' section from agentflow.json.
+
+        Returns a dict with keys: directory, output_dir, threshold, timestamp_files.
+        All fields are optional; callers should use .get() with their own defaults.
+        """
+        raw = self.get_config_value("evaluation", default={})
+        if not isinstance(raw, dict):
+            return {}
+        return raw
+
     def resolve_env_file(self) -> Path | None:
         """Resolve environment file path from configuration.
 

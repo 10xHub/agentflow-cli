@@ -92,28 +92,36 @@ def build_weather_agent_eval_config() -> EvalConfig:
     )
 
 
-def run_weather_agent_eval(config: EvalConfig | None = None):
-    """Run the current compiled graph against the weather-agent eval set."""
-    config = config or build_weather_agent_eval_config()
+def get_eval_set() -> EvalSet:
+    """Return the eval set for CLI discovery (agentflow eval)."""
+    return build_weather_agent_eval_set()
+
+
+def get_eval_config() -> EvalConfig:
+    """Return the eval config for CLI discovery (agentflow eval)."""
+    return build_weather_agent_eval_config()
+
+
+def run() -> ReporterOutput:
+    """Entry point for agentflow eval CLI discovery.
+
+    Runs the full eval and returns the reporter output (HTML + JSON + JUnit).
+    """
+    config = build_weather_agent_eval_config()
     collector = TrajectoryCollector(capture_all_events=True)
-    return QuickEval.run_sync(
+    report = QuickEval.run_sync(
         graph=app,
         collector=collector,
         eval_set=build_weather_agent_eval_set(),
         config=config,
+        print_results=True,
     )
-
-
-def write_weather_agent_eval_reports(report=None) -> ReporterOutput:
-    """Write JSON, HTML, and JUnit XML report files for a completed eval report."""
-    config = build_weather_agent_eval_config()
-    eval_report = report or run_weather_agent_eval(config=config)
     EVAL_REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    return ReporterManager(config.reporter).run_all(eval_report, output_dir=str(EVAL_REPORT_DIR))
+    return ReporterManager(config.reporter).run_all(report, output_dir=str(EVAL_REPORT_DIR))
 
 
 if __name__ == "__main__":
-    output = write_weather_agent_eval_reports()
-    print(f"JSON report: {output.json_path}")  # noqa: T201
-    print(f"HTML report: {output.html_path}")  # noqa: T201
-    print(f"JUnit report: {output.junit_path}")  # noqa: T201
+    reporter_output = run()
+    print(f"JSON report: {reporter_output.json_path}")  # noqa: T201
+    print(f"HTML report: {reporter_output.html_path}")  # noqa: T201
+    print(f"JUnit report: {reporter_output.junit_path}")  # noqa: T201

@@ -72,7 +72,7 @@ class TestCommand(BaseCommand):
 
         self.logger.info("Running: %s", " ".join(cmd))
 
-        result = subprocess.run(cmd, cwd=project_root)  # noqa: PLW1510
+        result = subprocess.run(cmd, cwd=project_root)  # noqa: PLW1510, S603
 
         if result.returncode == 0:
             self.output.success("All tests passed.")
