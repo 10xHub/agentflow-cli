@@ -9,6 +9,7 @@ from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.commands.build import BuildCommand
 from agentflow_cli.cli.commands.init import InitCommand
 from agentflow_cli.cli.commands.skills import SkillsCommand
+from agentflow_cli.cli.commands.test import TestCommand
 from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import (
     DEFAULT_CONFIG_FILE,
@@ -356,6 +357,44 @@ def skills(
             force=force,
             all_agents=all_agents,
             list_agents=list_agents,
+        )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def test(
+    ctx: typer.Context,
+    path: str | None = typer.Argument(None, help="Path to tests directory or file (omit to let pytest auto-discover)"),
+    coverage: bool = typer.Option(False, "--coverage", "-C", help="Run with coverage"),
+    html: bool = typer.Option(
+        False, "--html", help="Open HTML coverage report after run (requires --coverage)"
+    ),
+    keyword: str | None = typer.Option(
+        None, "-k", help="Only run tests matching this expression"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress all output except errors"),
+) -> None:
+    """Run project tests with pytest.
+
+    Any arguments after -- are forwarded verbatim to pytest.
+    """
+    setup_cli_logging(verbose=verbose, quiet=quiet)
+
+    try:
+        command = TestCommand(output)
+        exit_code = command.execute(
+            path=path,
+            coverage=coverage,
+            html=html,
+            keyword=keyword,
+            verbose=verbose,
+            quiet=quiet,
+            extra_args=tuple(ctx.args),
         )
         sys.exit(exit_code)
     except Exception as e:

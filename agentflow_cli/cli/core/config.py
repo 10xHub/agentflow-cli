@@ -214,6 +214,17 @@ class ConfigManager:
 
         return value
 
+    def get_test_config(self) -> dict[str, Any]:
+        """Return the optional 'test' section from agentflow.json.
+
+        Returns a dict with keys: path, coverage, coverage_threshold.
+        All fields are optional; callers should use .get() with their own defaults.
+        """
+        raw = self.get_config_value("test", default={})
+        if not isinstance(raw, dict):
+            return {}
+        return raw
+
     def resolve_env_file(self) -> Path | None:
         """Resolve environment file path from configuration.
 
