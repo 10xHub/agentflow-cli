@@ -19,6 +19,8 @@ metadata:
     - references/callbacks-and-command.md
     - references/prebuilt-agents-and-tools.md
     - references/testing-and-evaluation.md
+    - references/unit-testing.md
+    - references/evaluation.md
     - references/publishers-and-runtime-protocols.md
     - references/context-id-background.md
     - references/providers-and-adapters.md
@@ -73,6 +75,8 @@ Treat https://agentflow.10xscale.ai/ as the first source of truth for public pac
    - Observability hooks, validators, and runtime jumps: `references/callbacks-and-command.md`
    - Prebuilt agents/tools and handoff helpers: `references/prebuilt-agents-and-tools.md`
    - Testing helpers and evaluation framework: `references/testing-and-evaluation.md`
+   - Unit testing without LLM calls (TestAgent, QuickTest, MockToolRegistry, agentflow test): `references/unit-testing.md`
+   - Evaluation framework (EvalSet, criteria, presets, reporters, AgentEvaluator, QuickEval, UserSimulator, BatchSimulator, agentflow eval): `references/evaluation.md`
    - Event publishers and A2A/ACP runtime protocols: `references/publishers-and-runtime-protocols.md`
    - Context management, ID generation, and background tasks: `references/context-id-background.md`
    - Provider internals and adapters: `references/providers-and-adapters.md`
