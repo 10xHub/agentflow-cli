@@ -1,4 +1,9 @@
-from agentflow.qa.evaluation import EvalSet, EvalSetBuilder
+from agentflow.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
+
+
+def get_eval_config() -> EvalConfig:
+    """Return the default eval configuration for CLI auto-discovery."""
+    return EvalConfig()
 
 
 def get_eval_set() -> EvalSet:
