@@ -2,5 +2,11 @@
   "agent": "graph.agent:app",
   "env": ".env",
   "auth": null,
-  "thread_name_generator": null
+  "thread_name_generator": null,
+  "evaluation": {
+    "directory": "evals",
+    "output_dir": "eval_reports",
+    "threshold": 0.75,
+    "timestamp_files": true
+  }
 }

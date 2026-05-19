@@ -16,7 +16,7 @@ from agentflow_cli.cli.exceptions import FileOperationError
 
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
-_SKIP_DIRS = {"__pycache__"}
+_SKIP_DIRS = {"__pycache__", ".ruff_cache"}
 _DIVIDER = Colors.colorize("  " + "─" * 46, "cyan")
 
 # Directories inside prod/ that are only included based on user choices

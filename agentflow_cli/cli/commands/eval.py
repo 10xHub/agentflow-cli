@@ -82,8 +82,8 @@ class EvalCommand(BaseCommand):
     def _default_config(self) -> Any:
         return EvalConfig(
             criteria={
-                "response": CriterionConfig(threshold=0.6, match_type=MatchType.ANY_ORDER),
-                "tool_usage": CriterionConfig(
+                "response_match": CriterionConfig(threshold=0.6, match_type=MatchType.ANY_ORDER),
+                "tool_name_match_score": CriterionConfig(
                     threshold=1.0, match_type=MatchType.EXACT, check_args=False
                 ),
                 "node_order": CriterionConfig(threshold=0.8, match_type=MatchType.IN_ORDER),
@@ -95,14 +95,8 @@ class EvalCommand(BaseCommand):
         self.output.info(f"Running: {path.name}", emoji=False)
         mod = self._load_module(path)
 
-        # Option A: run() — module has full control
-        if hasattr(mod, "run"):
-            result = mod.run()
-            if inspect.isawaitable(result):
-                return asyncio.run(result)  # type: ignore[arg-type]
-            return result  # type: ignore[return-value]
-
-        # Option B: get_eval_set() — config is optional; CLI fills in the default
+        # Primary protocol: get_eval_set() — CLI handles graph loading, evaluation, and reports.
+        # Config is optional; omit it and the CLI default is used.
         if hasattr(mod, "get_eval_set"):
             if hasattr(mod, "get_eval_config"):
                 config = mod.get_eval_config()
@@ -112,7 +106,15 @@ class EvalCommand(BaseCommand):
                 config = self._default_config()
             return self._run_with_evaluator(mod, mod.get_eval_set(), config)
 
-        self.output.warning(f"Skipping {path.name} — no run() or get_eval_set() found.")
+        # Escape hatch: run() — full control when the standard pipeline isn't enough.
+        # Must return an EvalReport.
+        if hasattr(mod, "run"):
+            result = mod.run()
+            if inspect.isawaitable(result):
+                return asyncio.run(result)  # type: ignore[arg-type]
+            return result  # type: ignore[return-value]
+
+        self.output.warning(f"Skipping {path.name} — no get_eval_set() or run() found.")
         return None
 
     def _run_with_evaluator(self, mod: Any, eval_set: Any, config: Any) -> EvalReport:
