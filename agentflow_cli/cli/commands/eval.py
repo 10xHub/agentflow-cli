@@ -95,7 +95,15 @@ class EvalCommand(BaseCommand):
         self.output.info(f"Running: {path.name}", emoji=False)
         mod = self._load_module(path)
 
-        # Primary protocol: get_eval_set() — CLI handles graph loading, evaluation, and reports.
+        # Primary protocol: run() — full control when the standard pipeline isn't enough.
+        # Must return an EvalReport.
+        if hasattr(mod, "run"):
+            result = mod.run()
+            if inspect.isawaitable(result):
+                return asyncio.run(result)  # type: ignore[arg-type]
+            return result  # type: ignore[return-value]
+
+        # Fallback protocol: get_eval_set() — CLI handles graph loading, evaluation, and reports.
         # Config is optional; omit it and the CLI default is used.
         if hasattr(mod, "get_eval_set"):
             if hasattr(mod, "get_eval_config"):
@@ -105,14 +113,6 @@ class EvalCommand(BaseCommand):
             else:
                 config = self._default_config()
             return self._run_with_evaluator(mod, mod.get_eval_set(), config)
-
-        # Escape hatch: run() — full control when the standard pipeline isn't enough.
-        # Must return an EvalReport.
-        if hasattr(mod, "run"):
-            result = mod.run()
-            if inspect.isawaitable(result):
-                return asyncio.run(result)  # type: ignore[arg-type]
-            return result  # type: ignore[return-value]
 
         self.output.warning(f"Skipping {path.name} — no get_eval_set() or run() found.")
         return None
