@@ -15,11 +15,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agentflow.qa.evaluation import CriterionConfig, EvalConfig, MatchType
-from agentflow.qa.evaluation.collectors.trajectory_collector import TrajectoryCollector
+from agentflow.qa.evaluation.collectors.trajectory_collector import (
+    TrajectoryCollector,
+    make_trajectory_callback,
+)
 from agentflow.qa.evaluation.config.eval_config import ReporterConfig
 from agentflow.qa.evaluation.eval_result import EvalReport as ER, EvalCaseResult
 from agentflow.qa.evaluation.evaluator import AgentEvaluator
 from agentflow.qa.evaluation.reporters.manager import ReporterManager
+from agentflow.utils.callbacks import CallbackManager
+from injectq.testing import override_dependency
 
 from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.core.config import ConfigManager
@@ -46,6 +51,29 @@ class _PendingSimulation:
     file_name: str
     eval_set_id: str
     eval_set_name: str
+
+
+def _reset_inject_proxy(service_type: type) -> None:
+    """Reset the lazy Inject[T] proxy cached on Node.execute's default parameters.
+
+    Inject[T] proxies cache their resolved value in _injected_value on first use.
+    container.override() clears the singleton scope, but the proxy's own cache is
+    independent — it must be cleared so the proxy re-resolves from the container
+    on next invocation instead of returning the stale value.
+    """
+    try:
+        from agentflow.core.graph.node import Node as _GraphNode
+
+        defaults = getattr(_GraphNode.execute, "__defaults__", None) or ()
+        for d in defaults:
+            if (
+                hasattr(d, "_injected_value")
+                and hasattr(d, "service_type")
+                and d.service_type is service_type
+            ):
+                d._injected_value = None
+    except Exception:
+        pass
 
 
 class EvalCommand(BaseCommand):
@@ -303,16 +331,23 @@ class EvalCommand(BaseCommand):
             local_collector = TrajectoryCollector(
                 capture_all_events=pc.evaluator.collector.capture_all_events,
             )
-            try:
-                result = await pc.evaluator._evaluate_case(
-                    pc.case, collector_override=local_collector
-                )
-            except Exception as exc:
-                result = EvalCaseResult.failure(
-                    eval_id=pc.case.eval_id,
-                    error=str(exc),
-                    name=pc.case.name,
-                )
+            _, local_mgr = make_trajectory_callback(local_collector)
+            container = pc.evaluator.graph._state_graph._container
+            # The Inject[CallbackManager] proxy on Node.execute caches its resolved
+            # value independently of the container — reset it so it re-resolves
+            # inside the override context instead of returning the stale instance.
+            _reset_inject_proxy(CallbackManager)
+            with override_dependency(CallbackManager, local_mgr, container=container):
+                try:
+                    result = await pc.evaluator._evaluate_case(
+                        pc.case, collector_override=local_collector
+                    )
+                except Exception as exc:
+                    result = EvalCaseResult.failure(
+                        eval_id=pc.case.eval_id,
+                        error=str(exc),
+                        name=pc.case.name,
+                    )
             return (pc.file_name, pc.eval_set_id, pc.eval_set_name, result)
 
         async def _run_simulation(ps: _PendingSimulation) -> tuple[str, str, str, EvalCaseResult]:
