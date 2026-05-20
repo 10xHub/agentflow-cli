@@ -20,7 +20,8 @@ from agentflow.qa.evaluation.collectors.trajectory_collector import (
     make_trajectory_callback,
 )
 from agentflow.qa.evaluation.config.eval_config import ReporterConfig
-from agentflow.qa.evaluation.eval_result import EvalReport as ER, EvalCaseResult
+from agentflow.qa.evaluation.eval_result import EvalCaseResult
+from agentflow.qa.evaluation.eval_result import EvalReport as ER
 from agentflow.qa.evaluation.evaluator import AgentEvaluator
 from agentflow.qa.evaluation.reporters.manager import ReporterManager
 from agentflow.utils.callbacks import CallbackManager
@@ -72,8 +73,11 @@ def _reset_inject_proxy(service_type: type) -> None:
                 and d.service_type is service_type
             ):
                 d._injected_value = None
-    except Exception:
+    except Exception:  # nosec B110  # noqa: S110
         pass
+
+
+DEFAULT_CONCURRENCY = 4
 
 
 class EvalCommand(BaseCommand):
@@ -140,8 +144,44 @@ class EvalCommand(BaseCommand):
             },
         )
 
+    # ------------------------------------------------------------------
+    # confeval.py loading
+    # ------------------------------------------------------------------
+
+    def _load_confeval(self, evals_dir: Path) -> EvalConfig | None:
+        """Find and load confeval.py from evals_dir, returning its EvalConfig.
+
+        Tries get_eval_config() first, then falls back to the EVAL_CONFIG
+        constant.  Returns None if no confeval.py is found so callers can
+        distinguish "no confeval" from "confeval with empty criteria".
+        """
+        confeval_path = evals_dir / "confeval.py"
+        if not confeval_path.exists():
+            return None
+
+        try:
+            mod = self._load_module(confeval_path)
+        except Exception as exc:
+            self.logger.warning("Failed to load confeval.py: %s", exc)
+            return None
+
+        if hasattr(mod, "get_eval_config"):
+            try:
+                return mod.get_eval_config()
+            except Exception as exc:
+                self.logger.warning("get_eval_config() in confeval.py failed: %s", exc)
+
+        if hasattr(mod, "EVAL_CONFIG"):
+            return mod.EVAL_CONFIG
+
+        self.logger.warning(
+            "confeval.py found but has no get_eval_config() or EVAL_CONFIG — ignoring"
+        )
+        return None
+
     def _collect_eval_functions(self, mod: Any) -> tuple[list[tuple[str, Any]], Any]:
-        """Pytest-style discovery: functions annotated -> EvalSet are evals, -> EvalConfig is config."""
+        """Pytest-style discovery: functions annotated -> EvalSet are evals, ->
+        EvalConfig is config."""
         from agentflow.qa.evaluation import EvalConfig, EvalSet
 
         eval_pairs: list[tuple[str, Any]] = []
@@ -178,9 +218,14 @@ class EvalCommand(BaseCommand):
     # ------------------------------------------------------------------
 
     def _collect_from_file(
-        self, path: Path, global_config: EvalConfig
+        self, path: Path, global_config: EvalConfig | None
     ) -> list[_PendingCase | _PendingSimulation]:
         """Load a module and return pending work for every eval case or simulation scenario.
+
+        Config priority chain (highest → lowest):
+          1. confeval.py   — global_config (not None when confeval was found)
+          2. Per-file      — EVAL_CONFIG / get_eval_config() inside the file
+          3. Built-in defaults — _default_config()
 
         Returns _PendingSimulation items when the file exposes get_scenarios() or SCENARIOS.
         Returns _PendingCase items for the standard get_eval_set() / pytest-style protocols.
@@ -203,13 +248,13 @@ class EvalCommand(BaseCommand):
 
         # get_eval_set() protocol
         if hasattr(mod, "get_eval_set"):
+            file_config: EvalConfig | None = None
             if hasattr(mod, "get_eval_config"):
                 file_config = mod.get_eval_config()
             elif hasattr(mod, "EVAL_CONFIG"):
                 file_config = mod.EVAL_CONFIG
-            else:
-                file_config = global_config
-            config = global_config if global_config.criteria else file_config
+            # Priority: confeval > per-file > defaults
+            config = global_config or file_config or self._default_config()
             return self._make_pending(mod, mod.get_eval_set(), config, file_name)
 
         # pytest-style discovery
@@ -220,9 +265,10 @@ class EvalCommand(BaseCommand):
                 if hasattr(mod, "get_eval_config")
                 else mod.EVAL_CONFIG
                 if hasattr(mod, "EVAL_CONFIG")
-                else global_config
+                else None
             )
-            config = global_config if global_config.criteria else file_config
+            # Priority: confeval > per-file > defaults
+            config = global_config or file_config or self._default_config()
             pending: list[_PendingCase] = []
             for _, es in eval_pairs:
                 pending.extend(self._make_pending(mod, es, config, file_name))
@@ -291,6 +337,34 @@ class EvalCommand(BaseCommand):
         ]
 
     # ------------------------------------------------------------------
+    # Criteria display
+    # ------------------------------------------------------------------
+
+    def _print_criteria_block(
+        self,
+        confeval_config: EvalConfig | None,
+        target_path: Path,
+    ) -> None:
+        """Print the active criteria and their source before any case runs."""
+        if confeval_config is not None:
+            source = str(target_path / "confeval.py")
+            criteria = confeval_config.criteria
+        else:
+            source = "built-in defaults"
+            criteria = self._default_config().criteria
+
+        print(f"Criteria  source: {source}", flush=True)  # noqa: T201
+        for name, cfg in criteria.items():
+            parts = [f"threshold={cfg.threshold}"]
+            parts.append(cfg.match_type.value)
+            if cfg.judge_model:
+                parts.append(f"judge={cfg.judge_model}")
+            if cfg.num_samples and cfg.num_samples != 1:
+                parts.append(f"samples={cfg.num_samples}")
+            print(f"  {name:<40} {'  '.join(parts)}", flush=True)  # noqa: T201
+        print("", flush=True)  # noqa: T201
+
+    # ------------------------------------------------------------------
     # Progress printing
     # ------------------------------------------------------------------
 
@@ -305,10 +379,12 @@ class EvalCommand(BaseCommand):
         status = "PASSED" if result.passed else ("ERROR" if result.is_error else "FAILED")
         duration = f"{result.duration_seconds:.2f}s"
         label = f"{file_name}::{case_name}"
-        status_colored = (
-            f"\033[32m{status}\033[0m" if result.passed else f"\033[31m{status}\033[0m"
-        )
-        print(f"[{index:3d}/{total}] {label}  {status_colored}  {duration}", flush=True)
+        status_colored = f"\033[32m{status}\033[0m" if result.passed else f"\033[31m{status}\033[0m"
+        tok = getattr(result, "token_usage", None)
+        tok_str = ""
+        if tok and (tok.input_tokens or tok.output_tokens):
+            tok_str = f"  in={tok.input_tokens} out={tok.output_tokens}"
+        print(f"[{index:3d}/{total}] {label}  {status_colored}  {duration}{tok_str}", flush=True)  # noqa: T201
 
     # ------------------------------------------------------------------
     # Flat pool execution — single asyncio event loop for all cases
@@ -377,8 +453,7 @@ class EvalCommand(BaseCommand):
                         )
                     ]
                 conversation_text = "\n".join(
-                    f"{m['role'].upper()}: {m['content']}"
-                    for m in sim_result.conversation
+                    f"{m['role'].upper()}: {m['content']}" for m in sim_result.conversation
                 )
                 result = EvalCaseResult.success(
                     eval_id=ps.scenario.scenario_id,
@@ -492,10 +567,13 @@ class EvalCommand(BaseCommand):
         quiet: bool = False,
         **kwargs: Any,
     ) -> int:
-        # 1. Load global config from agentflow.json
-        global_eval_cfg: dict[str, Any] = {}
+        # 1. Load infra settings from agentflow.json — no criteria here.
+        # Criteria come exclusively from confeval.py (step 4) or per-file config.
         config_manager = ConfigManager()
         discovered = config_manager.auto_discover_config()
+        json_directory = "evals"
+        effective_parallel = parallel
+        effective_concurrency = max_concurrency
         if discovered:
             try:
                 config_manager.load_config(str(discovered))
@@ -504,33 +582,19 @@ class EvalCommand(BaseCommand):
                     output_dir = global_eval_cfg.get("output_dir", output_dir)
                 if threshold is None:
                     threshold = global_eval_cfg.get("threshold")
+                if not parallel:
+                    effective_parallel = global_eval_cfg.get("parallel", False)
+                if max_concurrency == DEFAULT_CONCURRENCY:
+                    effective_concurrency = global_eval_cfg.get(
+                        "max_concurrency", DEFAULT_CONCURRENCY
+                    )
+                json_directory = global_eval_cfg.get("directory", json_directory)
             except Exception:
                 self.logger.warning(
                     "Failed to load eval config from agentflow.json; using defaults"
                 )
 
-        # 2. Build typed EvalConfig; CLI flags override everything.
-        # If agentflow.json has an evaluation section but no criteria key, inject
-        # the built-in defaults so at least one criterion always runs.
-        try:
-            global_config = (
-                EvalConfig.model_validate(global_eval_cfg)
-                if global_eval_cfg
-                else self._default_config()
-            )
-        except Exception:
-            global_config = self._default_config()
-
-        if not global_config.criteria:
-            global_config.criteria = self._default_config().criteria
-
-        if parallel:
-            global_config.parallel = True
-        if max_concurrency != 4:
-            global_config.max_concurrency = max_concurrency
-
-        effective_parallel = global_config.parallel
-        effective_concurrency = global_config.max_concurrency
+        # 2. CLI flags already captured as function parameters (highest priority).
 
         # 3. Resolve target path
         if target:
@@ -539,7 +603,7 @@ class EvalCommand(BaseCommand):
                 self.output.error(f"Path not found: {target}")
                 return 1
         else:
-            target_path = self._resolve_eval_dir()
+            target_path = Path.cwd() / json_directory
             if not target_path.exists():
                 self.output.error(
                     f"Eval directory '{target_path}' not found. "
@@ -547,17 +611,20 @@ class EvalCommand(BaseCommand):
                 )
                 return 1
 
-        # 4. Discover files
+        # 4. Load confeval.py → global criteria config (None if not found)
+        confeval_config = self._load_confeval(target_path)
+
+        # 5. Discover files
         files = self._discover(target_path)
         if not files:
             self.output.error(f"No eval files found in {target_path}")
             return 1
 
-        # 5. Collect all pending cases across every file
+        # 6. Collect all pending cases across every file
         pending: list[_PendingCase] = []
         for f in files:
             try:
-                cases = self._collect_from_file(f, global_config)
+                cases = self._collect_from_file(f, confeval_config)
                 pending.extend(cases)
             except Exception as exc:
                 self.output.error(f"Error loading {f.name}: {exc}")
@@ -583,22 +650,21 @@ class EvalCommand(BaseCommand):
             f"Found {', '.join(parts)} across {n_files} file(s) in {target_path}",
         )
 
-        # 6. Run all cases under a single asyncio event loop
-        quads = asyncio.run(
-            self._run_flat_pool(pending, effective_concurrency, effective_parallel)
-        )
+        # 7. Print criteria block so users know what is being evaluated
+        self._print_criteria_block(confeval_config, target_path)
+
+        # 8. Run all cases under a single asyncio event loop
+        quads = asyncio.run(self._run_flat_pool(pending, effective_concurrency, effective_parallel))
 
         if not quads:
             self.output.error("No results produced.")
             return 1
 
         # 7. Group by eval_set_id → one EvalReport per set
-        groups: dict[str, tuple[str, list[EvalCaseResult]]] = defaultdict(
-            lambda: ("", [])
-        )
-        for file_name, eval_set_id, eval_set_name, result in quads:
+        groups: dict[str, tuple[str, list[EvalCaseResult]]] = defaultdict(lambda: ("", []))
+        for _, eval_set_id, eval_set_name, result in quads:
             name, results_list = groups[eval_set_id]
-            groups[eval_set_id] = (eval_set_name or name, results_list + [result])
+            groups[eval_set_id] = (eval_set_name or name, [*results_list, result])
 
         reports: list[EvalReport] = []
         for eval_set_id, (eval_set_name, results) in groups.items():
@@ -607,7 +673,7 @@ class EvalCommand(BaseCommand):
                     eval_set_id=eval_set_id,
                     eval_set_name=eval_set_name,
                     results=results,
-                    config_used=global_config.model_dump(),
+                    config_used=(confeval_config or self._default_config()).model_dump(),
                 )
             )
 
@@ -653,5 +719,13 @@ class EvalCommand(BaseCommand):
             f"({summary.pass_rate:.1%})",
             emoji=False,
         )
+        tok = summary.total_token_usage
+        if tok.total_tokens:
+            cache_part = f"  cache_read: {tok.cache_read_tokens:,}" if tok.cache_read_tokens else ""
+            self.output.info(
+                f"Tokens  — input: {tok.input_tokens:,}  output: {tok.output_tokens:,}"
+                f"{cache_part}  total: {tok.total_tokens:,}",
+                emoji=False,
+            )
 
         return return_code
