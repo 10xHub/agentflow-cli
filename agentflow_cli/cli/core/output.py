@@ -25,16 +25,29 @@ class OutputFormatter:
 
     def __init__(self, stream: TextIO | None = None) -> None:
         """Initialize the output formatter with Rich Console."""
+        import threading
+        import atexit
+
         self.stream = stream or sys.stdout
         self.console = Console(file=self.stream)
         self.err_console = Console(file=sys.stderr)
         self._logo_animated = False
 
+        # Continuous background animation support
+        self._animating_active = False
+        self._animating_thread = None
+        self._live_logo = None
+        self._logo_lock = threading.Lock()
+
+        # Register cleanup on exit to ensure clean terminal state
+        atexit.register(self.stop_logo_animation)
+
     def _animate_logo(self) -> None:
-        """Draw a gorgeous, color-cycling ASCII logo animation on startup (skipped in tests)."""
+        """Start a gorgeous, color-cycling ASCII logo animation in the background (skipped in tests)."""
         import os
         import sys
         import time
+        import threading
         from rich.live import Live
         from rich.text import Text
 
@@ -48,6 +61,7 @@ class OutputFormatter:
             return
 
         self._logo_animated = True
+        self._animating_active = True
 
         ascii_logo = r"""
     ___   ______ ______ _   __ ______   ______ __     ____  _      __
@@ -70,17 +84,64 @@ class OutputFormatter:
                 logo_text.append(line + "\n", style=colors[color_idx])
             return logo_text
 
-        self._print("\n")
-        # Run a brief 10-frame color sweep (takes ~0.4s)
-        with Live(get_frame(0), refresh_per_second=25, console=self.console) as live:
-            for i in range(10):
-                time.sleep(0.04)
-                live.update(get_frame(i))
-        self._print("\n")
+        # Initial spacing
+        self.console.print("\n")
+
+        # Start Live rendering
+        self._live_logo = Live(get_frame(0), console=self.console, auto_refresh=False, transient=False)
+        self._live_logo.start()
+
+        def run_animation():
+            shift = 0
+            while True:
+                with self._logo_lock:
+                    if not self._animating_active:
+                        break
+                    shift += 1
+                try:
+                    self._live_logo.update(get_frame(shift))
+                    self._live_logo.refresh()
+                except Exception:
+                    break
+                time.sleep(0.05)
+
+        # Launch the background animation thread
+        self._animating_thread = threading.Thread(target=run_animation, daemon=True)
+        self._animating_thread.start()
+
+        # Let the animation run continuously for at least 1.2 seconds on startup
+        # to guarantee a gorgeous, fluid color sweep intro sequence
+        time.sleep(1.2)
+
+    def stop_logo_animation(self) -> None:
+        """Stop the background logo animation if it is running."""
+        with self._logo_lock:
+            if not self._animating_active:
+                return
+            self._animating_active = False
+
+        if self._animating_thread:
+            self._animating_thread.join(timeout=0.5)
+            self._animating_thread = None
+
+        if self._live_logo:
+            try:
+                self._live_logo.stop()
+            except Exception:
+                pass
+            self._live_logo = None
+
+        # Space out the content cleanly
+        self.console.print("\n")
 
     def _print(self, *args, err: bool = False, **kwargs) -> None:
         """Helper to print using capture and typer.echo to satisfy unit test mocks."""
         import typer
+
+        # Automatically stop the logo animation before printing any new content
+        if self._animating_active:
+            self.stop_logo_animation()
+
         console = self.err_console if err else self.console
         with console.capture() as capture:
             console.print(*args, **kwargs)
@@ -97,9 +158,9 @@ class OutputFormatter:
         """Print a visually stunning, formatted banner inside a premium Panel."""
         self._animate_logo()
         text = Text()
-        text.append("✨ ", style="bold yellow")
+        text.append(">> ", style="bold yellow")
         text.append(title.upper(), style=f"bold {color}")
-        text.append(" ✨\n", style="bold yellow")
+        text.append(" <<\n", style="bold yellow")
         if subtitle:
             text.append(subtitle, style="italic dim white")
 
@@ -164,7 +225,7 @@ class OutputFormatter:
 
     def emphasize(self, message: str) -> None:
         """Print an emphasized message with sparkle styling."""
-        text = Text.from_markup(f"✨ [bold magenta]{message}[/bold magenta] ✨")
+        text = Text.from_markup(f">> [bold magenta]{message}[/bold magenta] <<")
         self._print(f"\n{text}")
 
     def print_list(
