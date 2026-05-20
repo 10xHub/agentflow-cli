@@ -430,18 +430,32 @@ def eval_cmd(
         "--open",
         help="Open the HTML report in the default browser after the run",
     ),
+    parallel: bool = typer.Option(
+        False,
+        "--parallel",
+        "-p",
+        help="Collect all cases from all files into a flat pool and run them concurrently",
+    ),
+    max_concurrency: int = typer.Option(
+        4,
+        "--max-concurrency",
+        "-c",
+        help="Max cases running concurrently when --parallel is set (global semaphore)",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress all output except errors"),
 ) -> None:
     """Run agent evaluations.
 
     Discovers *_eval.py / eval_*.py files in the target directory (default: evals/).
-    Always generates HTML + JSON reports in eval_reports/ unless --no-report is set.
+    Collects all cases from all files into a flat pool, then runs them under a single
+    event loop throttled by --max-concurrency.  Always generates HTML + JSON reports
+    in eval_reports/ unless --no-report is set.
 
     Each eval file must expose one of:
-      run()                           # full control, returns EvalReport
-      get_eval_set() + get_eval_config()  # CLI loads agent from agentflow.json
-      EVAL_CONFIG + get_eval_set()        # same, config as a constant
+      get_eval_set() + get_eval_config() # CLI loads agent from agentflow.json
+      EVAL_CONFIG + get_eval_set()       # same, config as a constant
+      any function returning EvalSet     # auto-discovered, pytest-style
     """
     setup_cli_logging(verbose=verbose, quiet=quiet)
 
@@ -453,6 +467,8 @@ def eval_cmd(
             no_report=no_report,
             threshold=threshold,
             open_report=open_report,
+            parallel=parallel,
+            max_concurrency=max_concurrency,
             verbose=verbose,
             quiet=quiet,
         )

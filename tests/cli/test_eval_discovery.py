@@ -96,7 +96,7 @@ class TestDiscover:
 
 
 class TestRunFileSync:
-    """Test the module introspection priority: run() → get_eval_set() → skip."""
+    """Test the module introspection priority: run() → get_eval_set() → auto-discover → skip."""
 
     def _dummy_path(self, tmp_path: Path) -> Path:
         p = tmp_path / "x_eval.py"
@@ -136,7 +136,7 @@ class TestRunFileSync:
         ):
             result = cmd._run_file_sync(self._dummy_path(tmp_path))
 
-        mock_run.assert_called_once_with(fake_mod, fake_eval_set, fake_config)
+        mock_run.assert_called_once_with(fake_mod, fake_eval_set, fake_config, parallel=None, max_concurrency=None)
         assert result is fake_report
 
     def test_get_eval_set_with_eval_config_constant(self, tmp_path: Path, cmd: EvalCommand) -> None:
@@ -154,7 +154,7 @@ class TestRunFileSync:
         ):
             result = cmd._run_file_sync(self._dummy_path(tmp_path))
 
-        mock_run.assert_called_once_with(fake_mod, fake_eval_set, fake_config)
+        mock_run.assert_called_once_with(fake_mod, fake_eval_set, fake_config, parallel=None, max_concurrency=None)
         assert result is fake_report
 
     def test_get_eval_set_uses_default_config_when_none_provided(
@@ -194,15 +194,114 @@ class TestRunFileSync:
         mock_run_with.assert_not_called()
 
     def test_no_entry_point_returns_none_and_warns(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        fake_mod = types.SimpleNamespace()  # no run(), no get_eval_set()
-        with patch.object(cmd, "_load_module", return_value=fake_mod):
+        fake_mod = types.SimpleNamespace()  # no run(), no get_eval_set(), no annotated funcs
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(cmd, "_collect_eval_functions", return_value=([], None)),
+        ):
             result = cmd._run_file_sync(self._dummy_path(tmp_path))
 
         assert result is None
-        assert any(
-            "skip" in w.lower() or "no run" in w.lower() or "get_eval_set" in w.lower()
-            for w in cmd.output.warnings  # type: ignore[attr-defined]
-        )
+        assert any("skip" in w.lower() for w in cmd.output.warnings)  # type: ignore[attr-defined]
+
+    def test_auto_discover_eval_set_function(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        """Functions annotated -> EvalSet are discovered and run automatically."""
+        fake_eval_set = MagicMock()
+        fake_report = MagicMock()
+        fake_mod = types.SimpleNamespace(app=MagicMock())
+
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(
+                cmd, "_collect_eval_functions", return_value=([("my_eval", fake_eval_set)], None)
+            ),
+            patch.object(cmd, "_run_with_evaluator", return_value=fake_report) as mock_run,
+        ):
+            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+
+        mock_run.assert_called_once()
+        assert result is fake_report
+
+    def test_auto_discover_uses_discovered_config(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        """Config function annotated -> EvalConfig is paired with the eval set."""
+        fake_eval_set = MagicMock()
+        fake_config = MagicMock()
+        fake_report = MagicMock()
+        fake_mod = types.SimpleNamespace(app=MagicMock())
+
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(
+                cmd,
+                "_collect_eval_functions",
+                return_value=([("my_eval", fake_eval_set)], fake_config),
+            ),
+            patch.object(cmd, "_run_with_evaluator", return_value=fake_report) as mock_run,
+        ):
+            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+
+        mock_run.assert_called_once_with(fake_mod, fake_eval_set, fake_config, parallel=None, max_concurrency=None)
+        assert result is fake_report
+
+    def test_auto_discover_runs_multiple_eval_functions(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        """Multiple annotated -> EvalSet functions are each run and their reports merged."""
+        fake_es1, fake_es2 = MagicMock(), MagicMock()
+        fake_r1, fake_r2 = MagicMock(), MagicMock()
+        fake_r1.results = [MagicMock()]
+        fake_r2.results = [MagicMock()]
+        fake_merged = MagicMock()
+        fake_mod = types.SimpleNamespace(app=MagicMock())
+
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(
+                cmd,
+                "_collect_eval_functions",
+                return_value=([("eval_a", fake_es1), ("eval_b", fake_es2)], None),
+            ),
+            patch.object(
+                cmd, "_run_with_evaluator", side_effect=[fake_r1, fake_r2]
+            ),
+            patch.object(cmd, "_merge_reports", return_value=fake_merged) as mock_merge,
+        ):
+            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+
+        mock_merge.assert_called_once_with([fake_r1, fake_r2])
+        assert result is fake_merged
+
+    def test_run_takes_priority_over_auto_discover(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        """run() must be called; _collect_eval_functions should not be invoked."""
+        run_result = MagicMock(name="run_result")
+        fake_mod = types.SimpleNamespace(run=lambda: run_result)
+
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(cmd, "_collect_eval_functions") as mock_collect,
+        ):
+            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+
+        assert result is run_result
+        mock_collect.assert_not_called()
+
+    def test_get_eval_set_takes_priority_over_auto_discover(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        """get_eval_set() beats auto-discovery; _collect_eval_functions not called."""
+        fake_es = MagicMock()
+        fake_report = MagicMock()
+        fake_mod = types.SimpleNamespace(get_eval_set=lambda: fake_es, app=MagicMock())
+
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(cmd, "_collect_eval_functions") as mock_collect,
+            patch.object(cmd, "_run_with_evaluator", return_value=fake_report),
+        ):
+            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+
+        assert result is fake_report
+        mock_collect.assert_not_called()
 
 
 # ── _merge_reports ────────────────────────────────────────────────────────────
