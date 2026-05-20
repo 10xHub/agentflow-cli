@@ -28,6 +28,55 @@ class OutputFormatter:
         self.stream = stream or sys.stdout
         self.console = Console(file=self.stream)
         self.err_console = Console(file=sys.stderr)
+        self._logo_animated = False
+
+    def _animate_logo(self) -> None:
+        """Draw a gorgeous, color-cycling ASCII logo animation on startup (skipped in tests)."""
+        import os
+        import sys
+        import time
+        from rich.live import Live
+        from rich.text import Text
+
+        # Skip animation if we are running in pytest/test suites or stream is not stdout
+        if (
+            self._logo_animated
+            or "pytest" in sys.modules
+            or os.environ.get("ENVIRONMENT") == "pytest"
+            or self.stream != sys.stdout
+        ):
+            return
+
+        self._logo_animated = True
+
+        ascii_logo = r"""
+    ___   ______ ______ _   __ ______   ______ __     ____  _      __
+   /   | / ____// ____// | / //_  __/  / ____// /    / __ \| | /| / /
+  / /| |/ / __ / __/  /  |/ /  / /    / __/  / /    / / / /| |/ |/ / 
+ / ___ / /_/ // /___ / /|  /  / /    / /    / /___ / /_/ / |  /|  /  
+/_/  |_\____//_____//_/ |_/  /_/    /_/    /_____/ \____/  |__/|_/  
+""".strip("\n")
+
+        colors = [
+            "#ff00ff", "#d700ff", "#af00ff", "#8700ff", "#5f00ff",
+            "#0087ff", "#00afff", "#00d7ff", "#00ffff", "#00ffaf"
+        ]
+
+        def get_frame(shift: int) -> Text:
+            logo_text = Text()
+            lines = ascii_logo.split("\n")
+            for i, line in enumerate(lines):
+                color_idx = (shift + i) % len(colors)
+                logo_text.append(line + "\n", style=colors[color_idx])
+            return logo_text
+
+        self._print("\n")
+        # Run a brief 10-frame color sweep (takes ~0.4s)
+        with Live(get_frame(0), refresh_per_second=25, console=self.console) as live:
+            for i in range(10):
+                time.sleep(0.04)
+                live.update(get_frame(i))
+        self._print("\n")
 
     def _print(self, *args, err: bool = False, **kwargs) -> None:
         """Helper to print using capture and typer.echo to satisfy unit test mocks."""
@@ -46,6 +95,7 @@ class OutputFormatter:
         width: int = 50,
     ) -> None:
         """Print a visually stunning, formatted banner inside a premium Panel."""
+        self._animate_logo()
         text = Text()
         text.append("✨ ", style="bold yellow")
         text.append(title.upper(), style=f"bold {color}")
