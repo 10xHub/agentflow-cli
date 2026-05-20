@@ -43,7 +43,7 @@ class TestCommand(BaseCommand):
         coverage_threshold: int | None = cfg.get("coverage_threshold")
 
         location = str(project_root / resolved_path) if resolved_path else str(project_root)
-        self.output.print_banner("Test", f"Running tests in {location}")
+        self.output.print_banner("Test", f"Running pytest suite in {location}", color="green")
 
         cmd = [sys.executable, "-m", "pytest"]
         if resolved_path:
@@ -75,13 +75,13 @@ class TestCommand(BaseCommand):
         result = subprocess.run(cmd, cwd=project_root, check=False)  # nosec: B603  # noqa: S603
 
         if result.returncode == 0:
-            self.output.success("All tests passed.")
+            self.output.success("All tests passed successfully! 🚀")
         else:
             self.output.error(f"Tests finished with exit code {result.returncode}.")
 
         if html and resolved_coverage:
             report_path = (project_root / "htmlcov" / "index.html").as_uri()
-            self.output.info(f"Opening coverage report: {report_path}", emoji=False)
+            self.output.info(f"Opening HTML coverage report at: [bold cyan]{report_path}[/bold cyan]", emoji=False)
             webbrowser.open(report_path)
 
         return result.returncode

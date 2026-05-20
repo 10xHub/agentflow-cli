@@ -35,9 +35,10 @@ class ConfigManager:
             ConfigurationError: If config file is not found
         """
         config_path_obj = Path(config_path)
+        config_path_str = str(config_path)
 
         # If absolute path is provided, use it directly
-        if config_path_obj.is_absolute():
+        if config_path_obj.is_absolute() or config_path_str.startswith("/") or config_path_str.startswith("\\"):
             if not config_path_obj.exists():
                 raise ConfigurationError(
                     f"Config file not found at {config_path}",

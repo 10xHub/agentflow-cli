@@ -45,6 +45,7 @@ dependencies = [
     "typer",
     "python-dotenv",
     "questionary",
+    "rich",
 ]
 
 [project.urls]

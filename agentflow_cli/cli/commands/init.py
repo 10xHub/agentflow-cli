@@ -8,7 +8,10 @@ from string import Template
 from typing import Any
 
 import questionary
-import typer
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich import box
 
 from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.constants import Colors
@@ -17,14 +20,21 @@ from agentflow_cli.cli.exceptions import FileOperationError
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 _SKIP_DIRS = {"__pycache__", ".ruff_cache"}
-_DIVIDER = Colors.colorize("  " + "─" * 46, "cyan")
 
 # Directories inside prod/ that are only included based on user choices
 _AUTH_DIR = "auth"
 
-
-def _dim(text: str) -> str:
-    return f"\033[2m{text}\033[0m"
+# Custom high-contrast, premium styling for questionary
+_QUESTIONARY_STYLE = questionary.Style([
+    ('qmark', 'fg:#ff5f9e bold'),         # Token in front of the question
+    ('question', 'bold white'),           # Question text
+    ('answer', 'fg:#00f5ff bold'),        # Submitted answer text
+    ('pointer', 'fg:#ff5f9e bold'),       # Pointer used in select prompts
+    ('highlighted', 'fg:#00f5ff bold'),   # Pointed-at choice in select prompts
+    ('selected', 'fg:#00f5ff'),           # Style for selected checkbox/select choice
+    ('separator', 'fg:#666666'),          # Choice separator
+    ('instruction', 'fg:#888888 italic'), # Help instruction text
+])
 
 
 def _bold(text: str) -> str:
@@ -56,7 +66,7 @@ def _strip_env_blocks(content: str, *, keep_redis: bool, keep_jwt: bool) -> str:
 
 
 class InitCommand(BaseCommand):
-    """Command to initialize a new agent project interactively."""
+    """Command to initialize a new agent project interactively with premium UX."""
 
     def execute(self, path: str = ".", force: bool = False, **kwargs: Any) -> int:
         try:
@@ -66,7 +76,7 @@ class InitCommand(BaseCommand):
 
             context = self._prompt_user()
             if context is None:
-                typer.echo("\n  Cancelled.")
+                self.print("\n  [bold red]Cancelled.[/bold red]")
                 return 0
 
             self._print_summary(context)
@@ -77,27 +87,24 @@ class InitCommand(BaseCommand):
             is_prod = context["setup_type"] == "production"
             template_dir = _TEMPLATES_DIR / ("prod" if is_prod else "dev")
 
-            typer.echo(f"\n  {_bold('Creating project files...')}\n")
-            created = self._copy_template_dir(
-                template_dir, base_path, context, force=force, is_prod=is_prod
-            )
+            self.print("")
+            with self.spinner("Creating project files..."):
+                created = self._copy_template_dir(
+                    template_dir, base_path, context, force=force, is_prod=is_prod
+                )
 
-            # Regenerate agentflow.json from the built config (overrides template copy)
-            config_path = base_path / "agentflow.json"
-            config = self._build_config(context, is_prod)
-            self._write_file(config_path, json.dumps(config, indent=2) + "\n", force=True)
-            if config_path not in created:
-                self._print_file_line(config_path, base_path)
+                # Regenerate agentflow.json from the built config (overrides template copy)
+                config_path = base_path / "agentflow.json"
+                config = self._build_config(context, is_prod)
+                self._write_file(config_path, json.dumps(config, indent=2) + "\n", force=True)
+                if config_path not in created:
+                    self._print_file_line(config_path, base_path)
 
             agent_name = context["agent_name"]
-            typer.echo("")
-            typer.echo(_DIVIDER)
-            typer.echo(
-                "  ✨  "
-                + Colors.colorize(f'Project "{agent_name}" ready at ', "green")
-                + Colors.colorize(str(base_path.resolve()), "cyan")
-            )
-            typer.echo(_DIVIDER)
+            self.print("")
+            
+            ready_msg = f"  ✨ Project '{agent_name}' ready at {base_path.resolve()}"
+            self.animate_text(ready_msg)
 
             self._print_next_steps(context, is_prod)
 
@@ -116,6 +123,7 @@ class InitCommand(BaseCommand):
         agent_name = questionary.text(
             "What is your agent name?",
             default="MyAgent",
+            style=_QUESTIONARY_STYLE,
         ).ask()
         if agent_name is None:
             return None
@@ -124,6 +132,7 @@ class InitCommand(BaseCommand):
             "Quick Start or Production setup?",
             choices=["Quick Start", "Production"],
             default="Quick Start",
+            style=_QUESTIONARY_STYLE,
         ).ask()
         if setup_choice is None:
             return None
@@ -147,6 +156,7 @@ class InitCommand(BaseCommand):
             "Authentication type?",
             choices=["None", "JWT", "Custom"],
             default="None",
+            style=_QUESTIONARY_STYLE,
         ).ask()
         if auth_choice is None:
             return None
@@ -156,6 +166,7 @@ class InitCommand(BaseCommand):
             "Rate limiting?",
             choices=["None", "Memory Based", "Redis Based"],
             default="None",
+            style=_QUESTIONARY_STYLE,
         ).ask()
         if rl_choice is None:
             return None
@@ -170,6 +181,7 @@ class InitCommand(BaseCommand):
                 "Max requests per window?",
                 default="100",
                 validate=lambda v: v.isdigit() and int(v) > 0 or "Enter a positive integer",
+                style=_QUESTIONARY_STYLE,
             ).ask()
             if rl_requests is None:
                 return None
@@ -179,6 +191,7 @@ class InitCommand(BaseCommand):
                 "Window size (seconds)?",
                 default="60",
                 validate=lambda v: v.isdigit() and int(v) > 0 or "Enter a positive integer",
+                style=_QUESTIONARY_STYLE,
             ).ask()
             if rl_window is None:
                 return None
@@ -188,6 +201,7 @@ class InitCommand(BaseCommand):
                 "Limit by?",
                 choices=["Per IP (recommended)", "Global"],
                 default="Per IP (recommended)",
+                style=_QUESTIONARY_STYLE,
             ).ask()
             if rl_by is None:
                 return None
@@ -196,6 +210,7 @@ class InitCommand(BaseCommand):
             rl_proxy = questionary.confirm(
                 "Behind a reverse proxy? (reads real IP from forwarded headers)",
                 default=False,
+                style=_QUESTIONARY_STYLE,
             ).ask()
             if rl_proxy is None:
                 return None
@@ -210,11 +225,6 @@ class InitCommand(BaseCommand):
     def _print_summary(self, context: dict) -> None:
         is_prod = context["setup_type"] == "production"
         setup_label = "Production" if is_prod else "Quick Start"
-
-        typer.echo("")
-        typer.echo(_DIVIDER)
-        typer.echo("  " + _bold("Project Summary"))
-        typer.echo(_DIVIDER)
 
         rows: list[tuple[str, str]] = [
             ("Agent name", context["agent_name"]),
@@ -239,19 +249,25 @@ class InitCommand(BaseCommand):
                     )
                 )
 
-        label_width = max(len(k) for k, _ in rows) + 2
+        table = Table(box=box.ROUNDED, border_style="cyan", show_header=False)
+        table.add_column("Property", style="bold cyan")
+        table.add_column("Value", style="bold white")
         for label, value in rows:
-            padded = (label + " ").ljust(label_width, "·")
-            typer.echo(
-                "  " + Colors.colorize(padded, "cyan") + "  " + Colors.colorize(value, "white")
-            )
-        typer.echo(_DIVIDER)
+            table.add_row(label, value)
+
+        panel = Panel(
+            table,
+            title="[bold magenta]Project Configuration Summary[/bold magenta]",
+            border_style="magenta",
+            expand=False,
+            padding=(0, 2),
+        )
+        self.print("")
+        self.print(panel)
 
     def _print_file_line(self, dest: Path, base_path: Path) -> None:
         rel = dest.relative_to(base_path)
-        typer.echo(
-            "    " + Colors.colorize("✓", "green") + "  " + Colors.colorize(str(rel), "white")
-        )
+        self.print(f"    [bold green]✓[/bold green]  [white]{rel}[/white]")
 
     def _print_next_steps(self, context: dict, is_prod: bool) -> None:
         steps: list[tuple[str, str]] = []
@@ -272,18 +288,22 @@ class InitCommand(BaseCommand):
 
         steps.append(("agentflow play", "Launch your agent"))
 
-        typer.echo("")
-        typer.echo("  " + Colors.colorize("🚀  Next steps", "magenta"))
-        typer.echo("")
-
+        text = Text()
         cmd_width = max(len(cmd) for cmd, _ in steps) + 2
         for i, (cmd, description) in enumerate(steps, 1):
-            num = Colors.colorize(f"  {i}", "cyan")
-            command = Colors.colorize(cmd.ljust(cmd_width), "yellow")
-            desc = _dim(description)
-            typer.echo(f"{num}  {command}  {desc}")
+            text.append(f"  {i}. ", style="bold cyan")
+            text.append(cmd.ljust(cmd_width), style="bold yellow")
+            text.append(f"  {description}\n", style="dim white")
 
-        typer.echo("")
+        panel = Panel(
+            text,
+            title="[bold magenta]🚀 Next Steps[/bold magenta]",
+            border_style="magenta",
+            expand=False,
+            padding=(1, 2),
+        )
+        self.print("")
+        self.print(panel)
 
     # ------------------------------------------------------------------
     # Config generation

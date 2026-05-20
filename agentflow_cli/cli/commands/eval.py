@@ -346,6 +346,10 @@ class EvalCommand(BaseCommand):
         target_path: Path,
     ) -> None:
         """Print the active criteria and their source before any case runs."""
+        from rich.table import Table
+        from rich.panel import Panel
+        from rich import box
+
         if confeval_config is not None:
             source = str(target_path / "confeval.py")
             criteria = confeval_config.criteria
@@ -353,7 +357,10 @@ class EvalCommand(BaseCommand):
             source = "built-in defaults"
             criteria = self._default_config().criteria
 
-        print(f"Criteria  source: {source}", flush=True)  # noqa: T201
+        table = Table(box=box.MINIMAL_DOUBLE_HEAD, border_style="cyan", show_header=True)
+        table.add_column("Criterion", style="bold cyan")
+        table.add_column("Configuration Details", style="white")
+
         for name, cfg in criteria.items():
             parts = [f"threshold={cfg.threshold}"]
             parts.append(cfg.match_type.value)
@@ -361,8 +368,18 @@ class EvalCommand(BaseCommand):
                 parts.append(f"judge={cfg.judge_model}")
             if cfg.num_samples and cfg.num_samples != 1:
                 parts.append(f"samples={cfg.num_samples}")
-            print(f"  {name:<40} {'  '.join(parts)}", flush=True)  # noqa: T201
-        print("", flush=True)  # noqa: T201
+            table.add_row(name, "  ".join(parts))
+
+        panel = Panel(
+            table,
+            title=f"[bold magenta]Active Evaluation Criteria (Source: {source})[/bold magenta]",
+            border_style="magenta",
+            expand=False,
+            padding=(0, 2),
+        )
+        self.output.console.print("")
+        self.output.console.print(panel)
+        self.output.console.print("")
 
     # ------------------------------------------------------------------
     # Progress printing
@@ -396,12 +413,41 @@ class EvalCommand(BaseCommand):
         max_concurrency: int,
         parallel: bool,
     ) -> list[tuple[str, str, str, EvalCaseResult]]:
-        """Run all cases and simulations under a single event loop.
+        """Run all cases and simulations under a single event loop with a live dashboard."""
+        from rich.live import Live
+        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+        from rich.table import Table
+        from rich.console import Group
+        from rich.panel import Panel
+        from rich import box
 
-        Returns list of (file_name, eval_set_id, eval_set_name, EvalCaseResult).
-        """
         total = len(pending)
         completed = 0
+
+        # Construct progress bar
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[bold magenta]{task.description}[/bold magenta]"),
+            BarColumn(bar_width=30, complete_style="green", finished_style="bold green"),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            console=self.output.console
+        )
+        task_id = progress.add_task("Running evaluations...", total=total)
+
+        # Construct table for completed runs
+        results_table = Table(box=box.ROUNDED, border_style="cyan", show_header=True, expand=True)
+        results_table.title = "[bold magenta]Recent Case Executions[/bold magenta]"
+        results_table.add_column("Index", style="bold dim white", justify="right", width=10)
+        results_table.add_column("Case Name", style="bold white")
+        results_table.add_column("Status", justify="center")
+        results_table.add_column("Duration", style="yellow", justify="right")
+        results_table.add_column("Tokens (In/Out)", style="dim white", justify="right")
+
+        dashboard = Group(
+            Panel(progress, border_style="cyan", title="[bold cyan]Execution Status[/bold cyan]"),
+            results_table
+        )
 
         async def _run_case(pc: _PendingCase) -> tuple[str, str, str, EvalCaseResult]:
             local_collector = TrajectoryCollector(
@@ -481,36 +527,53 @@ class EvalCommand(BaseCommand):
                 return await _run_simulation(item)
             return await _run_case(item)
 
-        if not parallel:
-            results: list[tuple[str, str, str, EvalCaseResult]] = []
-            for item in pending:
-                quad = await _dispatch(item)
-                completed += 1
-                file_name, _, _, result = quad
-                self._print_case_progress(
-                    file_name, result.name or result.eval_id, result, completed, total
-                )
-                results.append(quad)
-            return results
+        def _add_to_table(completed_num: int, file_name: str, result: EvalCaseResult) -> None:
+            status_text = "[bold green]PASSED[/bold green]" if result.passed else ("[bold red]ERROR[/bold red]" if result.is_error else "[bold red]FAILED[/bold red]")
+            dur = f"{result.duration_seconds:.2f}s"
+            tok = getattr(result, "token_usage", None)
+            tok_str = ""
+            if tok and (tok.input_tokens or tok.output_tokens):
+                tok_str = f"in: {tok.input_tokens} / out: {tok.output_tokens}"
+            else:
+                tok_str = "-"
 
-        semaphore = asyncio.Semaphore(max_concurrency)
-
-        async def _run_one(
-            item: _PendingCase | _PendingSimulation,
-        ) -> tuple[str, str, str, EvalCaseResult]:
-            async with semaphore:
-                return await _dispatch(item)
+            label = f"{file_name}::{result.name or result.eval_id}"
+            results_table.add_row(
+                f"[{completed_num}/{total}]",
+                label,
+                status_text,
+                dur,
+                tok_str
+            )
 
         output_results: list[tuple[str, str, str, EvalCaseResult]] = []
-        tasks = [asyncio.create_task(_run_one(item)) for item in pending]
-        for coro in asyncio.as_completed(tasks):
-            quad = await coro
-            completed += 1
-            file_name, _, _, result = quad
-            self._print_case_progress(
-                file_name, result.name or result.eval_id, result, completed, total
-            )
-            output_results.append(quad)
+
+        with Live(dashboard, console=self.output.console, refresh_per_second=4):
+            if not parallel:
+                for item in pending:
+                    quad = await _dispatch(item)
+                    completed += 1
+                    file_name, _, _, result = quad
+                    _add_to_table(completed, file_name, result)
+                    progress.update(task_id, advance=1, description=f"Evaluations: {completed}/{total}")
+                    output_results.append(quad)
+            else:
+                semaphore = asyncio.Semaphore(max_concurrency)
+
+                async def _run_one(
+                    item: _PendingCase | _PendingSimulation,
+                ) -> tuple[str, str, str, EvalCaseResult]:
+                    async with semaphore:
+                        return await _dispatch(item)
+
+                tasks = [asyncio.create_task(_run_one(item)) for item in pending]
+                for coro in asyncio.as_completed(tasks):
+                    quad = await coro
+                    completed += 1
+                    file_name, _, _, result = quad
+                    _add_to_table(completed, file_name, result)
+                    progress.update(task_id, advance=1, description=f"Evaluations: {completed}/{total}")
+                    output_results.append(quad)
 
         return output_results
 
@@ -690,6 +753,7 @@ class EvalCommand(BaseCommand):
             return_code = 0 if merged.summary.pass_rate == 1.0 else 1
 
         # 10. Generate reports
+        report_result = None
         if not no_report:
             manager = ReporterManager(
                 ReporterConfig(
@@ -702,10 +766,6 @@ class EvalCommand(BaseCommand):
             )
             report_result = manager.run_all(merged)
 
-            if report_result.html_path:
-                self.output.success(f"HTML report: {report_result.html_path}")
-            if report_result.json_path:
-                self.output.info(f"JSON report: {report_result.json_path}", emoji=False)
             if report_result.has_errors:
                 for name, err in report_result.errors:
                     self.output.warning(f"Reporter error [{name}]: {err}")
@@ -713,19 +773,39 @@ class EvalCommand(BaseCommand):
             if open_report and report_result.html_path:
                 webbrowser.open(Path(report_result.html_path).as_uri())
 
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich import box
+
         summary = merged.summary
-        self.output.info(
-            f"Results: {summary.passed_cases}/{summary.total_cases} passed "
-            f"({summary.pass_rate:.1%})",
-            emoji=False,
-        )
         tok = summary.total_token_usage
+
+        summary_table = Table(box=box.ROUNDED, border_style="cyan", show_header=False)
+        summary_table.add_column("Metric", style="bold cyan")
+        summary_table.add_column("Value", style="white")
+
+        pass_style = "bold green" if summary.pass_rate == 1.0 else "bold yellow" if summary.pass_rate > 0.5 else "bold red"
+        summary_table.add_row("Pass Rate", f"[{pass_style}]{summary.pass_rate:.1%}[/{pass_style}] ({summary.passed_cases}/{summary.total_cases} cases)")
+
         if tok.total_tokens:
-            cache_part = f"  cache_read: {tok.cache_read_tokens:,}" if tok.cache_read_tokens else ""
-            self.output.info(
-                f"Tokens  — input: {tok.input_tokens:,}  output: {tok.output_tokens:,}"
-                f"{cache_part}  total: {tok.total_tokens:,}",
-                emoji=False,
-            )
+            cache_part = f" (cache read: {tok.cache_read_tokens:,})" if tok.cache_read_tokens else ""
+            summary_table.add_row("Token Usage", f"Input: {tok.input_tokens:,}  Output: {tok.output_tokens:,}{cache_part}  Total: [bold yellow]{tok.total_tokens:,}[/bold yellow]")
+
+        if report_result:
+            if report_result.html_path:
+                summary_table.add_row("HTML Report", f"[bold cyan]{report_result.html_path}[/bold cyan]")
+            if report_result.json_path:
+                summary_table.add_row("JSON Report", f"[bold cyan]{report_result.json_path}[/bold cyan]")
+
+        summary_panel = Panel(
+            summary_table,
+            title="📊 [bold magenta]Evaluation Summary[/bold magenta]",
+            border_style="magenta",
+            expand=False,
+            padding=(1, 2)
+        )
+        self.output.console.print("")
+        self.output.console.print(summary_panel)
+        self.output.console.print("")
 
         return return_code

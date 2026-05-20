@@ -19,6 +19,28 @@ class BaseCommand(ABC, CLILoggerMixin):
         super().__init__()
         self.output = output or OutputFormatter()
 
+    def print(self, *args: Any, **kwargs: Any) -> None:
+        """Safely print to console if output has console print support."""
+        if hasattr(self.output, "console"):
+            self.output.console.print(*args, **kwargs)
+
+    import contextlib
+    @contextlib.contextmanager
+    def spinner(self, message: str):
+        """Safely show a spinner if output has spinner method support."""
+        if hasattr(self.output, "spinner"):
+            with self.output.spinner(message):
+                yield
+        else:
+            yield
+
+    def animate_text(self, text: str, delay: float = 0.015) -> None:
+        """Safely print animated text if output has animate_text support."""
+        if hasattr(self.output, "animate_text"):
+            self.output.animate_text(text, delay)
+        elif hasattr(self.output, "info"):
+            self.output.info(text)
+
     @abstractmethod
     def execute(self, *args: Any, **kwargs: Any) -> int:
         """Execute the command.

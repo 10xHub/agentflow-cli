@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+import questionary
 import typer
 
 from agentflow_cli.cli.commands import BaseCommand
@@ -18,6 +19,16 @@ from agentflow_cli.cli.exceptions import FileOperationError, ValidationError
 
 
 _MANIFEST_FILENAME = ".agentflow-skill.json"
+
+_QUESTIONARY_STYLE = questionary.Style([
+    ('qmark', 'fg:#ff5f9e bold'),
+    ('question', 'bold white'),
+    ('answer', 'fg:#00f5ff bold'),
+    ('pointer', 'fg:#ff5f9e bold'),
+    ('highlighted', 'fg:#00f5ff bold'),
+    ('selected', 'fg:#00f5ff'),
+    ('separator', 'fg:#666666'),
+])
 
 
 @dataclass(frozen=True)
@@ -95,7 +106,7 @@ _AGENT_LOOKUP: dict[str, _AgentTarget] = {
 
 
 class SkillsCommand(BaseCommand):
-    """Command to install bundled Agentflow skills for supported agents."""
+    """Command to install bundled Agentflow skills with interactive prompts & loading indicators."""
 
     def execute(
         self,
@@ -188,20 +199,21 @@ class SkillsCommand(BaseCommand):
                     dest.unlink()
 
         installed_paths: list[str] = []
-        for artifact, source, dest in installs:
-            dest.parent.mkdir(parents=True, exist_ok=True)
+        with self.spinner(f"Installing skills for {target.name}..."):
+            for artifact, source, dest in installs:
+                dest.parent.mkdir(parents=True, exist_ok=True)
 
-            if artifact.kind == "folder":
-                shutil.copytree(
-                    source,
-                    dest,
-                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
-                )
-                if artifact.manifest:
-                    self._write_manifest(dest, target.name)
-            else:
-                shutil.copyfile(source, dest)
-            installed_paths.append(str(dest))
+                if artifact.kind == "folder":
+                    shutil.copytree(
+                        source,
+                        dest,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
+                    )
+                    if artifact.manifest:
+                        self._write_manifest(dest, target.name)
+                else:
+                    shutil.copyfile(source, dest)
+                installed_paths.append(str(dest))
 
         self.output.success(
             f"Installed Agentflow skills for {target.name} at {', '.join(installed_paths)}"
@@ -285,13 +297,18 @@ class SkillsCommand(BaseCommand):
                 field="agent",
             )
 
-        self.output.print_list(
-            [f"{i}. {t.name}" for i, t in enumerate(_TARGETS, 1)],
-            title="Which agent?",
-            bullet="-",
-        )
-        selected = typer.prompt("Select an agent", default="1")
-        return self._normalize_agent(selected)
+        choices = [t.name for t in _TARGETS]
+        selected_name = questionary.select(
+            "Select which agent to install skills for:",
+            choices=choices,
+            default=choices[0],
+            style=_QUESTIONARY_STYLE,
+        ).ask()
+
+        if selected_name is None:
+            raise ValidationError("Interactive selection was cancelled.", field="agent")
+
+        return self._normalize_agent(selected_name)
 
     def _normalize_agent(self, value: str) -> _AgentTarget:
         key = value.strip().lower()
