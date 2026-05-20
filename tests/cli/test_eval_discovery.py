@@ -92,117 +92,183 @@ class TestDiscover:
         assert cmd._discover(tmp_path) == []
 
 
-# ── _run_file_sync ────────────────────────────────────────────────────────────
+# ── _load_confeval ────────────────────────────────────────────────────────────
 
 
-class TestRunFileSync:
-    """Test the module introspection priority: run() → get_eval_set() → skip."""
+class TestLoadConfeval:
+    """Test confeval.py loading with priority: get_eval_config() > EVAL_CONFIG > None."""
+
+    def test_no_confeval_returns_none(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        result = cmd._load_confeval(tmp_path)
+        assert result is None
+
+    def test_get_eval_config_called_when_present(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        from agentflow.qa.evaluation import EvalConfig
+
+        expected = EvalConfig()
+        fake_mod = types.SimpleNamespace(get_eval_config=lambda: expected)
+        confeval = tmp_path / "confeval.py"
+        confeval.write_text("")
+        with patch.object(cmd, "_load_module", return_value=fake_mod):
+            result = cmd._load_confeval(tmp_path)
+        assert result is expected
+
+    def test_eval_config_constant_used_as_fallback(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        from agentflow.qa.evaluation import EvalConfig
+
+        expected = EvalConfig()
+        fake_mod = types.SimpleNamespace(EVAL_CONFIG=expected)
+        confeval = tmp_path / "confeval.py"
+        confeval.write_text("")
+        with patch.object(cmd, "_load_module", return_value=fake_mod):
+            result = cmd._load_confeval(tmp_path)
+        assert result is expected
+
+    def test_get_eval_config_takes_priority_over_constant(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        from agentflow.qa.evaluation import EvalConfig
+
+        via_fn = EvalConfig()
+        via_const = EvalConfig()
+        fake_mod = types.SimpleNamespace(
+            get_eval_config=lambda: via_fn, EVAL_CONFIG=via_const
+        )
+        confeval = tmp_path / "confeval.py"
+        confeval.write_text("")
+        with patch.object(cmd, "_load_module", return_value=fake_mod):
+            result = cmd._load_confeval(tmp_path)
+        assert result is via_fn
+
+    def test_no_entry_point_returns_none(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        # confeval.py present but has neither get_eval_config nor EVAL_CONFIG
+        fake_mod = types.SimpleNamespace()
+        confeval = tmp_path / "confeval.py"
+        confeval.write_text("")
+        with patch.object(cmd, "_load_module", return_value=fake_mod):
+            result = cmd._load_confeval(tmp_path)
+        assert result is None
+
+    def test_import_error_returns_none(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        confeval = tmp_path / "confeval.py"
+        confeval.write_text("")
+        with patch.object(cmd, "_load_module", side_effect=ImportError("bad")):
+            result = cmd._load_confeval(tmp_path)
+        assert result is None
+
+
+# ── _collect_from_file ────────────────────────────────────────────────────────
+
+
+class TestCollectFromFile:
+    """Test per-file collection using config priority chain."""
 
     def _dummy_path(self, tmp_path: Path) -> Path:
         p = tmp_path / "x_eval.py"
         p.write_text("")
         return p
 
-    def test_run_function_sync_called(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        sentinel = MagicMock()
-        fake_mod = types.SimpleNamespace(run=lambda: sentinel)
-        with patch.object(cmd, "_load_module", return_value=fake_mod):
-            result = cmd._run_file_sync(self._dummy_path(tmp_path))
-        assert result is sentinel
+    def _fake_eval_set(self) -> MagicMock:
+        es = MagicMock()
+        es.cases = [MagicMock()]
+        return es
 
-    def test_run_function_async_awaited(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        sentinel = MagicMock()
-
-        async def _async_run() -> object:
-            return sentinel
-
-        fake_mod = types.SimpleNamespace(run=_async_run)
-        with patch.object(cmd, "_load_module", return_value=fake_mod):
-            result = cmd._run_file_sync(self._dummy_path(tmp_path))
-        assert result is sentinel
-
-    def test_get_eval_set_with_get_eval_config(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        fake_eval_set = MagicMock()
-        fake_config = MagicMock()
-        fake_report = MagicMock()
-        fake_mod = types.SimpleNamespace(
-            get_eval_set=lambda: fake_eval_set,
-            get_eval_config=lambda: fake_config,
-            app=MagicMock(),
-        )
-        with (
-            patch.object(cmd, "_load_module", return_value=fake_mod),
-            patch.object(cmd, "_run_with_evaluator", return_value=fake_report) as mock_run,
-        ):
-            result = cmd._run_file_sync(self._dummy_path(tmp_path))
-
-        mock_run.assert_called_once_with(fake_mod, fake_eval_set, fake_config)
-        assert result is fake_report
-
-    def test_get_eval_set_with_eval_config_constant(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        fake_eval_set = MagicMock()
-        fake_config = MagicMock()
-        fake_report = MagicMock()
-        fake_mod = types.SimpleNamespace(
-            get_eval_set=lambda: fake_eval_set,
-            EVAL_CONFIG=fake_config,
-            app=MagicMock(),
-        )
-        with (
-            patch.object(cmd, "_load_module", return_value=fake_mod),
-            patch.object(cmd, "_run_with_evaluator", return_value=fake_report) as mock_run,
-        ):
-            result = cmd._run_file_sync(self._dummy_path(tmp_path))
-
-        mock_run.assert_called_once_with(fake_mod, fake_eval_set, fake_config)
-        assert result is fake_report
-
-    def test_get_eval_set_uses_default_config_when_none_provided(
+    def test_global_config_takes_priority_over_file_config(
         self, tmp_path: Path, cmd: EvalCommand
     ) -> None:
-        fake_eval_set = MagicMock()
-        fake_report = MagicMock()
-        # Module has get_eval_set but neither get_eval_config nor EVAL_CONFIG
+        from agentflow.qa.evaluation import EvalConfig
+
+        global_cfg = EvalConfig()
+        file_cfg = EvalConfig()
+        fake_es = self._fake_eval_set()
+        fake_pending = [MagicMock()]
         fake_mod = types.SimpleNamespace(
-            get_eval_set=lambda: fake_eval_set,
+            get_eval_set=lambda: fake_es,
+            EVAL_CONFIG=file_cfg,
             app=MagicMock(),
         )
         with (
             patch.object(cmd, "_load_module", return_value=fake_mod),
-            patch.object(cmd, "_run_with_evaluator", return_value=fake_report) as mock_run,
+            patch.object(cmd, "_make_pending", return_value=fake_pending) as mock_make,
         ):
-            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+            result = cmd._collect_from_file(self._dummy_path(tmp_path), global_cfg)
 
-        assert mock_run.called
-        assert result is fake_report
+        _, _, used_config, _ = mock_make.call_args.args
+        assert used_config is global_cfg
+        assert result == fake_pending
 
-    def test_run_takes_priority_over_get_eval_set(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        """run() must be called even when get_eval_set also exists."""
-        run_result = MagicMock(name="run_result")
-        eval_set_result = MagicMock(name="eval_set_result")
+    def test_file_config_used_when_no_global(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        from agentflow.qa.evaluation import EvalConfig
+
+        file_cfg = EvalConfig()
+        fake_es = self._fake_eval_set()
+        fake_pending = [MagicMock()]
         fake_mod = types.SimpleNamespace(
-            run=lambda: run_result,
-            get_eval_set=lambda: eval_set_result,
+            get_eval_set=lambda: fake_es,
+            EVAL_CONFIG=file_cfg,
+            app=MagicMock(),
         )
         with (
             patch.object(cmd, "_load_module", return_value=fake_mod),
-            patch.object(cmd, "_run_with_evaluator") as mock_run_with,
+            patch.object(cmd, "_make_pending", return_value=fake_pending) as mock_make,
         ):
-            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+            result = cmd._collect_from_file(self._dummy_path(tmp_path), None)
 
-        assert result is run_result
-        mock_run_with.assert_not_called()
+        _, _, used_config, _ = mock_make.call_args.args
+        assert used_config is file_cfg
 
-    def test_no_entry_point_returns_none_and_warns(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        fake_mod = types.SimpleNamespace()  # no run(), no get_eval_set()
-        with patch.object(cmd, "_load_module", return_value=fake_mod):
-            result = cmd._run_file_sync(self._dummy_path(tmp_path))
+    def test_default_config_used_when_no_configs(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        from agentflow.qa.evaluation import EvalConfig
 
-        assert result is None
-        assert any(
-            "skip" in w.lower() or "no run" in w.lower() or "get_eval_set" in w.lower()
-            for w in cmd.output.warnings  # type: ignore[attr-defined]
+        fake_es = self._fake_eval_set()
+        fake_pending = [MagicMock()]
+        fake_mod = types.SimpleNamespace(
+            get_eval_set=lambda: fake_es,
+            app=MagicMock(),
         )
+        default_cfg = EvalConfig()
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(cmd, "_default_config", return_value=default_cfg),
+            patch.object(cmd, "_make_pending", return_value=fake_pending) as mock_make,
+        ):
+            result = cmd._collect_from_file(self._dummy_path(tmp_path), None)
+
+        _, _, used_config, _ = mock_make.call_args.args
+        assert used_config is default_cfg
+
+    def test_no_entry_point_returns_empty_and_warns(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        fake_mod = types.SimpleNamespace()
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(cmd, "_collect_eval_functions", return_value=([], None)),
+        ):
+            result = cmd._collect_from_file(self._dummy_path(tmp_path), None)
+
+        assert result == []
+        assert any("skip" in w.lower() for w in cmd.output.warnings)  # type: ignore[attr-defined]
+
+    def test_pytest_style_discovery_fallback(self, tmp_path: Path, cmd: EvalCommand) -> None:
+        from agentflow.qa.evaluation import EvalConfig
+
+        fake_es = self._fake_eval_set()
+        fake_pending = [MagicMock()]
+        global_cfg = EvalConfig()
+        fake_mod = types.SimpleNamespace(app=MagicMock())
+        with (
+            patch.object(cmd, "_load_module", return_value=fake_mod),
+            patch.object(
+                cmd, "_collect_eval_functions", return_value=([("my_eval", fake_es)], None)
+            ),
+            patch.object(cmd, "_make_pending", return_value=fake_pending) as mock_make,
+        ):
+            result = cmd._collect_from_file(self._dummy_path(tmp_path), global_cfg)
+
+        _, _, used_config, _ = mock_make.call_args.args
+        assert used_config is global_cfg
+        assert result == fake_pending
 
 
 # ── _merge_reports ────────────────────────────────────────────────────────────

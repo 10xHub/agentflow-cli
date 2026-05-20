@@ -1,9 +1,21 @@
 from agentflow.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
+from agentflow.qa.evaluation.config.presets import EvalPresets
 
 
 def get_eval_config() -> EvalConfig:
-    """Return the default eval configuration for CLI auto-discovery."""
-    return EvalConfig()
+    """Evaluation config for this file.
+
+    EvalPresets provides ready-made criterion bundles.  Pick one that matches
+    what your agent does, or call EvalPresets.combine() to mix them.
+
+    Available presets:
+        EvalPresets.response_quality()   — LLM judge on response accuracy
+        EvalPresets.tool_usage()         — checks tool calls + response quality
+        EvalPresets.conversation_flow()  — multi-turn conversation evaluation
+        EvalPresets.comprehensive()      — all of the above combined
+        EvalPresets.quick_check()        — fast ROUGE-based check, no LLM cost
+    """
+    return EvalPresets.tool_usage(threshold=0.6)
 
 
 def get_eval_set() -> EvalSet:

@@ -25,6 +25,8 @@
     "directory": "evals",
     "output_dir": "eval_reports",
     "threshold": 0.75,
+    "parallel": false,
+    "max_concurrency": 4,
     "timestamp_files": true
   }
 }
