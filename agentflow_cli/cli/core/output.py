@@ -1,4 +1,4 @@
-"""Output formatting utilities for the CLI."""
+"""Output formatting utilities for the CLI - ANIMATION STYLE C: RAIN DROP CASCADE + LOCK."""
 
 from __future__ import annotations
 
@@ -25,33 +25,20 @@ class OutputFormatter:
 
     def __init__(self, stream: TextIO | None = None) -> None:
         """Initialize the output formatter with Rich Console."""
-        import threading
-        import atexit
-
         self.stream = stream or sys.stdout
         self.console = Console(file=self.stream)
         self.err_console = Console(file=sys.stderr)
         self._logo_animated = False
 
-        # Continuous background animation support
-        self._animating_active = False
-        self._animating_thread = None
-        self._live_logo = None
-        self._logo_lock = threading.Lock()
-
-        # Register cleanup on exit to ensure clean terminal state
-        atexit.register(self.stop_logo_animation)
-
     def _animate_logo(self) -> None:
-        """Start a gorgeous, color-cycling ASCII logo animation in the background (skipped in tests)."""
+        """Rain Drop Cascade: characters fall from above and lock into position with flash."""
         import os
         import sys
         import time
-        import threading
+        import random
         from rich.live import Live
         from rich.text import Text
 
-        # Skip animation if we are running in pytest/test suites or stream is not stdout
         if (
             self._logo_animated
             or "pytest" in sys.modules
@@ -61,87 +48,118 @@ class OutputFormatter:
             return
 
         self._logo_animated = True
-        self._animating_active = True
 
-        ascii_logo = r"""
-    ___   ______ ______ _   __ ______   ______ __     ____  _      __
-   /   | / ____// ____// | / //_  __/  / ____// /    / __ \| | /| / /
-  / /| |/ / __ / __/  /  |/ /  / /    / __/  / /    / / / /| |/ |/ / 
- / ___ / /_/ // /___ / /|  /  / /    / /    / /___ / /_/ / |  /|  /  
-/_/  |_\____//_____//_/ |_/  /_/    /_/    /_____/ \____/  |__/|_/  
-""".strip("\n")
-
-        colors = [
-            "#ff00ff", "#d700ff", "#af00ff", "#8700ff", "#5f00ff",
-            "#0087ff", "#00afff", "#00d7ff", "#00ffff", "#00ffaf"
+        ascii_logo_lines = [
+            r"    ___   ______ ______ _   __ ______   ______ __     ____  _      __",
+            r"   /   | / ____// ____// | / //_  __/  / ____// /    / __ \| | /| / /",
+            r"  / /| |/ / __ / __/  /  |/ /  / /    / __/  / /    / / / /| |/ |/ / ",
+            r" / ___ / /_/ // /___ / /|  /  / /    / /    / /___ / /_/ / |  /|  /  ",
+            r"/_/  |_\____//_____//_/ |_/  /_/    /_/    /_____/ \____/  |__/|_/  ",
         ]
 
-        def get_frame(shift: int) -> Text:
-            logo_text = Text()
-            lines = ascii_logo.split("\n")
-            for i, line in enumerate(lines):
-                color_idx = (shift + i) % len(colors)
-                logo_text.append(line + "\n", style=colors[color_idx])
-            return logo_text
+        NUM_ROWS = len(ascii_logo_lines)
+        MAX_LEN = max(len(l) for l in ascii_logo_lines)
 
-        # Initial spacing
+        class FallingChar:
+            def __init__(self, char, target_row, target_col, delay):
+                self.char = char
+                self.target_row = target_row
+                self.target_col = target_col
+                self.current_row = -random.randint(1, 8)
+                self.delay = delay
+                self.landed = False
+                self.flash_frames = 0
+                self.speed = random.uniform(0.4, 1.2)
+
+        def build_rain_frame(chars, frame):
+            grid = [[" " for _ in range(MAX_LEN)] for _ in range(NUM_ROWS)]
+            color_grid = [["" for _ in range(MAX_LEN)] for _ in range(NUM_ROWS)]
+
+            for fc in chars:
+                if frame < fc.delay:
+                    continue
+                if fc.landed:
+                    grid[fc.target_row][fc.target_col] = fc.char
+                    if fc.flash_frames > 0:
+                        color_grid[fc.target_row][fc.target_col] = "bold #ffffff"
+                        fc.flash_frames -= 1
+                    else:
+                        color_grid[fc.target_row][fc.target_col] = "#00ffff"
+                else:
+                    display_row = int(fc.current_row)
+                    if 0 <= display_row < NUM_ROWS:
+                        grid[display_row][fc.target_col] = fc.char
+                        color_grid[display_row][fc.target_col] = "#005f5f"
+                    trail_row = display_row - 1
+                    if 0 <= trail_row < NUM_ROWS:
+                        if grid[trail_row][fc.target_col] == " ":
+                            grid[trail_row][fc.target_col] = "|"
+                            color_grid[trail_row][fc.target_col] = "#003333"
+
+            t = Text()
+            for r in range(NUM_ROWS):
+                for c in range(MAX_LEN):
+                    ch = grid[r][c]
+                    color = color_grid[r][c]
+                    if color and ch != " ":
+                        t.append(ch, style=color)
+                    else:
+                        t.append(ch)
+                t.append("\n")
+            return t
+
+        random.seed(42)
+        chars = []
+        for row_idx, line in enumerate(ascii_logo_lines):
+            for col_idx, ch in enumerate(line):
+                if ch != " ":
+                    delay = int(col_idx * 0.3) + random.randint(0, 5)
+                    chars.append(FallingChar(ch, row_idx, col_idx, delay))
+
+        total_frames = 55
+
         self.console.print("\n")
+        with Live(build_rain_frame(chars, 0), console=self.console, auto_refresh=False, transient=False) as live:
+            for frame in range(total_frames):
+                for fc in chars:
+                    if frame < fc.delay or fc.landed:
+                        continue
+                    fc.current_row += fc.speed
+                    if fc.current_row >= fc.target_row:
+                        fc.current_row = fc.target_row
+                        fc.landed = True
+                        fc.flash_frames = 3
 
-        # Start Live rendering
-        self._live_logo = Live(get_frame(0), console=self.console, auto_refresh=False, transient=False)
-        self._live_logo.start()
+                live.update(build_rain_frame(chars, frame))
+                live.refresh()
+                time.sleep(0.04)
 
-        def run_animation():
-            shift = 0
-            while True:
-                with self._logo_lock:
-                    if not self._animating_active:
-                        break
-                    shift += 1
-                try:
-                    self._live_logo.update(get_frame(shift))
-                    self._live_logo.refresh()
-                except Exception:
-                    break
-                time.sleep(0.05)
+            # Force land everything
+            for fc in chars:
+                fc.landed = True
+                fc.flash_frames = 0
 
-        # Launch the background animation thread
-        self._animating_thread = threading.Thread(target=run_animation, daemon=True)
-        self._animating_thread.start()
+            # Final color sweep
+            for sc in ["#ff00ff", "#d700ff", "#af00ff", "#0087ff", "#00ffff"]:
+                st = Text()
+                for line in ascii_logo_lines:
+                    st.append(line + "\n", style=f"bold {sc}")
+                live.update(st)
+                live.refresh()
+                time.sleep(0.08)
 
-        # Let the animation run continuously for at least 1.2 seconds on startup
-        # to guarantee a gorgeous, fluid color sweep intro sequence
-        time.sleep(1.2)
-
-    def stop_logo_animation(self) -> None:
-        """Stop the background logo animation if it is running."""
-        with self._logo_lock:
-            if not self._animating_active:
-                return
-            self._animating_active = False
-
-        if self._animating_thread:
-            self._animating_thread.join(timeout=0.5)
-            self._animating_thread = None
-
-        if self._live_logo:
-            try:
-                self._live_logo.stop()
-            except Exception:
-                pass
-            self._live_logo = None
-
-        # Space out the content cleanly
+            # Settle
+            ft = Text()
+            for line in ascii_logo_lines:
+                ft.append(line + "\n", style="bold #00ffff")
+            live.update(ft)
+            live.refresh()
+            time.sleep(0.3)
         self.console.print("\n")
 
     def _print(self, *args, err: bool = False, **kwargs) -> None:
         """Helper to print using capture and typer.echo to satisfy unit test mocks."""
         import typer
-
-        # Automatically stop the logo animation before printing any new content
-        if self._animating_active:
-            self.stop_logo_animation()
-
         console = self.err_console if err else self.console
         with console.capture() as capture:
             console.print(*args, **kwargs)
