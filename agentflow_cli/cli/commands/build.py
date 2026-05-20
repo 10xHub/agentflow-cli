@@ -65,25 +65,27 @@ class BuildCommand(BaseCommand):
                     file_path=str(output_path),
                 )
 
-            # Discover requirements files
-            requirements_files, requirements_file = self._discover_requirements(current_dir)
+            with self.spinner("Analyzing environment and generating Dockerfile..."):
+                # Discover requirements files
+                requirements_files, requirements_file = self._discover_requirements(current_dir)
 
-            # Generate Dockerfile content
-            dockerfile_content = generate_dockerfile_content(
-                python_version=validated_python_version,
-                port=validated_port,
-                requirements_file=requirements_file,
-                has_requirements=bool(requirements_files),
-                omit_cmd=docker_compose,
-            )
+                # Generate Dockerfile content
+                dockerfile_content = generate_dockerfile_content(
+                    python_version=validated_python_version,
+                    port=validated_port,
+                    requirements_file=requirements_file,
+                    has_requirements=bool(requirements_files),
+                    omit_cmd=docker_compose,
+                )
 
-            # Write Dockerfile
-            self._write_dockerfile(output_path, dockerfile_content)
-            self.output.success(f"Successfully generated Dockerfile at {output_path}")
+                # Write Dockerfile
+                self._write_dockerfile(output_path, dockerfile_content)
+
+            self.output.success(f"Successfully generated Dockerfile at [bold cyan]{output_path}[/bold cyan]")
 
             # Show requirements info
             if requirements_files:
-                self.output.info(f"Using requirements file: {requirements_files[0]}")
+                self.output.info(f"Using requirements file: [bold cyan]{requirements_files[0]}[/bold cyan]")
             else:
                 self.output.warning(
                     "No requirements.txt found - will install agentflow-cli from PyPI"
@@ -190,7 +192,8 @@ class BuildCommand(BaseCommand):
         Args:
             docker_compose: Whether docker-compose was generated
         """
-        self.output.info("\n🚀 Next steps:")
+        from rich.panel import Panel
+        from rich.text import Text
 
         if docker_compose:
             steps = [
@@ -207,10 +210,24 @@ class BuildCommand(BaseCommand):
                 "Access your API at: http://localhost:8000",
             ]
 
+        text = Text()
         for i, step in enumerate(steps, 1):
-            typer.echo(f"{i}. {step}")
+            text.append(f"  {i}. ", style="bold cyan")
+            if "docker" in step or "http" in step:
+                text.append(f"{step}\n", style="bold yellow")
+            else:
+                text.append(f"{step}\n", style="white")
 
-        self.output.info("\n💡 For production deployment, consider:")
+        panel = Panel(
+            text,
+            title="[bold magenta]🚀 Next Steps[/bold magenta]",
+            border_style="magenta",
+            expand=False,
+            padding=(1, 2),
+        )
+        self.output.console.print("")
+        self.output.console.print(panel)
+
         production_tips = [
             "Using a multi-stage build to reduce image size",
             "Setting up proper environment variables",
@@ -218,5 +235,17 @@ class BuildCommand(BaseCommand):
             "Using a reverse proxy like nginx",
         ]
 
+        tips_text = Text()
         for tip in production_tips:
-            typer.echo(f"   • {tip}")
+            tips_text.append("  • ", style="bold green")
+            tips_text.append(f"{tip}\n", style="white")
+
+        tips_panel = Panel(
+            tips_text,
+            title="[bold blue]💡 Production Best Practices[/bold blue]",
+            border_style="blue",
+            expand=False,
+            padding=(1, 2),
+        )
+        self.output.console.print("")
+        self.output.console.print(tips_panel)

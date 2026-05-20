@@ -27,8 +27,35 @@ class VersionCommand(BaseCommand):
             # Get package version from pyproject.toml
             pkg_version = self._read_package_version()
 
-            self.output.success(f"agentflow-cli CLI\n  Version: {CLI_VERSION}")
-            self.output.info(f"agentflow-cli Package\n  Version: {pkg_version}")
+            if type(self.output).__name__ == "OutputFormatter":
+                from rich.panel import Panel
+                from rich.table import Table
+                from rich import box
+                import platform
+                import sys
+
+                # Build a beautifully styled table
+                table = Table(box=box.ROUNDED, border_style="cyan", show_header=True, expand=False)
+                table.add_column("Component", style="bold magenta", justify="left")
+                table.add_column("Version Details", style="white", justify="left")
+
+                table.add_row("CLI CLI Version", f"[bold green]{CLI_VERSION}[/bold green]")
+                table.add_row("Package Version", f"[bold cyan]{pkg_version}[/bold cyan]")
+                table.add_row("Python Version", f"[dim white]{sys.version.split()[0]}[/dim white]")
+                table.add_row("OS Platform", f"[dim white]{platform.system()} {platform.release()}[/dim white]")
+
+                panel = Panel(
+                    table,
+                    title="[bold green]System & Package Information[/bold green]",
+                    border_style="green",
+                    expand=False,
+                    padding=(1, 2)
+                )
+                self.output.console.print(panel)
+                self.output.console.print("")
+            else:
+                self.output.success(f"agentflow-cli CLI\n  Version: {CLI_VERSION}")
+                self.output.info(f"agentflow-cli Package\n  Version: {pkg_version}")
 
             return 0
 

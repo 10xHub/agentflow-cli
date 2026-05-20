@@ -61,41 +61,43 @@ class APICommand(BaseCommand):
             self.output.print_banner(
                 "API (development)",
                 "Starting development server via Uvicorn. Not for production use.",
+                color="blue",
             )
 
-            # Validate inputs
-            validated_options = validate_cli_options(host, port, config)
+            with self.spinner("Initializing agent configuration and environments..."):
+                # Validate inputs
+                validated_options = validate_cli_options(host, port, config)
 
-            # Load configuration
-            config_manager = ConfigManager()
-            actual_config_path = config_manager.find_config_file(validated_options["config"])
-            # Load and validate config
-            config_manager.load_config(str(actual_config_path))
+                # Load configuration
+                config_manager = ConfigManager()
+                actual_config_path = config_manager.find_config_file(validated_options["config"])
+                # Load and validate config
+                config_manager.load_config(str(actual_config_path))
 
-            # Load environment file if specified
-            env_file_path = config_manager.resolve_env_file()
-            if env_file_path:
-                self.logger.info("Loading environment from: %s", env_file_path)
-                load_dotenv(env_file_path)
-            else:
-                # Load default .env if it exists
-                load_dotenv()
+                # Load environment file if specified
+                env_file_path = config_manager.resolve_env_file()
+                if env_file_path:
+                    self.logger.info("Loading environment from: %s", env_file_path)
+                    load_dotenv(env_file_path)
+                else:
+                    # Load default .env if it exists
+                    load_dotenv()
 
-            # Set environment variables
-            os.environ["GRAPH_PATH"] = str(actual_config_path)
+                # Set environment variables
+                os.environ["GRAPH_PATH"] = str(actual_config_path)
 
-            # Add project root to sys.path for importing graph modules
-            sys.path.insert(0, str(actual_config_path.parent))
+                # Add project root to sys.path for importing graph modules
+                sys.path.insert(0, str(actual_config_path.parent))
 
-            # Ensure we're using the correct module path
-            sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+                # Ensure we're using the correct module path
+                sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-            self.logger.info(
-                "Starting API with config: %s, host: %s, port: %d",
-                actual_config_path,
-                validated_options["host"],
-                validated_options["port"],
-            )
+                self.logger.info(
+                    "Starting API with config: %s, host: %s, port: %d",
+                    actual_config_path,
+                    validated_options["host"],
+                    validated_options["port"],
+                )
 
             if open_playground:
                 self._schedule_playground_launch(
