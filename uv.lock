@@ -23,7 +23,7 @@ wheels = [
 
 [[package]]
 name = "10xscale-agentflow-cli"
-version = "0.3.2.1"
+version = "0.3.2.6"
 source = { editable = "." }
 dependencies = [
     { name = "10xscale-agentflow" },

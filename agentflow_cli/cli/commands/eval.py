@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from agentflow.qa.evaluation import CriterionConfig, EvalConfig, MatchType
+from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
 from agentflow.qa.evaluation.collectors.trajectory_collector import (
     TrajectoryCollector,
     make_trajectory_callback,
@@ -135,13 +135,13 @@ class EvalCommand(BaseCommand):
 
     def _default_config(self) -> EvalConfig:
         return EvalConfig(
-            criteria={
-                "response_match": CriterionConfig(threshold=0.6, match_type=MatchType.ANY_ORDER),
-                "tool_name_match_score": CriterionConfig(
-                    threshold=0.6, match_type=MatchType.ANY_ORDER, check_args=False
-                ),
-                "node_order": CriterionConfig(threshold=0.6, match_type=MatchType.IN_ORDER),
-            },
+            criteria=CriteriaConfig(
+                tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
+                # response_match=CriterionConfig.response_match(threshold=0.8),
+                # hallucinations=CriterionConfig.hallucination(threshold=0.8),
+                rouge_match=CriterionConfig.rouge_match(threshold=0.5),
+                node_order=CriterionConfig.node_order(threshold=0.8),
+            )
         )
 
     # ------------------------------------------------------------------
