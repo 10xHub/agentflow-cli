@@ -354,7 +354,11 @@ class EvalCommand(BaseCommand):
             criteria = self._default_config().criteria
 
         print(f"Criteria  source: {source}", flush=True)  # noqa: T201
-        for name, cfg in criteria.items():
+        for name in criteria.model_fields:
+            cfg = getattr(criteria, name)
+            if cfg is None:
+                continue
+
             parts = [f"threshold={cfg.threshold}"]
             parts.append(cfg.match_type.value)
             if cfg.judge_model:
