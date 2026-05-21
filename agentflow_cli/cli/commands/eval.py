@@ -354,7 +354,11 @@ class EvalCommand(BaseCommand):
             criteria = self._default_config().criteria
 
         print(f"Criteria  source: {source}", flush=True)  # noqa: T201
-        for name, cfg in criteria.items():
+        for name in criteria.model_fields:
+            cfg = getattr(criteria, name)
+            if cfg is None:
+                continue
+
             parts = [f"threshold={cfg.threshold}"]
             parts.append(cfg.match_type.value)
             if cfg.judge_model:
@@ -428,10 +432,13 @@ class EvalCommand(BaseCommand):
 
         async def _run_simulation(ps: _PendingSimulation) -> tuple[str, str, str, EvalCaseResult]:
             from agentflow.qa.evaluation.eval_result import CriterionResult
+            from agentflow.qa.evaluation.token_usage import TokenUsage
 
             try:
                 sim_result = await ps.simulator.run(ps.graph, ps.scenario)
-                criterion_results = [
+                # Use the full CriterionResult objects (with per-criterion token_usage)
+                # if available; fall back to rebuilding from scores dict.
+                criterion_results = sim_result.criterion_results or [
                     CriterionResult.success(
                         criterion=name,
                         score=score,
@@ -455,11 +462,17 @@ class EvalCommand(BaseCommand):
                 conversation_text = "\n".join(
                     f"{m['role'].upper()}: {m['content']}" for m in sim_result.conversation
                 )
+                criteria_token_usage = sum(
+                    (cr.token_usage for cr in criterion_results), TokenUsage()
+                )
+                total_token_usage = sim_result.simulator_token_usage + criteria_token_usage
                 result = EvalCaseResult.success(
                     eval_id=ps.scenario.scenario_id,
                     name=ps.scenario.description or ps.scenario.scenario_id,
                     criterion_results=criterion_results,
                     actual_response=conversation_text,
+                    token_usage=total_token_usage,
+                    agent_token_usage=sim_result.simulator_token_usage,
                     metadata={
                         "turns": sim_result.turns,
                         "goals_achieved": sim_result.goals_achieved,
