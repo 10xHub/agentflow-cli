@@ -1,8 +1,8 @@
-from typing import Any
+from typing import Any, Literal
 
 from agentflow.core.state import Message
 from agentflow.utils import ResponseGranularity
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class GraphInputSchema(BaseModel):
@@ -180,3 +180,97 @@ class FixGraphResponseSchema(BaseModel):
     state: dict[str, Any] | None = Field(
         default=None, description="Updated state after fixing the graph"
     )
+
+
+class WsGraphInputSchema(BaseModel):
+    """
+    WebSocket graph input schema.
+
+    Extends ``GraphInputSchema`` with an ``invoke_type`` discriminator so the
+    server can log the intent and validate fields appropriately without
+    inspecting the stream.
+
+    ``invoke_type="fresh"``
+        Start a new run.  ``messages`` must contain at least one user message.
+        ``config.thread_id`` is optional — omitting it starts a new thread.
+
+    ``invoke_type="resume"``
+        Continue after a remote tool call.  ``tool_result`` must contain the
+        tool-result messages.  ``config.thread_id`` is required so the server
+        can resume the correct checkpointed thread.  ``messages`` is unused.
+    """
+
+    invoke_type: Literal["fresh", "resume"] = Field(
+        default="fresh",
+        description=(
+            "Run type: 'fresh' to start a new run; 'resume' to continue after a remote tool call."
+        ),
+    )
+
+    # ── Fresh fields ─────────────────────────────────────────────────────
+    messages: list[Message] = Field(
+        default_factory=list,
+        description="User messages — required and non-empty for 'fresh' runs.",
+    )
+
+    # ── Resume fields ─────────────────────────────────────────────────────
+    tool_result: list[Message] | None = Field(
+        default=None,
+        description=(
+            "Tool-result messages to inject into the graph state for 'resume' runs. "
+            "The server passes these to stream_graph as the input messages so the "
+            "graph checkpointer picks them up and the graph continues from where it "
+            "left off.  Ignored for 'fresh' runs."
+        ),
+    )
+
+    # ── Shared fields (mirror GraphInputSchema) ───────────────────────────
+    initial_state: dict[str, Any] | None = Field(
+        default=None,
+        description="Initial state for the graph execution.",
+    )
+    config: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional configuration.  Must include 'thread_id' for resume runs.",
+    )
+    recursion_limit: int = Field(
+        default=25,
+        ge=1,
+        le=100,
+        description="Maximum recursion limit for graph execution.",
+    )
+    response_granularity: ResponseGranularity = Field(
+        default=ResponseGranularity.LOW,
+        description="Granularity of the response (full, partial, low).",
+    )
+
+    @model_validator(mode="after")
+    def validate_by_invoke_type(self) -> "WsGraphInputSchema":
+        if self.invoke_type == "fresh":
+            if not self.messages:
+                raise ValueError("messages must not be empty for invoke_type='fresh'")
+        elif self.invoke_type == "resume":
+            if not self.tool_result:
+                raise ValueError("tool_result must not be empty for invoke_type='resume'")
+            if not (self.config or {}).get("thread_id"):
+                raise ValueError("config.thread_id is required for invoke_type='resume'")
+        return self
+
+    def to_graph_input(self) -> "GraphInputSchema":
+        """
+        Convert to a ``GraphInputSchema`` for ``GraphService.stream_graph``.
+
+        For *fresh* runs the user's ``messages`` are passed directly.
+        For *resume* runs the ``tool_result`` messages are used — the graph
+        loads the saved checkpoint (identified by ``config.thread_id``) and
+        the tool-result messages are appended to the state, which the graph
+        then processes to continue execution.
+        """
+        msgs = self.messages if self.invoke_type == "fresh" else (self.tool_result or [])
+        return GraphInputSchema(
+            messages=msgs,
+            initial_state=self.initial_state,
+            config=self.config,
+            recursion_limit=self.recursion_limit,
+            response_granularity=self.response_granularity,
+        )

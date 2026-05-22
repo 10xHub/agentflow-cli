@@ -78,6 +78,15 @@ class RequirePermission:
         Raises:
             HTTPException: 403 if authorization fails
         """
+        # Fallback: WebSocket clients running in the browser cannot set the
+        # Authorization header.  Accept the token from a ``?token=`` query
+        # parameter as an alternative.  This path is only reached when no
+        # Authorization header was present (credential is None).
+        if credential is None:
+            ws_token = request.query_params.get("token")
+            if ws_token:
+                credential = HTTPAuthorizationCredentials(scheme="Bearer", credentials=ws_token)
+
         # Step 1: Check if auth is configured
         backend = config.auth_config()
 
