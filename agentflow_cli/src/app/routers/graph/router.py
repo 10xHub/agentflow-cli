@@ -1,7 +1,8 @@
+import contextlib
 from typing import Any
 
-from agentflow.core.state import StreamChunk
-from fastapi import APIRouter, Depends, Request
+from agentflow.core.state import StreamChunk, StreamEvent
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
 from injectq.integrations import InjectAPI
@@ -14,6 +15,7 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphSchema,
     GraphSetupSchema,
     GraphStopSchema,
+    WsGraphInputSchema,
 )
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
 from agentflow_cli.src.app.utils import success_response
@@ -267,3 +269,96 @@ async def fix_graph(
         result,
         request,
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# WebSocket endpoint
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.websocket("/v1/graph/ws")
+async def websocket_graph(
+    websocket: WebSocket,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(RequirePermission("graph", "stream")),
+):
+    """
+    WebSocket endpoint for streaming graph execution.
+
+    One connection, one run at a time.  The client drives the protocol:
+
+    Fresh run
+    ---------
+    Client → Server  :  WsGraphInputSchema { invoke_type:"fresh", messages:[…], config:{} }
+    Server → Client  :  StreamChunk JSON messages  (same format as POST /v1/graph/stream)
+    Server → Client  :  StreamChunk { event:"updates", data:{status:"done"} }
+
+    Resume after remote tool call
+    -----------------------------
+    (client detects the remote-tool-call chunk in the stream, executes the tool)
+    Client → Server  :  WsGraphInputSchema { invoke_type:"resume", tool_result:[…],
+                                             config:{thread_id:"<id>"} }
+    Server → Client  :  StreamChunk JSON messages  (graph resumes from checkpoint)
+    Server → Client  :  StreamChunk { event:"updates", data:{status:"done"} }
+
+    The server does not inspect chunks for tool-call detection — that is the
+    client library's responsibility.  invoke_type is only used for validation
+    and logging.
+
+    Authentication
+    --------------
+    Bearer token sent as the standard ``Authorization`` header during the
+    WebSocket handshake — identical to the HTTP stream route.
+
+    Close codes
+    -----------
+    1000  normal closure (client disconnected cleanly)
+    1011  unexpected server error
+    """
+    await websocket.accept()
+    logger.info("WebSocket graph connection accepted")
+
+    try:
+        while True:
+            try:
+                data = await websocket.receive_json()
+            except WebSocketDisconnect:
+                logger.info("WebSocket client disconnected")
+                break
+
+            try:
+                ws_input = WsGraphInputSchema(**data)
+            except Exception as e:
+                logger.warning("WebSocket received invalid input: %s", e)
+                await websocket.send_text(
+                    StreamChunk(
+                        event=StreamEvent.ERROR,
+                        data={"reason": f"Invalid request: {e}"},
+                    ).model_dump_json()
+                )
+                continue
+
+            thread_id = (ws_input.config or {}).get("thread_id", "new")
+            logger.info(
+                "WebSocket graph run: invoke_type=%s, thread_id=%s",
+                ws_input.invoke_type,
+                thread_id,
+            )
+
+            graph_input = ws_input.to_graph_input()
+            async for chunk_json in service.stream_graph(graph_input, user=user):
+                await websocket.send_text(chunk_json)
+
+            await websocket.send_text(
+                StreamChunk(
+                    event=StreamEvent.UPDATES,
+                    data={"status": "done"},
+                ).model_dump_json()
+            )
+
+    except WebSocketDisconnect:
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.error("WebSocket graph connection error: %s", e)
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1011)
