@@ -108,6 +108,14 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str | None = None
     JWT_ALGORITHM: str = "HS256"
 
+    #################################
+    ###### OTEL Config ##############
+    #################################
+    OTEL_ENABLED: bool = False
+    OTEL_SERVICE_NAME: str = "agentflow-api"
+    OTEL_EXPORTER_OTLP_ENDPOINT: str | None = None
+    OTEL_LEVEL: str = "standard"  # spans | standard | full
+
     @field_validator("MODE", mode="before")
     @classmethod
     def normalize_mode(cls, v: str | None) -> str:
