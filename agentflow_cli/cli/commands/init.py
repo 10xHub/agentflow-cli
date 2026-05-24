@@ -152,6 +152,9 @@ class InitCommand(BaseCommand):
             return None
         context["auth"] = auth_choice.lower()
 
+        if context["auth"] == "none":
+            return context
+
         rl_choice = questionary.select(
             "Rate limiting?",
             choices=["None", "Memory Based", "Redis Based"],
@@ -169,7 +172,7 @@ class InitCommand(BaseCommand):
             rl_requests = questionary.text(
                 "Max requests per window?",
                 default="100",
-                validate=lambda v: v.isdigit() and int(v) > 0 or "Enter a positive integer",
+                validate=lambda v: (v.isdigit() and int(v) > 0) or "Enter a positive integer",
             ).ask()
             if rl_requests is None:
                 return None
@@ -178,7 +181,7 @@ class InitCommand(BaseCommand):
             rl_window = questionary.text(
                 "Window size (seconds)?",
                 default="60",
-                validate=lambda v: v.isdigit() and int(v) > 0 or "Enter a positive integer",
+                validate=lambda v: (v.isdigit() and int(v) > 0) or "Enter a positive integer",
             ).ask()
             if rl_window is None:
                 return None

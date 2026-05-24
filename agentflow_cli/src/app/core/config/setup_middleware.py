@@ -97,6 +97,101 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
+def _attach_otel_publisher(container: InjectQ, settings) -> None:
+    """Wire OtelPublisher into the container when OTEL_ENABLED=true.
+
+    Merges with any publisher already bound in the container:
+      - None bound         → bind OtelPublisher directly
+      - CompositePublisher → add OtelPublisher to it
+      - Single publisher   → wrap both in a new CompositePublisher
+    """
+    try:
+        from agentflow.runtime.publisher.base_publisher import BasePublisher
+        from agentflow.runtime.publisher.composite_publisher import CompositePublisher
+        from agentflow.runtime.publisher.otel_publisher import ObservabilityLevel, OtelPublisher
+    except ImportError:
+        logger.warning(
+            "OTEL_ENABLED=true but opentelemetry packages are not installed. "
+            "Install with: pip install '10xscale-agentflow[otel]'"
+        )
+        return
+
+    try:
+        level = ObservabilityLevel(settings.OTEL_LEVEL.lower())
+    except ValueError:
+        logger.warning(
+            "Invalid OTEL_LEVEL=%r, falling back to 'standard'. Valid: spans, standard, full",
+            settings.OTEL_LEVEL,
+        )
+        level = ObservabilityLevel.STANDARD
+
+    otel_publisher = OtelPublisher(level=level)
+    existing = container.try_get(BasePublisher)
+
+    if existing is None:
+        container.bind_instance(BasePublisher, otel_publisher)
+        logger.info("OTEL: OtelPublisher bound (level=%s)", level)
+    elif isinstance(existing, CompositePublisher):
+        existing.add_publisher(otel_publisher)
+        logger.info("OTEL: OtelPublisher added to existing CompositePublisher (level=%s)", level)
+    else:
+        container.bind_instance(BasePublisher, CompositePublisher([existing, otel_publisher]))
+        logger.info(
+            "OTEL: wrapped %s + OtelPublisher in CompositePublisher (level=%s)",
+            type(existing).__name__,
+            level,
+        )
+
+
+def _setup_otel(app: FastAPI, settings) -> None:
+    """Configure OpenTelemetry tracing and instrument the FastAPI app.
+
+    Reads OTEL_EXPORTER_OTLP_ENDPOINT from settings. If unset, falls back to
+    the standard OTEL_EXPORTER_OTLP_ENDPOINT env var (honoured automatically
+    by the OTLP exporter). A ConsoleSpanExporter is used when no endpoint is
+    configured and the app is not in production, so traces are visible locally
+    without any collector.
+    """
+    try:
+        from opentelemetry import trace
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    except ImportError:
+        logger.warning(
+            "OTEL_ENABLED=true but opentelemetry packages are not installed. "
+            "Install with: pip install '10xscale-agentflow-cli[otel]'"
+        )
+        return
+
+    resource = Resource.create({"service.name": settings.OTEL_SERVICE_NAME})
+    provider = TracerProvider(resource=resource)
+
+    endpoint = settings.OTEL_EXPORTER_OTLP_ENDPOINT
+    if endpoint:
+        try:
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+            logger.info("OTEL: exporting traces to %s", endpoint)
+        except ImportError:
+            logger.warning(
+                "OTEL_EXPORTER_OTLP_ENDPOINT is set but opentelemetry-exporter-otlp "
+                "is not installed. Install with: pip install '10xscale-agentflow-cli[otel]'"
+            )
+            return
+    else:
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+
+        provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+        logger.info("OTEL: no endpoint configured, printing spans to console")
+
+    trace.set_tracer_provider(provider)
+    FastAPIInstrumentor.instrument_app(app)
+    logger.info("OTEL: FastAPI instrumentation active (service=%s)", settings.OTEL_SERVICE_NAME)
+
+
 def setup_middleware(
     app: FastAPI,
     graph_config: GraphConfig | None = None,
@@ -117,6 +212,11 @@ def setup_middleware(
         - RateLimit: Applied when ``rate_limit`` is configured in ``agentflow.json``.
     """
     settings = get_settings()
+
+    if settings.OTEL_ENABLED:
+        _setup_otel(app, settings)
+        if container is not None:
+            _attach_otel_publisher(container, settings)
     # init cors
     app.add_middleware(
         CORSMiddleware,

@@ -76,6 +76,12 @@ media = [
 gcloud = [
     "google-cloud-logging",
 ]
+otel = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.40b0",
+    "opentelemetry-exporter-otlp>=1.20.0",
+]
 
 [project.scripts]
 agentflow = "agentflow_cli.cli.main:main"
