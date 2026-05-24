@@ -35,6 +35,13 @@ Compile graphs once at startup. Keep graph code storage-agnostic; wire dependenc
 ## Core abstractions to reach for
 
 - Build workflows with `StateGraph`, `Agent`, `ToolNode`, `AgentState`, and `Message`.
+- **Use prebuilt agents for common patterns before hand-writing graph loops:**
+  - `ReactAgent` — standard tool-calling loop (use by default)
+  - `PlanActReflectAgent` — plan → act → reflect loop for complex multi-step tasks
+  - `StructuredOutputAgent` — forces JSON output matching a Pydantic schema
+  - `SupervisorTeamAgent` — central supervisor routes to specialist worker agents
+  - `SwarmAgent` — peer-to-peer agent handoff without a central supervisor
+  - `RAGAgent` — retrieves documents from a vector store before each LLM call
 - Persist conversation state with **checkpointers**. Use **stores** only for cross-thread memory.
 - Inject business services through **`InjectQ`**, not module-level globals.
 - Keep API/CLI graph modules storage-agnostic; wire dependencies via `agentflow.json`.
@@ -43,6 +50,29 @@ Compile graphs once at startup. Keep graph code storage-agnostic; wire dependenc
 - Injectable parameters (`state`, `config`, `tool_call_id`) are hidden from the model schema.
 - For production, avoid process-local storage for shared state — use durable checkpointer/store backends.
 - Add observability, audit, or business-logic side effects by registering a `GraphLifecycleHook` on `CallbackManager` — do not wrap `ainvoke()` / `astream()` calls in application code to achieve the same result.
+
+## Agent configuration quick reference
+
+```python
+Agent(
+    model="gpt-4o",                             # required; provider auto-detected
+    provider="openai",                          # explicit or omit for auto-detect
+    base_url="http://localhost:11434/v1",       # for Ollama / DeepSeek / OpenRouter
+    output_type="text",                         # "text" | "image" | "video" | "audio"
+    output_schema=MyPydanticModel,              # force structured JSON output
+    system_prompt=[{"role": "system", "content": "Help {user_name}."}],  # state interpolation
+    tool_node=tool_node,                        # ToolNode instance or graph node name string
+    tools_tags={"search"},                      # expose only matching-tagged tools
+    extra_messages=[...],                       # injected after system_prompt every call
+    trim_context=True,                          # trim old messages to fit token limits
+    reasoning_config={"effort": "medium"},      # on by default; None to disable
+    retry_config=True,                          # default 3 retries with backoff
+    fallback_models=["gpt-4o-mini"],            # tried in order after retries exhausted
+    memory=MemoryConfig(...),                   # long-term memory store wiring
+    skills=SkillConfig(...),                    # skills discovery and exposure
+    api_style="chat",                           # "chat" | "responses" (OpenAI only)
+)
+```
 
 ## Key configuration (`agentflow.json`)
 
@@ -68,7 +98,10 @@ Set `"auth": {"method": "jwt"}` and `JWT_SECRET_KEY` in `.env` to enable JWT aut
 - Auth and request permissions belong in API middleware/routers, not inside graph nodes.
 - Long-term memory store records are cross-thread knowledge, not thread history.
 - Rate limiting config lives in `agentflow.json` under `"rate_limit"`: backend options are `"memory"` or `"redis"`.
+- `reasoning_config` is on by default — disable explicitly with `reasoning_config=None` when not needed.
 
 ## Verifying behavior
 
 Public names and behavior should match `agentflow-docs/docs` or https://agentflow.10xscale.ai/. Implementation under `agentflow/`, `agentflow-api/`, and `agentflow-client/src/` shows *how* — only consult source after docs establish *what*.
+
+That file points Copilot at the installed skill bundle under `.github/skills/agentflow/`.

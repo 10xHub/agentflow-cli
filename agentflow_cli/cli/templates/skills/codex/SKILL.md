@@ -19,28 +19,26 @@ Treat https://agentflow.10xscale.ai/ as the first source of truth for public pac
    - Playground/UI: `agentflow play` command after installed cli
 
 2. Read the matching reference file before changing behavior:
+
+   ### Core Python SDK
    - Architecture and package flow: `.agents/skills/agentflow/references/architecture.md`
-   - Agent and tool behavior: `.agents/skills/agentflow/references/agents-and-tools.md`
-   - Graph construction and execution: `.agents/skills/agentflow/references/state-graph.md`
+   - Agent constructor, provider, reasoning, retry, fallback, output_schema: `.agents/skills/agentflow/references/agents-and-tools.md`
+   - Graph construction, nodes, edges, compile, interrupts, config keys: `.agents/skills/agentflow/references/state-graph.md`
    - State, messages, and content blocks: `.agents/skills/agentflow/references/state-and-messages.md`
-   - Threads and persistence: `.agents/skills/agentflow/references/checkpointing-and-threads.md`
-   - Dependency injection: `.agents/skills/agentflow/references/dependency-injection.md`
+   - Threads and checkpointing: `.agents/skills/agentflow/references/checkpointing-and-threads.md`
+   - Dependency injection (InjectQ): `.agents/skills/agentflow/references/dependency-injection.md`
    - Multimodal files and media stores: `.agents/skills/agentflow/references/media-and-files.md`
-   - Long-term memory stores: `.agents/skills/agentflow/references/memory-and-store.md`
-   - Streaming, chunks, and SSE: `.agents/skills/agentflow/references/streaming.md`
+   - Long-term memory stores (MemoryConfig, QdrantStore, Mem0Store): `.agents/skills/agentflow/references/memory-and-store.md`
+   - Streaming, StreamChunk, SSE, ResponseGranularity: `.agents/skills/agentflow/references/streaming.md`
    - Stream emitter for tool progress updates: `.agents/skills/agentflow/references/stream-emitter.md`
-   - API server and deployment runtime: `.agents/skills/agentflow/references/production-runtime.md`
-   - REST and TypeScript client surface: `.agents/skills/agentflow/references/api-client.md`
-   - Browser/client-side tool execution: `.agents/skills/agentflow/references/remote-tools.md`
    - Observability hooks, validators, and runtime jumps: `.agents/skills/agentflow/references/callbacks-and-command.md`
-   - Prebuilt agents/tools and handoff helpers: `.agents/skills/agentflow/references/prebuilt-agents-and-tools.md`
-   - Testing helpers and evaluation framework: `.agents/skills/agentflow/references/testing-and-evaluation.md`
-   - Unit testing without LLM calls (TestAgent, QuickTest, MockToolRegistry, agentflow test): `.agents/skills/agentflow/references/unit-testing.md`
-   - Evaluation framework (EvalSet, criteria, presets, reporters, AgentEvaluator, QuickEval, UserSimulator, BatchSimulator, agentflow eval): `.agents/skills/agentflow/references/evaluation.md`
+   - Prebuilt agents (ReactAgent, PlanActReflectAgent, StructuredOutputAgent, SupervisorTeamAgent, SwarmAgent, RAGAgent) and tools: `.agents/skills/agentflow/references/prebuilt-agents-and-tools.md`
    - Event publishers and A2A/ACP runtime protocols: `.agents/skills/agentflow/references/publishers-and-runtime-protocols.md`
    - Context management, ID generation, and background tasks: `.agents/skills/agentflow/references/context-id-background.md`
    - Provider internals and adapters: `.agents/skills/agentflow/references/providers-and-adapters.md`
    - Prompt-injection and validation safety: `.agents/skills/agentflow/references/security-and-validators.md`
+
+   ### API/CLI SDK
    - CLI commands and generated project files: `.agents/skills/agentflow/references/cli-commands.md`
    - `agentflow.json` and dependency loading: `.agents/skills/agentflow/references/api-configuration.md`
    - API auth and authorization: `.agents/skills/agentflow/references/auth-and-authorization.md`
@@ -48,12 +46,23 @@ Treat https://agentflow.10xscale.ai/ as the first source of truth for public pac
    - Rate limiting (config, backends, headers, custom backend): `.agents/skills/agentflow/references/rate-limiting.md`
    - REST routes and error behavior: `.agents/skills/agentflow/references/rest-api-and-errors.md`
    - API Snowflake IDs and thread naming: `.agents/skills/agentflow/references/id-and-thread-name-generators.md`
+   - API server and deployment runtime: `.agents/skills/agentflow/references/production-runtime.md`
+
+   ### TypeScript client SDK
+   - REST and TypeScript client surface: `.agents/skills/agentflow/references/api-client.md`
+   - Browser/client-side tool execution: `.agents/skills/agentflow/references/remote-tools.md`
    - TypeScript auth helpers and structured errors: `.agents/skills/agentflow/references/client-auth-and-errors.md`
    - TypeScript messages, invoke, and stream details: `.agents/skills/agentflow/references/client-messages-invoke-stream.md`
    - TypeScript thread, memory, and file APIs: `.agents/skills/agentflow/references/client-threads-memory-files.md`
 
+   ### Testing and QA
+   - Unit testing without LLM calls (TestAgent, QuickTest, MockToolRegistry, `agentflow test`): `.agents/skills/agentflow/references/unit-testing.md`
+   - Evaluation framework (EvalSet, criteria, AgentEvaluator, QuickEval, UserSimulator, `agentflow eval`): `.agents/skills/agentflow/references/evaluation.md`
+   - Testing helpers overview: `.agents/skills/agentflow/references/testing-and-evaluation.md`
+
 3. Prefer existing Agentflow abstractions over new custom wiring:
    - Build workflows with `StateGraph`, `Agent`, `ToolNode`, `AgentState`, and `Message`.
+   - Use prebuilt agents (`ReactAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, `SwarmAgent`, `RAGAgent`) for common patterns before hand-writing graph loops.
    - Persist conversation state with checkpointers; use stores only for cross-thread memory.
    - Put business services in `InjectQ` instead of global variables.
    - Keep API/CLI graph modules storage-agnostic and wire dependencies through `agentflow.json`.
@@ -66,5 +75,8 @@ Treat https://agentflow.10xscale.ai/ as the first source of truth for public pac
 - Public package naming matters: use `10xscale-agentflow`, `10xscale-agentflow-cli`, and `@10xscale/agentflow-client` in user-facing docs and examples, not repository folder names.
 - Every persisted interaction should include `config.thread_id`.
 - Tools need docstrings and type annotations so model-facing schemas are useful.
-- Injectable tool and node parameters such as `state`, `config`, and `tool_call_id` are hidden from the model schema.
+- Injectable tool and node parameters (`state`, `config`, `tool_call_id`) are hidden from the model schema.
 - For production, avoid process-local storage for shared state; use durable checkpointer/store backends.
+- Add observability or audit side effects by registering a `GraphLifecycleHook` on `CallbackManager` — do not wrap `ainvoke()` / `astream()` calls in application code to achieve the same result.
+- `reasoning_config` is on by default at medium effort; disable explicitly with `reasoning_config=None` when not needed.
+- Provider is auto-detected from the model name; use `base_url` for third-party OpenAI-compatible APIs (Ollama, DeepSeek, OpenRouter).

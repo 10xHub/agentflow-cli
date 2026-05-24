@@ -2,66 +2,212 @@
 
 Use this when adding workflows, nodes, edges, interrupts, graph compilation, or execution behavior.
 
-## Core Model
+---
 
-`StateGraph` is the workflow engine. A graph describes directed node execution over an `AgentState` subclass. The compiled graph handles state loading, node execution, routing, checkpointing, streaming, interrupts, recursion limits, and shutdown.
+## Core model
 
-## Creating Graphs
+`StateGraph` is the workflow engine. A graph describes a directed set of nodes and edges executed over an `AgentState` subclass. The compiled graph manages state loading, routing, checkpointing, streaming, interrupts, recursion limits, and shutdown automatically.
 
-- `StateGraph()` uses `AgentState`.
-- `StateGraph(MyState)` or `StateGraph(MyState())` uses a custom Pydantic state subclass.
-- Constructor-level dependencies include optional context manager, publisher, ID generator, and `InjectQ` container.
+---
 
-## Nodes
+## Creating a StateGraph
 
-A node can be:
+### Minimal
 
-- A callable receiving state and returning a `Message`, `ToolResult`, or state dict.
-- An `Agent`.
-- A `ToolNode`.
-- Any compatible sync or async function.
+```python
+from agentflow.core.graph import StateGraph
 
-Use `graph.add_node("NAME", node)` for explicit naming. Use `graph.add_node(function)` only when the function name is the right node name. Use `graph.override_node("NAME", replacement)` in tests or controlled overrides.
+graph = StateGraph()   # defaults to AgentState
+```
+
+### Custom state class
+
+```python
+from agentflow.core.state import AgentState
+
+class OrderState(AgentState):
+    order_id: str = ""
+    total: float = 0.0
+
+graph = StateGraph(OrderState)   # pass class or instance — both work
+```
+
+### Full constructor
+
+```python
+StateGraph(
+    state: StateT | None = None,
+    context_manager: BaseContextManager | None = None,
+    publisher: BasePublisher | None = None,
+    id_generator: BaseIDGenerator = DefaultIDGenerator(),
+    container: InjectQ | None = None,
+)
+```
+
+| Parameter | Description |
+|---|---|
+| `state` | State class or instance. Defaults to `AgentState()` |
+| `context_manager` | Optional cross-node state transformer (trim context, summarise, etc.) |
+| `publisher` | Optional publisher for emitting lifecycle events (Kafka, Redis Pub/Sub, RabbitMQ) |
+| `id_generator` | Strategy for generating message and run IDs |
+| `container` | `InjectQ` container for DI. Defaults to the global singleton |
+
+---
+
+## Adding nodes
+
+A node is any callable that receives `AgentState` (or subclass) and returns a `Message`, `ToolResult`, or state `dict`.
+
+```python
+graph.add_node("MAIN", agent)          # explicit name
+graph.add_node("TOOL", tool_node)
+graph.add_node(process)                # auto-name: "process"
+graph.override_node("MAIN", mock)      # replace existing node — useful in tests
+```
+
+---
 
 ## Edges
 
-- `add_edge("A", "B")`: static transition.
-- `set_entry_point("A")`: starts graph at a node.
-- `add_conditional_edges("A", route, path_map)`: route by state-derived string keys.
-- Use `END` for termination.
-- Use `Command` for runtime jumps only when static or conditional edges are not enough; see `callbacks-and-command.md`.
+```python
+graph.add_edge("TOOL", "MAIN")             # static: always TOOL → MAIN
+graph.set_entry_point("MAIN")              # shorthand for add_edge(START, "MAIN")
+```
 
-## Compilation
+### Conditional edges
 
-`graph.compile(...)` accepts:
+The routing function receives `AgentState` and returns a string key. `path_map` maps that key to a node name:
 
-- `checkpointer`: state persistence; defaults to in-memory where implementation supplies it.
-- `store`: long-term memory store.
-- `media_store`: multimodal file store.
-- `interrupt_before` / `interrupt_after`: pause points.
-- `callback_manager`: observability hooks.
-- `shutdown_timeout`: graceful close timeout.
+```python
+from agentflow.utils.constants import END
 
-Compilation should fail fast when the entry point is missing or interrupt nodes do not exist.
+def route(state: AgentState) -> str:
+    last = state.context[-1]
+    if hasattr(last, "tools_calls") and last.tools_calls and last.role == "assistant":
+        return "TOOL"
+    if last.role == "tool":
+        return "MAIN"
+    return END
 
-For callbacks, validators, and tracing hooks, read `callbacks-and-command.md`.
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+# If path_map is omitted, the function must return the destination node name directly.
+```
 
-## Execution
+Use `Command(goto=...)` for runtime jumps only when static or conditional edges are insufficient. See `callbacks-and-command.md`.
 
-- `app.invoke(input, config, response_granularity)` runs synchronously and returns a dict.
-- `app.ainvoke(...)` is the async equivalent.
-- `app.stream(...)` yields sync `StreamChunk` values.
-- `app.astream(...)` yields async `StreamChunk` values.
-- `config.thread_id` enables checkpointed continuity.
-- `config.recursion_limit` caps node execution count.
+---
+
+## Compiling
+
+```python
+from agentflow.utils import CallbackManager
+
+app = graph.compile(
+    checkpointer=checkpointer,       # BaseCheckpointer | None
+    store=store,                     # BaseStore | None
+    media_store=media_store,         # BaseMediaStore | None
+    interrupt_before=["VALIDATOR"],  # pause before these node names
+    interrupt_after=["TOOL"],        # pause after these node names
+    callback_manager=CallbackManager(),
+    shutdown_timeout=30.0,
+)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `checkpointer` | `BaseCheckpointer \| None` | State persistence. Defaults to `InMemoryCheckpointer` if not provided |
+| `store` | `BaseStore \| None` | Long-term cross-thread memory store |
+| `media_store` | `BaseMediaStore \| None` | Media file storage for multimodal content |
+| `interrupt_before` | `list[str] \| None` | Pause before these node names |
+| `interrupt_after` | `list[str] \| None` | Pause after these node names |
+| `callback_manager` | `CallbackManager` | Hooks for observability and lifecycle events |
+| `shutdown_timeout` | `float` | Seconds to wait for graceful shutdown (default `30.0`) |
+
+`compile()` raises `GraphError` if no entry point is set or if interrupt nodes do not exist.
+
+---
+
+## Invoking
+
+```python
+from agentflow.core.state import Message
+from agentflow.utils import ResponseGranularity
+
+result = app.invoke(
+    {"messages": [Message.text_message("Hello!")]},
+    config={"thread_id": "t1", "recursion_limit": 25},
+    response_granularity=ResponseGranularity.LOW,
+)
+messages = result["messages"]
+```
+
+`ainvoke()` is the async equivalent. Returns the full state dict.
+
+---
+
+## Streaming
+
+```python
+from agentflow.core.state.stream_chunks import StreamEvent
+
+for chunk in app.stream(
+    {"messages": [Message.text_message("Hello!")]},
+    config={"thread_id": "t2"},
+):
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text())
+```
+
+`astream()` is the async equivalent. See `streaming.md` for full details on `StreamChunk` fields and `StreamEvent` values.
+
+---
+
+## Config keys
+
+Passed in the `config` dict to `invoke` / `stream`:
+
+| Key | Type | Description |
+|---|---|---|
+| `thread_id` | `str` | Conversation thread identifier. Required for checkpointing |
+| `user_id` | `str` | Optional user identifier; injected into tool `config` param |
+| `run_id` | `str` | Optional run identifier; auto-generated if omitted |
+| `recursion_limit` | `int` | Max node executions before stopping (default `25`) |
+
+---
 
 ## Interrupts
 
-Compile with `interrupt_before=["NODE"]` or `interrupt_after=["NODE"]`. Resume by invoking again with the same `thread_id`.
+Compile with `interrupt_before` or `interrupt_after`. When execution reaches an interrupt node, the graph pauses and persists state. Resume by calling `invoke` again with the same `thread_id` and an empty input:
 
-## Source Map
+```python
+app = graph.compile(checkpointer=checkpointer, interrupt_before=["VALIDATOR"])
+
+# First call — pauses before VALIDATOR
+app.invoke({"messages": [Message.text_message("Start")]}, config={"thread_id": "t3"})
+
+# Resume after review
+app.invoke({}, config={"thread_id": "t3"})
+```
+
+---
+
+## Execution lifecycle
+
+```
+app.invoke → Load or create AgentState (from checkpointer if thread_id exists)
+           → Run entry node
+           → Evaluate conditional or static edge
+           → Run next node
+           → Check for interrupt → pause and save state (if configured)
+           → Repeat until END
+           → Save final state → Return result dict
+```
+
+---
+
+## Source map
 
 - StateGraph: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/state_graph.py
-- Compiled graph: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/compiled_graph.py
-- Graph errors: https://github.com/10xHub/Agentflow/tree/main/agentflow/agentflow/core/exceptions
-- Constants: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/constants.py
+- CompiledGraph: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/compiled_graph.py
+- Constants (END, START): https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/utils/constants.py
+- How-to (build a graph): https://agentflow.10xscale.ai/how-to/python/build-a-graph
