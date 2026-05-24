@@ -55,6 +55,11 @@ _TARGETS: tuple[_AgentTarget, ...] = (
                 source_relpath="agent-skills",
                 manifest=True,
             ),
+            _InstallArtifact(
+                kind="file",
+                install_relpath=".agents/skills/agentflow/SKILL.md",
+                source_relpath="codex/SKILL.md",
+            ),
         ),
     ),
     _AgentTarget(
@@ -65,6 +70,11 @@ _TARGETS: tuple[_AgentTarget, ...] = (
                 install_relpath=".claude/skills/agentflow",
                 source_relpath="agent-skills",
                 manifest=True,
+            ),
+            _InstallArtifact(
+                kind="file",
+                install_relpath=".claude/skills/agentflow/SKILL.md",
+                source_relpath="claude/SKILL.md",
             ),
         ),
     ),

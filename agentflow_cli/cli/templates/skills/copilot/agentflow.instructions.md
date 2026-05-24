@@ -8,19 +8,29 @@ This repo uses **Agentflow** — a multi-agent framework that wraps the official
 
 When generating, refactoring, or debugging code in this repo, prefer Agentflow's own abstractions over hand-rolled equivalents.
 
-Use these instructions together with the Agentflow skill bundle at `.github/skills/agentflow`.
-When a task touches a specific subsystem, read the matching reference file under
-`.github/skills/agentflow/references/` before changing behavior.
-
 ## Public package names (use these in user-facing examples)
 
 - Python core SDK: `10xscale-agentflow` — `pip install 10xscale-agentflow` — source under `agentflow/agentflow`
 - Python API/CLI SDK: `10xscale-agentflow-cli` — `pip install 10xscale-agentflow-cli` — source under `agentflow-api/agentflow_cli`
 - TypeScript SDK: `@10xscale/agentflow-client` — `npm install @10xscale/agentflow-client` — source under `agentflow-client/src`
-- Docs: `agentflow-docs/docs` (treat as the source of truth for public API names)
+- Docs: https://agentflow.10xscale.ai/ (source of truth for public API names)
 - Playground: `agentflow play` (after the CLI is installed)
 
 Never use repository folder names (e.g. `agentflow-cli`) in install commands or user-facing docs — use the published package names above.
+
+## Architecture overview
+
+Three published packages, one request flow:
+
+1. `@10xscale/agentflow-client` or another HTTP caller sends messages with `config.thread_id`.
+2. FastAPI (`10xscale-agentflow-cli`) receives the request through auth and routers.
+3. `GraphService` invokes or streams against the compiled graph loaded at startup.
+4. The compiled graph loads state through the checkpointer when a `thread_id` exists.
+5. Graph nodes run and update `AgentState`.
+6. Checkpointer saves state, messages, and thread metadata.
+7. API returns JSON or SSE chunks to the caller.
+
+Compile graphs once at startup. Keep graph code storage-agnostic; wire dependencies through compile arguments, `InjectQ`, or `agentflow.json`.
 
 ## Core abstractions to reach for
 
@@ -34,21 +44,31 @@ Never use repository folder names (e.g. `agentflow-cli`) in install commands or 
 - For production, avoid process-local storage for shared state — use durable checkpointer/store backends.
 - Add observability, audit, or business-logic side effects by registering a `GraphLifecycleHook` on `CallbackManager` — do not wrap `ainvoke()` / `astream()` calls in application code to achieve the same result.
 
-## Where to look when you need more detail
+## Key configuration (`agentflow.json`)
 
-For deeper context on any subsystem, read the matching reference under `.github/skills/agentflow/references/` or `agentflow-docs/docs`:
+```json
+{
+  "agent": "graph.agent:app",
+  "env": ".env",
+  "auth": null,
+  "checkpointer": null,
+  "injectq": null,
+  "store": null,
+  "redis": null,
+  "thread_name_generator": null
+}
+```
 
-- Architecture and package flow
-- Agent and tool behavior, prebuilt agents
-- Graph construction, state, messages, content blocks
-- Threads, checkpointers, dependency injection
-- Multimodal media, long-term memory stores
-- Streaming, SSE, runtime publishers, A2A/ACP protocols
-- API server, REST routes, auth, errors, settings, middleware
-- Rate limiting: sliding-window config, memory/Redis/custom backends, response headers, 429 behavior: `references/rate-limiting.md`
-- TypeScript client: invoke, stream, threads, memory, files, A2UI
-- Observability, validators, graph lifecycle hooks (`GraphLifecycleHook`), and runtime jumps (`Command`): `references/callbacks-and-command.md`
+Set `"auth": {"method": "jwt"}` and `JWT_SECRET_KEY` in `.env` to enable JWT authentication.
+
+## Important conventions
+
+- A compiled graph is loaded once at API startup and reused per request.
+- `thread_id` is the continuity key for conversation state — always pass it for persisted interactions.
+- Auth and request permissions belong in API middleware/routers, not inside graph nodes.
+- Long-term memory store records are cross-thread knowledge, not thread history.
+- Rate limiting config lives in `agentflow.json` under `"rate_limit"`: backend options are `"memory"` or `"redis"`.
 
 ## Verifying behavior
 
-Public names and behavior should match `agentflow-docs/docs`. Implementation under `agentflow/`, `agentflow-api/`, and `agentflow-client/src/` shows *how* — only consult source after docs establish *what*.
+Public names and behavior should match `agentflow-docs/docs` or https://agentflow.10xscale.ai/. Implementation under `agentflow/`, `agentflow-api/`, and `agentflow-client/src/` shows *how* — only consult source after docs establish *what*.
