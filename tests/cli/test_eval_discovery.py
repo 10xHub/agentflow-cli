@@ -173,7 +173,7 @@ class TestCollectFromFile:
         es.cases = [MagicMock()]
         return es
 
-    def test_global_config_takes_priority_over_file_config(
+    def test_file_config_takes_priority_over_global_config(
         self, tmp_path: Path, cmd: EvalCommand
     ) -> None:
         from agentflow.qa.evaluation import EvalConfig
@@ -194,7 +194,8 @@ class TestCollectFromFile:
             result = cmd._collect_from_file(self._dummy_path(tmp_path), global_cfg)
 
         _, _, used_config, _ = mock_make.call_args.args
-        assert used_config is global_cfg
+        assert used_config is file_cfg
+        assert used_config is not global_cfg
         assert result == fake_pending
 
     def test_file_config_used_when_no_global(self, tmp_path: Path, cmd: EvalCommand) -> None:

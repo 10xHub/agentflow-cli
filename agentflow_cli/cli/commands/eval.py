@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 class _PendingCase:
     case: Any  # EvalCase
     evaluator: AgentEvaluator
+    config: Any  # EvalConfig — the resolved config for this case
     file_name: str
     eval_set_id: str
     eval_set_name: str
@@ -223,8 +224,8 @@ class EvalCommand(BaseCommand):
         """Load a module and return pending work for every eval case or simulation scenario.
 
         Config priority chain (highest → lowest):
-          1. confeval.py   — global_config (not None when confeval was found)
-          2. Per-file      — EVAL_CONFIG / get_eval_config() inside the file
+          1. Per-file      — EVAL_CONFIG / get_eval_config() inside the file
+          2. confeval.py   — global_config (fallback when no per-file config)
           3. Built-in defaults — _default_config()
 
         Returns _PendingSimulation items when the file exposes get_scenarios() or SCENARIOS.
@@ -253,8 +254,8 @@ class EvalCommand(BaseCommand):
                 file_config = mod.get_eval_config()
             elif hasattr(mod, "EVAL_CONFIG"):
                 file_config = mod.EVAL_CONFIG
-            # Priority: confeval > per-file > defaults
-            config = global_config or file_config or self._default_config()
+            # Priority: per-file > confeval > defaults
+            config = file_config or global_config or self._default_config()
             return self._make_pending(mod, mod.get_eval_set(), config, file_name)
 
         # pytest-style discovery
@@ -267,8 +268,8 @@ class EvalCommand(BaseCommand):
                 if hasattr(mod, "EVAL_CONFIG")
                 else None
             )
-            # Priority: confeval > per-file > defaults
-            config = global_config or file_config or self._default_config()
+            # Priority: per-file > confeval > defaults
+            config = file_config or global_config or self._default_config()
             pending: list[_PendingCase] = []
             for _, es in eval_pairs:
                 pending.extend(self._make_pending(mod, es, config, file_name))
@@ -329,6 +330,7 @@ class EvalCommand(BaseCommand):
             _PendingCase(
                 case=c,
                 evaluator=evaluator,
+                config=config,
                 file_name=file_name,
                 eval_set_id=eval_set.eval_set_id,
                 eval_set_name=eval_set.name,
@@ -531,7 +533,9 @@ class EvalCommand(BaseCommand):
     # Report merging
     # ------------------------------------------------------------------
 
-    def _merge_reports(self, reports: list[EvalReport]) -> EvalReport:
+    def _merge_reports(
+        self, reports: list[EvalReport], base_config: Any = None
+    ) -> EvalReport:
         if len(reports) == 1:
             return reports[0]
 
@@ -542,6 +546,7 @@ class EvalCommand(BaseCommand):
             eval_set_id="combined_eval",
             eval_set_name="Combined Evaluation",
             results=all_results,
+            config_used=base_config.model_dump() if base_config else {},
         )
 
     # ------------------------------------------------------------------
@@ -673,6 +678,13 @@ class EvalCommand(BaseCommand):
             self.output.error("No results produced.")
             return 1
 
+        # Build per-eval-set config map from pending before results are consumed
+        group_configs: dict[str, Any] = {
+            pc.eval_set_id: pc.config
+            for pc in pending
+            if isinstance(pc, _PendingCase)
+        }
+
         # 7. Group by eval_set_id → one EvalReport per set
         groups: dict[str, tuple[str, list[EvalCaseResult]]] = defaultdict(lambda: ("", []))
         for _, eval_set_id, eval_set_name, result in quads:
@@ -681,17 +693,18 @@ class EvalCommand(BaseCommand):
 
         reports: list[EvalReport] = []
         for eval_set_id, (eval_set_name, results) in groups.items():
+            group_cfg = group_configs.get(eval_set_id) or confeval_config or self._default_config()
             reports.append(
                 ER.create(
                     eval_set_id=eval_set_id,
                     eval_set_name=eval_set_name,
                     results=results,
-                    config_used=(confeval_config or self._default_config()).model_dump(),
+                    config_used=group_cfg.model_dump(),
                 )
             )
 
         # 8. Merge into a single report
-        merged = self._merge_reports(reports)
+        merged = self._merge_reports(reports, base_config=confeval_config or self._default_config())
 
         # 9. Determine exit code
         if threshold is not None and merged.summary.pass_rate < threshold:

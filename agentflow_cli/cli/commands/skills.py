@@ -92,6 +92,11 @@ _TARGETS: tuple[_AgentTarget, ...] = (
                 source_relpath="agent-skills",
                 manifest=True,
             ),
+            _InstallArtifact(
+                kind="file",
+                install_relpath=".github/skills/agentflow/SKILL.md",
+                source_relpath="copilot/SKILL.md",
+            ),
         ),
     ),
 )
