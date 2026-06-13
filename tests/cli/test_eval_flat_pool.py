@@ -103,7 +103,7 @@ class TestConfEvalPriorityChain:
         p.write_text("")
         return p
 
-    def test_confeval_config_beats_per_file_eval_config(
+    def test_per_file_config_beats_confeval_config(
         self, tmp_path: Path, cmd: EvalCommand
     ) -> None:
         from agentflow.qa.evaluation import EvalConfig
@@ -124,8 +124,8 @@ class TestConfEvalPriorityChain:
             cmd._collect_from_file(self._dummy_path(tmp_path), global_cfg)
 
         _, _, used_config, _ = mock_make.call_args.args
-        assert used_config is global_cfg
-        assert used_config is not per_file_cfg
+        assert used_config is per_file_cfg
+        assert used_config is not global_cfg
 
     def test_per_file_config_used_when_no_confeval(
         self, tmp_path: Path, cmd: EvalCommand
