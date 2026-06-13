@@ -1,6 +1,6 @@
 """Tests for Sprint 2 – DocumentExtractor & DocumentPipeline.
 
-These tests live in pyagenity-api because document extraction is an API concern
+These tests live in agentflow-api because document extraction is an API concern
 (not a core library concern).
 """
 

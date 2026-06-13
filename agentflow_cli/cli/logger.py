@@ -1,4 +1,4 @@
-"""Logging configuration for the Pyagenity CLI."""
+"""Logging configuration for the Agentflow CLI."""
 
 import logging
 import sys

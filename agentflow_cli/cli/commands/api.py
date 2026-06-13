@@ -27,7 +27,7 @@ from agentflow_cli.cli.exceptions import ConfigurationError, ServerError
 
 
 class APICommand(BaseCommand):
-    """Command to start the Pyagenity API server."""
+    """Command to start the Agentflow API server."""
 
     _PLAYGROUND_WAIT_TIMEOUT_SECONDS = 30.0
     _PLAYGROUND_WAIT_INTERVAL_SECONDS = 0.25

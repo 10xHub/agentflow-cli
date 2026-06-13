@@ -38,11 +38,8 @@ pip install "10xscale-agentflow-cli[media]"
 ### Initialize a New Project
 
 ```bash
-# Create project structure
+# Create project structure (interactive: prompts for dev vs production, auth, rate limiting)
 agentflow init
-
-# Or with production config
-agentflow init --prod
 ```
 
 ### Start Development Server
@@ -85,11 +82,8 @@ For detailed command documentation, see the [CLI Guide](./docs/cli-guide.md).
 Initialize a new project with configuration and sample graph.
 
 ```bash
-# Basic initialization
+# Basic initialization (interactive prompts choose dev vs production setup)
 agentflow init
-
-# With production config (pyproject.toml, pre-commit hooks)
-agentflow init --prod
 
 # Custom directory
 agentflow init --path ./my-project

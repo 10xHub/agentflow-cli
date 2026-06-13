@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
-║                    PYAGENITY-API STORE MODULE TEST SUITE                            ║
+║                    AGENTFLOW-API STORE MODULE TEST SUITE                            ║
 ║                          Comprehensive Testing Report                                ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
 
@@ -144,7 +144,7 @@
   Python Version:        3.13.7
 
   Dependencies Tested:
-  ├── pyagenity          (Message, BaseStore, MemorySearchResult, MemoryType)
+  ├── agentflow          (Message, BaseStore, MemorySearchResult, MemoryType)
   ├── injectq            (InjectAPI - dependency injection)
   ├── pydantic           (Schema validation)
   └── fastapi            (API framework)
@@ -157,7 +157,7 @@
   $ pytest tests/unit_tests/store/ -v
 
   Run with coverage:
-  $ pytest tests/unit_tests/store/ --cov=pyagenity_api/src/app/routers/store --cov-report=term-missing
+  $ pytest tests/unit_tests/store/ --cov=agentflow_api/src/app/routers/store --cov-report=term-missing
 
   Run specific test file:
   $ pytest tests/unit_tests/store/test_store_service.py -v
@@ -185,7 +185,7 @@
   Coverage Report:
   Name                                                  Stmts   Miss   Cover
   -------------------------------------------------------------------------
-  pyagenity_api/src/app/routers/store/
+  agentflow_api/src/app/routers/store/
     schemas/store_schemas.py                               43      0   100%
     services/store_service.py                              67      0   100%
   -------------------------------------------------------------------------

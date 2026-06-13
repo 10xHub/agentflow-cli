@@ -11,7 +11,7 @@ def init_routes(app: FastAPI):
     """
     Initialize the routes for the FastAPI application.
 
-    This function includes the graph and checkpointer routers for pyagenity functionality.
+    This function includes the graph and checkpointer routers for agentflow functionality.
     Auth and GraphQL routers are disabled for now.
 
     Args:

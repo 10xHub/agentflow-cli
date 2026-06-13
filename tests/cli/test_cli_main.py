@@ -2,7 +2,7 @@ from typer.testing import CliRunner
 import pytest
 from unittest.mock import MagicMock, patch
 import agentflow_cli.cli.main as main_mod
-from agentflow_cli.cli.exceptions import PyagenityCLIError
+from agentflow_cli.cli.exceptions import AgentflowCLIError
 
 runner = CliRunner()
 
@@ -160,12 +160,12 @@ def test_a2a_command_is_not_exposed():
     assert "No such command 'a2a'" in result.output
 
 
-def test_handle_pyagenity_cli_error(monkeypatch):
+def test_handle_agentflow_cli_error(monkeypatch):
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
         main_mod.VersionCommand,
         "execute",
-        lambda self: (_ for _ in ()).throw(PyagenityCLIError("Custom error message", exit_code=42))
+        lambda self: (_ for _ in ()).throw(AgentflowCLIError("Custom error message", exit_code=42))
     )
     result = runner.invoke(main_mod.app, ["version"])
     assert result.exit_code == 42
