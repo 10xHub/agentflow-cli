@@ -1,11 +1,34 @@
 """CLI constants and configuration values."""
 
+import tomllib
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Final
 
 
-# Version information
-CLI_VERSION: Final[str] = "1.0.0"
+_PACKAGE_NAME: Final[str] = "10xscale-agentflow-cli"
+
+
+def _resolve_version() -> str:
+    """Resolve the package version from installed metadata, falling back to pyproject.toml.
+
+    Single source of truth: the installed distribution's version. When running from a
+    source checkout that is not installed, read ``pyproject.toml`` instead.
+    """
+    try:
+        return _pkg_version(_PACKAGE_NAME)
+    except PackageNotFoundError:
+        pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        try:
+            with pyproject.open("rb") as f:
+                return tomllib.load(f).get("project", {}).get("version", "unknown")
+        except (OSError, tomllib.TOMLDecodeError):
+            return "unknown"
+
+
+# Version information (single-sourced from package metadata / pyproject.toml)
+CLI_VERSION: Final[str] = _resolve_version()
 
 # Default configuration values
 DEFAULT_HOST: Final[str] = "127.0.0.1"

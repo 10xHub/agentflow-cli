@@ -6,7 +6,7 @@ from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import CLI_VERSION
 from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow_cli.cli.exceptions import PyagenityCLIError
+from agentflow_cli.cli.exceptions import AgentflowCLIError
 
 
 CLI_CUSTOM_EXIT = 5
@@ -40,7 +40,7 @@ class ErrorCommand(BaseCommand):
 def test_basecommand_handle_error_cli_error():
     out = DummyOutput()
     cmd = ErrorCommand(output=out)
-    err = PyagenityCLIError("boom", exit_code=CLI_CUSTOM_EXIT)
+    err = AgentflowCLIError("boom", exit_code=CLI_CUSTOM_EXIT)
     code = cmd.handle_error(err)
     assert code == CLI_CUSTOM_EXIT
     assert out.errors and "boom" in out.errors[0]

@@ -39,9 +39,9 @@ class BaseCommand(ABC, CLILoggerMixin):
         self.logger.error("Command failed: %s", error)
 
         # Import here to avoid circular imports
-        from agentflow_cli.cli.exceptions import PyagenityCLIError
+        from agentflow_cli.cli.exceptions import AgentflowCLIError
 
-        if isinstance(error, PyagenityCLIError):
+        if isinstance(error, AgentflowCLIError):
             self.output.error(error.message)
             return error.exit_code
 

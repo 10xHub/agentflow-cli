@@ -28,7 +28,7 @@ agentflow = agentflow_cli.cli.main:main
 
 - Starts the FastAPI server for a compiled graph.
 - Options include `--config/-c`, `--host/-H`, `--port/-p`, `--reload/--no-reload`, `--verbose/-v`, and `--quiet/-q`.
-- Defaults are config `agentflow.json`, host `0.0.0.0`, port `8000`, reload enabled.
+- Defaults are config `agentflow.json`, host `127.0.0.1`, port `8000`, reload enabled.
 
 `agentflow play`
 

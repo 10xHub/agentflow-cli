@@ -20,7 +20,7 @@ class VersionCommand(BaseCommand):
             # Print banner
             self.output.print_banner(
                 "Version",
-                "Show pyagenity CLI and package version info",
+                "Show Agentflow CLI and package version info",
                 color="green",
             )
 

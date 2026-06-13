@@ -533,9 +533,7 @@ class EvalCommand(BaseCommand):
     # Report merging
     # ------------------------------------------------------------------
 
-    def _merge_reports(
-        self, reports: list[EvalReport], base_config: Any = None
-    ) -> EvalReport:
+    def _merge_reports(self, reports: list[EvalReport], base_config: Any = None) -> EvalReport:
         if len(reports) == 1:
             return reports[0]
 
@@ -680,9 +678,7 @@ class EvalCommand(BaseCommand):
 
         # Build per-eval-set config map from pending before results are consumed
         group_configs: dict[str, Any] = {
-            pc.eval_set_id: pc.config
-            for pc in pending
-            if isinstance(pc, _PendingCase)
+            pc.eval_set_id: pc.config for pc in pending if isinstance(pc, _PendingCase)
         }
 
         # 7. Group by eval_set_id → one EvalReport per set

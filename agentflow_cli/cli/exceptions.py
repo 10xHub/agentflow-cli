@@ -1,8 +1,8 @@
-"""Custom exceptions for the Pyagenity CLI."""
+"""Custom exceptions for the Agentflow CLI."""
 
 
-class PyagenityCLIError(Exception):
-    """Base exception for all Pyagenity CLI errors."""
+class AgentflowCLIError(Exception):
+    """Base exception for all Agentflow CLI errors."""
 
     def __init__(self, message: str, exit_code: int = 1) -> None:
         """Initialize the exception with a message and exit code.
@@ -16,7 +16,7 @@ class PyagenityCLIError(Exception):
         self.exit_code = exit_code
 
 
-class ConfigurationError(PyagenityCLIError):
+class ConfigurationError(AgentflowCLIError):
     """Raised when there are configuration-related errors."""
 
     def __init__(self, message: str, config_path: str | None = None) -> None:
@@ -30,7 +30,7 @@ class ConfigurationError(PyagenityCLIError):
         self.config_path = config_path
 
 
-class ValidationError(PyagenityCLIError):
+class ValidationError(AgentflowCLIError):
     """Raised when input validation fails."""
 
     def __init__(self, message: str, field: str | None = None) -> None:
@@ -44,7 +44,7 @@ class ValidationError(PyagenityCLIError):
         self.field = field
 
 
-class FileOperationError(PyagenityCLIError):
+class FileOperationError(AgentflowCLIError):
     """Raised when file operations fail."""
 
     def __init__(self, message: str, file_path: str | None = None) -> None:
@@ -58,7 +58,7 @@ class FileOperationError(PyagenityCLIError):
         self.file_path = file_path
 
 
-class TemplateError(PyagenityCLIError):
+class TemplateError(AgentflowCLIError):
     """Raised when template operations fail."""
 
     def __init__(self, message: str, template_name: str | None = None) -> None:
@@ -72,7 +72,7 @@ class TemplateError(PyagenityCLIError):
         self.template_name = template_name
 
 
-class ServerError(PyagenityCLIError):
+class ServerError(AgentflowCLIError):
     """Raised when server operations fail."""
 
     def __init__(self, message: str, host: str | None = None, port: int | None = None) -> None:
@@ -88,7 +88,7 @@ class ServerError(PyagenityCLIError):
         self.port = port
 
 
-class DockerError(PyagenityCLIError):
+class DockerError(AgentflowCLIError):
     """Raised when Docker-related operations fail."""
 
     def __init__(self, message: str, dockerfile_path: str | None = None) -> None:

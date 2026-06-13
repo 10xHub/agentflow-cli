@@ -1,4 +1,4 @@
-"""Professional Pyagenity CLI main entry point."""
+"""Professional Agentflow CLI main entry point."""
 
 import sys
 
@@ -18,7 +18,7 @@ from agentflow_cli.cli.constants import (
     DEFAULT_PORT,
 )
 from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow_cli.cli.exceptions import PyagenityCLIError
+from agentflow_cli.cli.exceptions import AgentflowCLIError
 from agentflow_cli.cli.logger import setup_cli_logging
 
 
@@ -29,7 +29,7 @@ load_dotenv()
 app = typer.Typer(
     name="agentflow",
     help=(
-        "Pyagenity API CLI - Professional tool for managing Pyagenity API "
+        "Agentflow API CLI - Professional tool for managing Agentflow API "
         "servers and configurations"
     ),
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -49,7 +49,7 @@ def handle_exception(e: Exception) -> int:
     Returns:
         Appropriate exit code
     """
-    if isinstance(e, PyagenityCLIError):
+    if isinstance(e, AgentflowCLIError):
         output.error(e.message)
         return e.exit_code
 
@@ -69,8 +69,8 @@ def api(
         DEFAULT_HOST,
         "--host",
         "-H",
-        help="Host to run the API on (default: 0.0.0.0, binds to all interfaces; "
-        "use 127.0.0.1 for localhost only)",
+        help="Host to run the API on (default: 127.0.0.1, localhost only; "
+        "use 0.0.0.0 to bind all interfaces)",
     ),
     port: int = typer.Option(
         DEFAULT_PORT,
@@ -96,7 +96,7 @@ def api(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Start the Pyagenity API server."""
+    """Start the Agentflow API server."""
     # Setup logging
     setup_cli_logging(verbose=verbose, quiet=quiet)
 
@@ -284,7 +284,7 @@ def build(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Generate a Dockerfile for the Pyagenity API application."""
+    """Generate a Dockerfile for the Agentflow API application."""
     # Setup logging
     setup_cli_logging(verbose=verbose, quiet=quiet)
 

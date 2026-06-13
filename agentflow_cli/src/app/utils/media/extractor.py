@@ -1,7 +1,7 @@
 """Document extraction service using textxtract.
 
 Wraps ``AsyncTextExtractor`` from the textxtract library.
-This module lives in pyagenity-api, NOT in the core PyAgenity library,
+This module lives in agentflow-api, NOT in the core Agentflow library,
 because extraction is an API-platform concern.
 """
 

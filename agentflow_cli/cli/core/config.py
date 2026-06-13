@@ -1,4 +1,4 @@
-"""Configuration management for the Pyagenity CLI."""
+"""Configuration management for the Agentflow CLI."""
 
 from __future__ import annotations
 

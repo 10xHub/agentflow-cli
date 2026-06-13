@@ -1,6 +1,6 @@
-"""Media processing module for pyagenity-api.
+"""Media processing module for agentflow-api.
 
-Document extraction lives here (not in PyAgenity core) because
+Document extraction lives here (not in Agentflow core) because
 the core library stays lightweight — SDK users extract text themselves.
 The API platform auto-extracts using textxtract.
 """

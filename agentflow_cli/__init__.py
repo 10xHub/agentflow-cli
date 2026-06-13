@@ -1,6 +1,8 @@
-"""Pyagenity API - A Python API framework For Pyagenity Graphs."""
+"""Agentflow API - A Python API framework for Agentflow graphs."""
 
-__version__ = "1.0.0"
+from agentflow_cli.cli.constants import CLI_VERSION as __version__
+
+
 __author__ = "Shudipto Trafder"
 __email__ = "shudiptotrafder@gmail.com"
 
@@ -17,4 +19,5 @@ __all__ = [
     "BaseAuth",
     "SnowFlakeIdGenerator",
     "ThreadNameGenerator",
+    "__version__",
 ]
