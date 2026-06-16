@@ -1,9 +1,0 @@
-# remove config
-.vscode
-.idea
-
-# remove environemnt
-venv
-
-# also .env files
-.env
