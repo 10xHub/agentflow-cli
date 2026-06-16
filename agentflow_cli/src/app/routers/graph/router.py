@@ -399,7 +399,8 @@ def _realtime_event_json(event: Any) -> str:
     """Serialize a non-audio RealtimeEvent to a JSON text frame for the client."""
     try:
         payload = event.model_dump(mode="json")
-    except Exception:
+    except Exception as e:
+        logger.warning("Realtime event serialization failed (%s): %s", type(event).__name__, e)
         payload = {"type": getattr(event, "type", "unknown")}
     return json.dumps(payload)
 
@@ -538,6 +539,10 @@ async def realtime_graph_ws(  # noqa: PLR0915
         for task in (up_task, down_task):
             if task.done() and not task.cancelled():
                 task.result()
+    except WebSocketDisconnect:
+        # The client going away mid-session is a normal termination, not a server fault;
+        # don't log it as an error or attempt a 1011 close on an already-closed socket.
+        logger.info("Realtime WebSocket client disconnected")
     except Exception as e:
         logger.error("Realtime WebSocket error: %s", e)
         with contextlib.suppress(Exception):

@@ -6,9 +6,9 @@ authorization checks, reducing code duplication across routers.
 """
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, NoReturn
 
-from fastapi import HTTPException, Response
+from fastapi import HTTPException, Response, WebSocket, WebSocketException
 from fastapi.security import HTTPAuthorizationCredentials
 from injectq.integrations import InjectAPI
 from starlette.requests import HTTPConnection
@@ -84,6 +84,24 @@ def _extract_credential(
     return None
 
 
+# RFC 6455 close code 1008 "Policy Violation" -- the right signal for an auth/authz
+# rejection at the WebSocket handshake.
+WS_POLICY_VIOLATION = 1008
+
+
+def _reject(connection: HTTPConnection, status_code: int, detail: str) -> NoReturn:
+    """Reject a connection with the error type appropriate to its protocol.
+
+    FastAPI translates an ``HTTPException`` into a response only on HTTP routes; on a
+    WebSocket route it propagates unhandled and tears the socket down abruptly (close
+    1006) with a server-side error log. Raise ``WebSocketException`` (close 1008) there
+    instead so the client sees a clean policy-violation rejection.
+    """
+    if isinstance(connection, WebSocket):
+        raise WebSocketException(code=WS_POLICY_VIOLATION, reason=detail)
+    raise HTTPException(status_code=status_code, detail=detail)
+
+
 class RequirePermission:
     """
     FastAPI dependency that combines authentication and authorization.
@@ -142,7 +160,9 @@ class RequirePermission:
             dict: User information if authenticated and authorized
 
         Raises:
-            HTTPException: 403 if authorization fails
+            HTTPException: 401/403 on HTTP routes when auth or authz fails.
+            WebSocketException: close 1008 on WebSocket routes for the same failures
+                (FastAPI does not translate an HTTPException on a WS handshake).
         """
         # Extract bearer credentials from the Authorization header, with a
         # ``?token=`` query fallback for browser WebSocket clients (see
@@ -165,11 +185,16 @@ class RequirePermission:
             logger.error("Auth backend is not configured")
             user = {}
         else:
-            user_result = auth_backend.authenticate(
-                connection,
-                response,
-                credential,
-            )
+            try:
+                user_result = auth_backend.authenticate(
+                    connection,
+                    response,
+                    credential,
+                )
+            except HTTPException as exc:
+                # JWT/custom backends signal auth failure with HTTPException; convert it
+                # to a clean WebSocket close on WS routes (see _reject).
+                _reject(connection, exc.status_code, str(exc.detail))
             if user_result and "user_id" not in user_result:
                 logger.error("Authentication failed: 'user_id' not found in user info")
             user = user_result or {}
@@ -192,9 +217,10 @@ class RequirePermission:
                 f"Authorization failed for user {user.get('user_id')} "
                 f"on {self.resource}:{self.action}"
             )
-            raise HTTPException(
-                status_code=403,
-                detail=f"Not authorized to {self.action} {self.resource}",
+            _reject(
+                connection,
+                403,
+                f"Not authorized to {self.action} {self.resource}",
             )
 
         # Log successful auth/authz (with sanitized user info)

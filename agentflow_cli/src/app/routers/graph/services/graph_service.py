@@ -96,7 +96,7 @@ class GraphService:
 
         return thread_name
 
-    async def _save_thread(self, config: dict[str, Any], thread_id: int):
+    async def _save_thread(self, config: dict[str, Any], thread_id: str):
         """
         Save the generated thread name to the database.
         """
