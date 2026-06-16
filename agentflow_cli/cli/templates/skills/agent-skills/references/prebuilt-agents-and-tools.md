@@ -14,6 +14,7 @@ from agentflow.prebuilt.agent import (
     SupervisorTeamAgent,
     SwarmAgent,
     RAGAgent,
+    AudioAgent,
 )
 ```
 
@@ -239,6 +240,32 @@ from agentflow.prebuilt.agent import RAGAgent, CohereReranker
 
 agent = RAGAgent(model="gpt-4o", store=store, reranker=CohereReranker(api_key="..."))
 ```
+
+### AudioAgent
+
+Realtime, full-duplex voice agent (Gemini Live). React-style builder that wraps a `LiveAgent` as the
+graph root. Requires `pip install "10xscale-agentflow[realtime]"` and `GEMINI_API_KEY`. Driven by
+`arealtime()` / `realtime()`, not `invoke` / `stream`.
+
+```python
+from agentflow.prebuilt.agent import AudioAgent
+from agentflow.core.realtime import RealtimeConfig, LiveInputQueue
+
+app = AudioAgent(
+    "gemini-live-2.5-flash-preview",
+    realtime_config=RealtimeConfig(model="gemini-live-2.5-flash-preview", voice="Puck"),
+    tools=[my_tool],          # React-style tool calling, including barge-in
+).compile()
+
+queue = LiveInputQueue()
+queue.send_audio(pcm16_bytes)
+async for event in app.arealtime(queue, {"thread_id": "t1"}):
+    ...
+```
+
+`compile()` takes `checkpointer`, `store`, `callback_manager`, `shutdown_timeout` only (no
+`media_store` / `interrupt_*`). `system_prompt`, `skills`, and `memory` work like `ReactAgent`. See
+`realtime.md` for the full surface (events, reconnection, lifecycle hooks, WebSocket bridge).
 
 ---
 

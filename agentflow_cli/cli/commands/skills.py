@@ -221,6 +221,34 @@ class SkillsCommand(BaseCommand):
         self.output.success(
             f"Installed Agentflow skills for {target.name} at {', '.join(installed_paths)}"
         )
+        self._print_activation_hint(target)
+
+    def _print_activation_hint(self, target: _AgentTarget) -> None:
+        """Tell the user how to make the freshly installed skill take effect.
+
+        Coding agents load skills at session start. When ``agentflow skills``
+        creates the skills directory for the first time during a running session,
+        the agent does not watch the new top-level directory until it is
+        restarted, so the skill appears "installed but unused". This note makes
+        the required restart explicit.
+        """
+        if target.name == "Claude":
+            note = (
+                "Restart Claude Code (or run /exit then `claude`) so it loads the new "
+                ".claude/skills/ directory. Claude auto-invokes the skill from its "
+                "description; type /agentflow to run it manually."
+            )
+        elif target.name == "Codex":
+            note = (
+                "Restart Codex so it picks up the new .agents/skills/ directory. Codex "
+                "auto-selects the skill when your task matches its description."
+            )
+        else:  # GitHub Copilot
+            note = (
+                "Restart GitHub Copilot / your editor so it loads the new "
+                ".github/skills/ directory and .github/instructions/ file."
+            )
+        self.output.warning(f"Activate: {note}")
 
     def _install_all(self, templates_root: Path, project_root: Path, *, force: bool) -> int:
         installed = 0

@@ -9,6 +9,7 @@ from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.config.graph_config import RateLimitConfig
 
 from .base import BaseRateLimitBackend
+from .keying import client_key_for
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -26,16 +27,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._exclude = frozenset(config.exclude_paths)
 
     def _client_key(self, request: Request) -> str:
-        if self.config.by == "global":
-            return "__global__"
-
-        if self.config.trusted_proxy_headers:
-            forwarded_for = request.headers.get("X-Forwarded-For")
-            if forwarded_for:
-                return forwarded_for.split(",")[0].strip()
-
-        client = request.client
-        return client.host if client else "unknown"
+        return client_key_for(request, self.config)
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path in self._exclude:

@@ -149,6 +149,23 @@ app = graph.compile(callback_manager=callback_mgr)
 | `on_resume` | `AgentState \| None` | 0–1 per call | Before `clear_interrupt()` |
 | `on_checkpoint` | `(AgentState, list[Message]) \| AgentState \| None` | 1–N per run | Before every durable checkpoint write |
 | `on_state_update` | `AgentState \| None` | N per run (once per node) | After each node result is merged |
+| `on_turn_start` | `AgentState \| None` | N (realtime only) | Start of each model turn |
+| `on_turn_end` | `AgentState \| None` | N (realtime only) | End of each model turn |
+
+### Realtime hooks
+
+The same `GraphLifecycleHook` fires for realtime (audio) graphs, with two methods that fire **only**
+in realtime (no-ops for `invoke` / `stream`):
+
+- `on_graph_start(ctx, state)` / `on_graph_end(ctx, final_state, messages, total_steps)` — once per
+  session (the `LIVE` node *is* the graph); `total_steps` = number of turns.
+- `on_turn_start(ctx, state, turn_index)` / `on_turn_end(ctx, state, turn_index)` — per model turn
+  (1-based; a turn spans one model generation, bounded by `turn_complete` or a barge-in). A turn cut
+  off by session end still gets a balanced `on_turn_end`.
+
+Realtime has no `AI`-invocation callback or input-validator pass (no discrete LLM call); the per-turn
+hooks are the observability stand-in. Tool/MCP `before/after/error` callbacks fire as usual. See
+`realtime.md`.
 
 ### Example
 

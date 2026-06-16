@@ -1,7 +1,6 @@
 ---
 name: agentflow
 description: Expert guidance for building, debugging, and extending applications with AgentFlow (10xscale-agentflow). TRIGGER when: code imports from agentflow (e.g. `from agentflow import`, `StateGraph`, `Agent`, `ToolNode`, `AgentState`); user references `agentflow.json` or CLI commands (`agentflow init`, `agentflow api`, `agentflow play`, `agentflow build`, `agentflow skills`); user is building graph-based multi-agent workflows, tools, memory, checkpointing, or streaming with this framework. SKIP: generic Python or multi-agent questions not referencing agentflow; other frameworks (LangGraph, CrewAI, AutoGen) unless comparing.
-user-invocable: false
 ---
 
 # Agentflow Project Skill
@@ -38,6 +37,7 @@ Treat https://agentflow.10xscale.ai/ as the first source of truth for public pac
    - Context management, ID generation, and background tasks: `.claude/skills/agentflow/references/context-id-background.md`
    - Provider internals and adapters: `.claude/skills/agentflow/references/providers-and-adapters.md`
    - Prompt-injection and validation safety: `.claude/skills/agentflow/references/security-and-validators.md`
+   - Realtime audio-to-audio voice agents (AudioAgent, Gemini Live, `arealtime`, WebSocket bridge): `.claude/skills/agentflow/references/realtime.md`
 
    ### API/CLI SDK
    - CLI commands and generated project files: `.claude/skills/agentflow/references/cli-commands.md`

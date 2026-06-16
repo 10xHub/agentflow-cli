@@ -38,11 +38,11 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         content_length = request.headers.get("content-length")
 
         if content_length:
-            content_length = int(content_length)
+            content_length_bytes = int(content_length)
 
-            if content_length > self.max_size:
+            if content_length_bytes > self.max_size:
                 logger.warning(
-                    f"Request rejected: size {content_length} bytes "
+                    f"Request rejected: size {content_length_bytes} bytes "
                     f"exceeds limit of {self.max_size} bytes "
                     f"({self.max_size_mb:.1f}MB)"
                 )

@@ -41,6 +41,24 @@ Common safety points:
 - Model output validation before returning to API clients.
 - Store/memory write validation.
 
+## Secret redaction for logs
+
+Helpers in `agentflow.utils` strip credentials from log output:
+
+- `mask_secrets(text)` — redacts API keys, `Bearer` tokens, `key=value` secrets, and signed-URL
+  credential query params from a string.
+- `SecretRedactionFilter` — a `logging.Filter`; add it to a handler to cover all loggers that
+  propagate to it.
+- `install_secret_redaction(logger_name="agentflow")` — convenience installer that attaches the
+  filter and returns it.
+
+```python
+from agentflow.utils import mask_secrets, SecretRedactionFilter, install_secret_redaction
+
+install_secret_redaction()                 # cover the agentflow logger tree
+safe = mask_secrets(raw_text)              # one-off redaction
+```
+
 ## API Security Boundary
 
 This reference covers graph-level validators. For HTTP auth, read `auth-and-authorization.md`.

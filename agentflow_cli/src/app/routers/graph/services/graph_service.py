@@ -96,7 +96,7 @@ class GraphService:
 
         return thread_name
 
-    async def _save_thread(self, config: dict[str, Any], thread_id: int):
+    async def _save_thread(self, config: dict[str, Any], thread_id: str):
         """
         Save the generated thread name to the database.
         """
@@ -384,6 +384,62 @@ class GraphService:
                 ).model_dump_json(serialize_as_any=True)
                 + "\n"
             )
+
+    async def realtime_graph(
+        self,
+        input_queue: Any,
+        init: dict[str, Any],
+        user: dict[str, Any],
+    ):
+        """Bridge a realtime (audio) session over the compiled graph.
+
+        Thin wrapper over ``CompiledGraph.arealtime``: builds the per-session config from
+        the init control frame + authenticated user, persists thread info, and yields the
+        normalized RealtimeEvents. The compiled graph must be rooted at a LiveAgent (e.g.
+        an ``AudioAgent``); otherwise ``arealtime`` raises.
+        """
+        thread_id = init.get("thread_id") or str(uuid4())
+        config: dict[str, Any] = {
+            "thread_id": thread_id,
+            "user": user,
+            "user_id": user.get("user_id", "anonymous"),
+        }
+        # Map the client init frame onto RealtimeConfig field names so the live agent can
+        # apply per-session overrides (model/voice/modalities/vad/...). Only present keys
+        # are forwarded; absent ones fall back to the agent's build-time config.
+        realtime = self._realtime_overrides(init)
+        if realtime:
+            config["realtime"] = realtime
+        await self._save_thread(config, thread_id)
+        logger.info("Realtime graph session starting: thread_id=%s", thread_id)
+
+        async for event in self._graph.arealtime(input_queue, config):
+            yield event
+
+        logger.info("Realtime graph session completed: thread_id=%s", thread_id)
+
+    @staticmethod
+    def _realtime_overrides(init: dict[str, Any]) -> dict[str, Any]:
+        """Translate the client init frame into RealtimeConfig field overrides."""
+        # init key -> RealtimeConfig field name
+        mapping = {
+            "model": "model",
+            "voice": "voice",
+            "modalities": "response_modalities",
+            "vad": "vad",
+            "system_prompt": "system_instruction",
+            "tools_tags": "tools_tags",
+        }
+        overrides: dict[str, Any] = {}
+        for init_key, field in mapping.items():
+            value = init.get(init_key)
+            if value is not None:
+                overrides[field] = value
+        # Clients commonly send a single modality as a bare string ("AUDIO"); RealtimeConfig
+        # expects a list. Coerce so the shorthand doesn't trip the one-modality validator.
+        if isinstance(overrides.get("response_modalities"), str):
+            overrides["response_modalities"] = [overrides["response_modalities"]]
+        return overrides
 
     async def graph_details(self) -> GraphSchema:
         try:

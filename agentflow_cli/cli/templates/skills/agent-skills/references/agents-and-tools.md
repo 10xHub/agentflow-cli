@@ -113,6 +113,21 @@ agent = Agent(
 
 `RetryConfig` fields: `max_retries` (3), `initial_delay` (1.0 s), `max_delay` (30.0 s), `backoff_factor` (2.0).
 
+### Circuit breaker (opt-in)
+
+Complements retry + `fallback_models`. Once a `(provider, model)` target fails
+`circuit_breaker_threshold` times in a row, its circuit opens and that target is skipped (straight
+to the next fallback) for `circuit_breaker_reset_timeout` seconds, instead of being retried on every
+call. Configure on `RetryConfig`:
+
+- `circuit_breaker_enabled: bool = False`
+- `circuit_breaker_threshold: int = 5`
+- `circuit_breaker_reset_timeout: float = 30.0`
+
+```python
+RetryConfig(circuit_breaker_enabled=True, circuit_breaker_threshold=3, circuit_breaker_reset_timeout=60.0)
+```
+
 ### Fallback models
 
 When the primary model exhausts all retries, AgentFlow tries each fallback in order:
@@ -127,6 +142,23 @@ agent = Agent(
     ],
 )
 ```
+
+### LLM call timeout
+
+All LLM clients apply a default request timeout (600 s) so a stalled provider cannot hang a run
+indefinitely. Override globally via the `AGENTFLOW_LLM_TIMEOUT` env var (seconds), or
+programmatically:
+
+```python
+from agentflow.core.llm import (
+    set_default_llm_timeout, get_default_llm_timeout, DEFAULT_LLM_TIMEOUT_SECONDS,
+)
+
+set_default_llm_timeout(120.0)   # set
+set_default_llm_timeout(None)    # reset to default
+```
+
+An explicit per-client `timeout=` still takes precedence.
 
 ### Structured output
 

@@ -142,6 +142,39 @@ class RateLimitConfig:
         )
 
 
+@dataclass
+class WebSocketConfig:
+    """WebSocket connection limits parsed from agentflow.json.
+
+    Example::
+
+        "websocket": {
+            "max_connections": 100
+        }
+
+    ``max_connections`` caps the number of concurrent WebSocket connections this server
+    *process* accepts (realtime ``/v1/graph/live`` + streaming ``/v1/graph/ws``). ``None`` or
+    ``0`` means unlimited. It is a per-process limit, like the in-memory rate-limit backend;
+    run one limiter per worker. WebSocket handshakes are also subject to the global
+    ``rate_limit`` (they share the same bucket as REST requests), since rate-limit middleware
+    is HTTP-only and cannot see WebSocket scopes.
+    """
+
+    max_connections: int | None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "WebSocketConfig":
+        if not isinstance(data, dict):
+            raise ValueError("websocket must be an object")
+        raw = data.get("max_connections")
+        if raw in (None, 0):
+            return cls(max_connections=None)
+        max_connections = int(raw)
+        if max_connections < 0:
+            raise ValueError("websocket.max_connections must be a non-negative integer")
+        return cls(max_connections=max_connections)
+
+
 class GraphConfig:
     def __init__(self, path: str = "agentflow.json"):
         with Path(path).open() as f:
@@ -246,3 +279,14 @@ class GraphConfig:
         if not config.enabled:
             return None
         return config
+
+    @property
+    def websocket(self) -> "WebSocketConfig":
+        """WebSocket connection limits from agentflow.json (``websocket`` key).
+
+        Returns a config with ``max_connections=None`` (unlimited) when the key is absent.
+        """
+        data = self.data.get("websocket", None)
+        if data is None:
+            return WebSocketConfig(max_connections=None)
+        return WebSocketConfig.from_dict(data)

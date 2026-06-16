@@ -5,8 +5,9 @@ core framework see `agentflow/CLAUDE.md`; for the TS client, docs, or playground
 for the monorepo overview see the workspace-root `CLAUDE.md`.
 
 - Package name (PyPI): `10xscale-agentflow-cli`
-- Version: `0.3.2.9` (`pyproject.toml`) — note the CLI's own `CLI_VERSION` constant and
-  `agentflow_cli.__version__` both say `1.0.0`; these are out of sync (see Known Doc Drift).
+- Version: `0.3.2.9` (`pyproject.toml`). `CLI_VERSION` and `agentflow_cli.__version__` are
+  single-sourced from the installed distribution metadata (falling back to `pyproject.toml`), so
+  `agentflow version` reports `0.3.2.9` consistently. The previous `1.0.0` hardcode is gone.
 - Requires: Python >= 3.12 · Status: `4 - Beta`
 - Console entry point: `agentflow = agentflow_cli.cli.main:main`
 - Depends on the core framework: `10xscale-agentflow>=0.7.0`.
@@ -131,9 +132,10 @@ ruff check . && ruff format .
 
 ## Known doc drift (do not trust without checking)
 
-- **Version is inconsistent.** `pyproject.toml` = `0.3.2.9`, but `CLI_VERSION` constant and
-  `agentflow_cli.__version__` = `1.0.0`. `agentflow version` prints both the (hardcoded) CLI
-  version and the pyproject version, so it shows `1.0.0` and `0.3.2.9` side by side.
+- **Version is now single-sourced.** `CLI_VERSION` (and `agentflow_cli.__version__`, which aliases
+  it) resolve from installed distribution metadata, falling back to `pyproject.toml`. `agentflow
+  version` reports `0.3.2.9` for both the CLI and package lines. (The old hardcoded `1.0.0` drift is
+  resolved.)
 - **README shows `agentflow init --prod`** — that flag does not exist. `init` is interactive and
   only accepts `--path` / `--force`.
 - **`api`/`play` help text claims default host `0.0.0.0`** but `DEFAULT_HOST` is `127.0.0.1`.
