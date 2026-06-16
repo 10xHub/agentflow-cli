@@ -1,13 +1,22 @@
+import asyncio
 import contextlib
+import json
 from typing import Any
 
+from agentflow.core.realtime.base import ErrorEvent
+from agentflow.core.realtime.queue import LiveInputQueue
 from agentflow.core.state import StreamChunk, StreamEvent
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
 from injectq.integrations import InjectAPI
+from pydantic import ValidationError
 
-from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+from agentflow_cli.src.app.core.auth.permissions import (
+    RequirePermission,
+    ws_bearer_subprotocol,
+)
+from agentflow_cli.src.app.routers.graph.realtime_guard import realtime_connection_guard
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     FixGraphRequestSchema,
     GraphInputSchema,
@@ -20,6 +29,24 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
 from agentflow_cli.src.app.utils import success_response
 from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_responses
+
+
+# Grace period (seconds) to let the model's final response drain to the client after the
+# client side ends (``close`` control frame or disconnect). Closing the input queue makes
+# the live agent finish its turn and stop once the provider goes idle, so this normally
+# returns well within the window; it only bounds a provider that never goes idle.
+REALTIME_DRAIN_TIMEOUT = 30.0
+
+# Bound the upstream audio queue. WebSocket frames bypass RequestSizeLimitMiddleware (it is
+# HTTP-only), so the realtime path must guard memory itself. At ~50 input frames/sec a depth
+# of 1000 is ~20s of buffered audio; if the provider send stalls past that the oldest frames
+# are dropped (logged) instead of growing memory without bound -- the audio was already behind.
+REALTIME_INPUT_QUEUE_MAXSIZE = 1000
+
+# Hard cap on a single binary (PCM16) input frame. Normal client chunks are tens of KB
+# (16kHz PCM16 = 32KB/s); 1 MiB is ~30s of audio in one frame, far beyond any real chunk.
+# Oversized frames are dropped rather than enqueued (again, the middleware does not see them).
+REALTIME_MAX_FRAME_BYTES = 1024 * 1024
 
 
 router = APIRouter(
@@ -279,6 +306,7 @@ async def fix_graph(
 @router.websocket("/v1/graph/ws")
 async def websocket_graph(
     websocket: WebSocket,
+    _guard: None = Depends(realtime_connection_guard),
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(RequirePermission("graph", "stream")),
 ):
@@ -307,15 +335,18 @@ async def websocket_graph(
 
     Authentication
     --------------
-    Bearer token sent as the standard ``Authorization`` header during the
-    WebSocket handshake — identical to the HTTP stream route.
+    Bearer token via the ``Authorization`` header, the ``agentflow-bearer``
+    Sec-WebSocket-Protocol (browser-safe), or the ``?token=`` query fallback —
+    identical to the HTTP stream route. Handshakes are subject to the global rate
+    limit and the ``websocket.max_connections`` cap.
 
     Close codes
     -----------
     1000  normal closure (client disconnected cleanly)
     1011  unexpected server error
+    1013  rejected: rate limit or connection cap exceeded (try again later)
     """
-    await websocket.accept()
+    await websocket.accept(subprotocol=ws_bearer_subprotocol(websocket))
     logger.info("WebSocket graph connection accepted")
 
     try:
@@ -362,3 +393,156 @@ async def websocket_graph(
         logger.error("WebSocket graph connection error: %s", e)
         with contextlib.suppress(Exception):
             await websocket.close(code=1011)
+
+
+def _realtime_event_json(event: Any) -> str:
+    """Serialize a non-audio RealtimeEvent to a JSON text frame for the client."""
+    try:
+        payload = event.model_dump(mode="json")
+    except Exception:
+        payload = {"type": getattr(event, "type", "unknown")}
+    return json.dumps(payload)
+
+
+@router.websocket("/v1/graph/live")
+async def realtime_graph_ws(  # noqa: PLR0915
+    websocket: WebSocket,
+    _guard: None = Depends(realtime_connection_guard),
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(RequirePermission("graph", "stream")),
+):
+    """Realtime (audio-to-audio) WebSocket bridge over ``CompiledGraph.arealtime``.
+
+    Protocol (provider-neutral; the client never sees Gemini vs OpenAI)
+    ------------------------------------------------------------------
+    First frame  : JSON control  ``{model, thread_id?, voice?, modalities?, vad?, ...}``
+    Upstream     : binary frame   = PCM16 input audio
+                   JSON control   = ``{type:"activity_start"|"activity_end"|"text"|"close", ...}``
+    Downstream   : binary frame   = PCM16 model audio (``audio_delta``)
+                   JSON text frame = every other event (transcripts, turn_complete,
+                                     interrupted, tool_call, session/go_away, error)
+
+    Auth: ``RequirePermission("graph","stream")`` — bearer via the ``Authorization`` header,
+    the ``agentflow-bearer`` Sec-WebSocket-Protocol (browser-safe), or the ``?token=`` query
+    fallback. Handshakes are subject to the global rate limit and the
+    ``websocket.max_connections`` cap (rejected with close code 1013).
+    """
+    await websocket.accept(subprotocol=ws_bearer_subprotocol(websocket))
+    logger.info("Realtime WebSocket connection accepted")
+
+    try:
+        init = await websocket.receive_json()
+    except WebSocketDisconnect:
+        logger.info("Realtime client disconnected before init")
+        return
+    except Exception as e:
+        logger.warning("Realtime init frame invalid: %s", e)
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1003)
+        return
+
+    if not isinstance(init, dict):
+        logger.warning("Realtime init frame must be a JSON object, got %s", type(init).__name__)
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1003)
+        return
+
+    queue = LiveInputQueue(maxsize=REALTIME_INPUT_QUEUE_MAXSIZE)
+
+    async def upstream() -> None:
+        """Pump client frames into the input queue until close/disconnect."""
+        try:
+            while True:
+                message = await websocket.receive()
+                if message.get("type") == "websocket.disconnect":
+                    break
+                data = message.get("bytes")
+                if data is not None:
+                    if len(data) > REALTIME_MAX_FRAME_BYTES:
+                        logger.warning(
+                            "Realtime upstream: dropping oversized audio frame (%d bytes > %d)",
+                            len(data),
+                            REALTIME_MAX_FRAME_BYTES,
+                        )
+                        continue
+                    queue.send_audio(data)
+                    continue
+                text = message.get("text")
+                if text is None:
+                    continue
+                try:
+                    control = json.loads(text)
+                except json.JSONDecodeError:
+                    logger.warning("Realtime upstream: non-JSON text frame ignored")
+                    continue
+                ctype = control.get("type")
+                if ctype == "text":
+                    queue.send_text(control.get("text", ""))
+                elif ctype == "activity_start":
+                    queue.send_activity_start()
+                elif ctype == "activity_end":
+                    queue.send_activity_end()
+                elif ctype == "close":
+                    break
+        except WebSocketDisconnect:
+            logger.info("Realtime client disconnected (upstream)")
+        finally:
+            queue.close()
+
+    async def downstream() -> None:
+        """Stream normalized events back: audio as binary, everything else as JSON."""
+        try:
+            async for event in service.realtime_graph(queue, init, user):
+                if getattr(event, "type", None) == "audio_delta":
+                    await websocket.send_bytes(event.data)
+                else:
+                    await websocket.send_text(_realtime_event_json(event))
+        except (ValidationError, ValueError) as e:
+            # Bad session config from the init frame (e.g. an invalid ``modalities`` value)
+            # is a client error, not a server fault. Send a normalized, fatal error event
+            # so the client can show why instead of seeing an opaque 1011 close.
+            logger.warning("Realtime session config rejected: %s", e)
+            with contextlib.suppress(Exception):
+                await websocket.send_text(
+                    _realtime_event_json(
+                        ErrorEvent(code="invalid_config", message=str(e), fatal=True)
+                    )
+                )
+
+    up_task = asyncio.create_task(upstream())
+    down_task = asyncio.create_task(downstream())
+    try:
+        _done, pending = await asyncio.wait(
+            {up_task, down_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+
+        # If the client side finished first (sent ``close`` or disconnected) while the
+        # model is still responding, give downstream a bounded grace period to drain the
+        # session's final events instead of cutting them off. Closing the input queue ends
+        # the live agent's turn and stops it once the provider goes idle, so this returns
+        # promptly; on a real disconnect the next send fails fast and downstream ends.
+        if down_task in pending:
+            queue.close()
+            await asyncio.wait({down_task}, timeout=REALTIME_DRAIN_TIMEOUT)
+
+        # Cancel whatever is still running: downstream that overran the grace window, or
+        # upstream once the session ended.
+        for task in (up_task, down_task):
+            if not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
+
+        # asyncio.wait never re-raises; surface any failure from the finished task(s)
+        # (e.g. arealtime rejecting a non-live graph, or a provider/checkpointer error).
+        for task in (up_task, down_task):
+            if task.done() and not task.cancelled():
+                task.result()
+    except Exception as e:
+        logger.error("Realtime WebSocket error: %s", e)
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1011)
+    finally:
+        queue.close()
+        with contextlib.suppress(Exception):
+            await websocket.close()

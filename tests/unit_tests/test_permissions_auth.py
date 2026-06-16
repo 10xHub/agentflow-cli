@@ -9,9 +9,13 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 @pytest.fixture
 def mock_request():
-    """Create a mock FastAPI request."""
+    """Create a mock FastAPI request/connection."""
     request = MagicMock(spec=Request)
     request.path_params = {}
+    # _extract_credential reads these off the connection; use real containers so the
+    # Authorization-header / ?token= parsing works against the mock.
+    request.headers = {}
+    request.query_params = {}
     return request
 
 
@@ -118,7 +122,7 @@ class TestRequirePermissionCall:
         perm = RequirePermission("graph", "invoke")
 
         result = await perm(
-            mock_request, mock_response, mock_credential, mock_config, mock_auth_backend, mock_authz
+            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
         )
 
         assert result == {}
@@ -139,7 +143,7 @@ class TestRequirePermissionCall:
         perm = RequirePermission("graph", "invoke")
 
         result = await perm(
-            mock_request, mock_response, mock_credential, mock_config, mock_auth_backend, mock_authz
+            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
         )
 
         assert result == {"user_id": "test-user"}
@@ -162,7 +166,6 @@ class TestRequirePermissionCall:
             result = await perm(
                 mock_request,
                 mock_response,
-                mock_credential,
                 mock_config,
                 None,
                 MagicMock(authorize=AsyncMock(return_value=True)),
@@ -193,7 +196,6 @@ class TestRequirePermissionCall:
             await perm(
                 mock_request,
                 mock_response,
-                mock_credential,
                 mock_config,
                 mock_auth_backend,
                 mock_authz,
@@ -223,7 +225,6 @@ class TestRequirePermissionCall:
             result = await perm(
                 mock_request,
                 mock_response,
-                mock_credential,
                 mock_config,
                 mock_auth_backend,
                 mock_authz,
@@ -250,7 +251,7 @@ class TestRequirePermissionCall:
         perm = RequirePermission("graph", "invoke", extract_resource_id=custom_extractor)
 
         result = await perm(
-            mock_request, mock_response, mock_credential, mock_config, mock_auth_backend, mock_authz
+            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
         )
 
         # Verify authorize was called with the custom resource ID
@@ -357,7 +358,7 @@ class TestRequirePermissionIntegration:
         perm = RequirePermission("checkpointer", "read")
 
         result = await perm(
-            mock_request, mock_response, mock_credential, mock_config, mock_auth_backend, mock_authz
+            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
         )
 
         assert result == {"user_id": "user-123", "role": "admin"}
@@ -386,7 +387,7 @@ class TestRequirePermissionIntegration:
         perm = RequirePermission("graph", "invoke")
 
         result = await perm(
-            mock_request, mock_response, mock_credential, mock_config, mock_auth_backend, mock_authz
+            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
         )
 
         assert result == {}
