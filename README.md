@@ -1,95 +1,103 @@
-# AgentFlow CLI
 
-A professional Python API framework for building agent-based applications with FastAPI, state graph orchestration, and comprehensive CLI tools.
+# 10xScale Agentflow CLI
 
-## 📚 Documentation
+[![CI](https://github.com/10xHub/agentflow-cli/actions/workflows/ci.yaml/badge.svg)](https://github.com/10xHub/agentflow-cli/actions/workflows/ci.yaml)
+[![Release](https://github.com/10xHub/agentflow-cli/actions/workflows/release.yml/badge.svg)](https://github.com/10xHub/agentflow-cli/actions/workflows/release.yml)
 
-- **[CLI Guide](./docs/cli-guide.md)** - Complete command-line interface reference
-- **[Configuration Guide](./docs/configuration.md)** - All configuration options explained
-- **[Deployment Guide](./docs/deployment.md)** - Docker, Kubernetes, and cloud deployment
-- **[Authentication Guide](./docs/authentication.md)** - JWT and custom authentication
-- **[Rate Limiting Guide](./docs/rate-limiting.md)** - Memory, Redis, and custom rate-limit backends
-- **[ID Generation Guide](./docs/id-generation.md)** - Snowflake ID generation
-- **[Thread Name Generator Guide](./docs/thread-name-generator.md)** - Thread naming strategies
+[![PyPI](https://img.shields.io/pypi/v/10xscale-agentflow-cli?color=blue)](https://pypi.org/project/10xscale-agentflow-cli/)
+[![Python](https://img.shields.io/pypi/pyversions/10xscale-agentflow-cli)](https://pypi.org/project/10xscale-agentflow-cli/)
+[![License](https://img.shields.io/github/license/10xHub/agentflow-cli)](https://github.com/10xHub/agentflow-cli/blob/main/LICENSE)
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/10xHub/agentflow-cli/actions/workflows/ci.yaml)
+[![Tests](https://img.shields.io/badge/tests-871%20passed-brightgreen.svg)](https://github.com/10xHub/agentflow-cli/actions/workflows/ci.yaml)
+[![Status](https://img.shields.io/badge/status-beta-yellow.svg)](https://pypi.org/project/10xscale-agentflow-cli/)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-## Quick Start
+**10xScale Agentflow CLI** turns an Agentflow `CompiledGraph` into a production-grade FastAPI service, plus a Typer-based command line to scaffold, run, build, test, and evaluate it. You write a graph, point `agentflow.json` at it, and `agentflow api` serves it over REST + WebSocket with authentication, rate limiting, media handling, checkpointer/thread management, and a memory store API.
 
-### Installation
+> ### 📦 Part of the 10xScale Agentflow library
+>
+> This package (`10xscale-agentflow-cli`) is the **API server + CLI layer** of the larger
+> [**10xScale Agentflow**](https://github.com/10xHub/agentflow) framework. The core orchestration
+> engine — `StateGraph`, `Agent`, `ToolNode`, state, persistence, memory, and tools — lives in the
+> separate [`10xscale-agentflow`](https://pypi.org/project/10xscale-agentflow/) package. This CLI
+> builds on top of it to expose your agent graphs as a deployable service.
+>
+> - **Core framework:** [`10xscale-agentflow`](https://pypi.org/project/10xscale-agentflow/) · [source](https://github.com/10xHub/agentflow)
+> - **This package (API + CLI):** [`10xscale-agentflow-cli`](https://pypi.org/project/10xscale-agentflow-cli/)
+> - **TypeScript client:** [`@10xscale/agentflow-client`](https://www.npmjs.com/package/@10xscale/agentflow-client)
+> - **Docs:** [agentflow.10xscale.ai](https://agentflow.10xscale.ai/)
+
+---
+
+## ✨ Key Features
+
+- **🖥️ Professional CLI** - Scaffold, run, build, test, and evaluate agents from one command line
+- **⚡ FastAPI Backend** - Your compiled graph auto-served over REST + WebSocket, high-performance and async
+- **🔌 Config-Driven** - One `agentflow.json` wires agent, auth, checkpointer, store, Redis, and rate limits
+- **🔐 Authentication** - Built-in JWT auth, custom `BaseAuth` backends, and RBAC authorization
+- **🚦 Rate Limiting** - Sliding-window limits with memory, Redis, or custom backends
+- **🆔 Distributed IDs** - Snowflake ID generation for multi-node deployments
+- **🧵 Thread Management** - Conversation thread naming, listing, state, and message APIs
+- **🖼️ Multimodal & Media** - File upload/download endpoints and media handling for multimodal agents
+- **🎙️ Realtime Audio Bridge** - WebSocket endpoint for live audio-to-audio agents (Gemini Live)
+- **🐳 Docker & Kubernetes Ready** - Generate production Dockerfiles and compose files with one command
+- **🛡️ Production Hardening** - Error/log sanitization, request size limits, security headers, startup validation
+- **💉 Dependency Injection** - InjectQ for clean, testable dependency wiring
+
+---
+
+## Installation
+
+**Basic installation:**
 
 ```bash
 pip install 10xscale-agentflow-cli
 ```
 
-Redis rate limiting is optional. Install the Redis extra only when you configure
-`rate_limit.backend` as `redis`:
+Optional extras — install only what you configure:
 
 ```bash
-pip install "10xscale-agentflow-cli[redis]"
+pip install "10xscale-agentflow-cli[redis]"   # Redis rate-limit / cache backend
+pip install "10xscale-agentflow-cli[jwt]"     # JWT authentication
+pip install "10xscale-agentflow-cli[media]"   # Document text extraction (multimodal)
+pip install "10xscale-agentflow-cli[otel]"    # OpenTelemetry tracing
+pip install "10xscale-agentflow-cli[snowflakekit]"  # Snowflake ID generation
 ```
 
-JWT auth and document text extraction are optional too. Install only the extra
-you need:
+Requires **Python ≥ 3.12**. Depends on the core `10xscale-agentflow` framework.
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-pip install "10xscale-agentflow-cli[jwt]"
-pip install "10xscale-agentflow-cli[media]"
-```
-
-### Initialize a New Project
-
-```bash
-# Create project structure (interactive: prompts for dev vs production, auth, rate limiting)
+# 1. Scaffold a project (interactive: dev vs production, auth, rate limiting)
 agentflow init
-```
 
-### Start Development Server
-
-```bash
+# 2. Start the dev API server (127.0.0.1:8000)
 agentflow api
-```
 
-### Start API With Play
-
-```bash
+# 3. Or start the server and open the hosted playground
 agentflow play
-```
 
-### Generate Docker Files
-
-```bash
+# 4. Generate production Docker files
 agentflow build --docker-compose
 ```
 
-## Key Features
+---
 
-- ✅ **CLI Tools** - Professional command-line interface for scaffolding and deployment
-- ✅ **State Graph Orchestration** - Build complex agent workflows with LangGraph
-- ✅ **FastAPI Backend** - High-performance async web framework
-- ✅ **Authentication** - Built-in JWT auth and custom authentication support
-- ✅ **Rate Limiting** - Sliding-window limits with memory, Redis, and custom backends
-- ✅ **ID Generation** - Distributed Snowflake ID generation
-- ✅ **Thread Management** - Intelligent thread naming and conversation management
-- ✅ **Docker Ready** - Generate production-ready Docker files
-- ✅ **Dependency Injection** - InjectQ for clean dependency management
-- ✅ **Development Tools** - Hot-reload, pre-commit hooks, testing
+## 🖥️ CLI Commands
 
-## CLI Commands
-
-For detailed command documentation, see the [CLI Guide](./docs/cli-guide.md).
+For detailed command documentation, see the **[CLI Guide](./docs/cli-guide.md)**.
 
 ### `agentflow init`
 
-Initialize a new project with configuration and sample graph.
+Initialize a new project with configuration and a sample graph.
 
 ```bash
-# Basic initialization (interactive prompts choose dev vs production setup)
-agentflow init
-
-# Custom directory
-agentflow init --path ./my-project
-
-# Force overwrite existing files
-agentflow init --force
+agentflow init                  # interactive (chooses dev vs production setup)
+agentflow init --path ./my-app  # custom directory
+agentflow init --force          # overwrite existing files
 ```
 
 ### `agentflow api`
@@ -97,38 +105,21 @@ agentflow init --force
 Start the development API server.
 
 ```bash
-# Start with defaults (localhost:8000)
-agentflow api
-
-# Custom host and port
-agentflow api --host 127.0.0.1 --port 9000
-
-# Custom config file
-agentflow api --config production.json
-
-# Disable auto-reload
-agentflow api --no-reload
-
-# Verbose logging
-agentflow api --verbose
+agentflow api                              # defaults (127.0.0.1:8000)
+agentflow api --host 127.0.0.1 --port 9000 # custom host/port
+agentflow api --config production.json     # custom config file
+agentflow api --no-reload                  # disable auto-reload
+agentflow api --verbose                    # verbose logging
 ```
 
 ### `agentflow play`
 
-Start the development API server and open the hosted playground with your local backend URL preconfigured.
+Start the dev server and open the hosted playground with your local backend URL preconfigured.
 
 ```bash
-# Start with defaults and open the playground
 agentflow play
-
-# Custom host and port
 agentflow play --host 127.0.0.1 --port 9000
-
-# Custom config file
 agentflow play --config production.json
-
-# Disable auto-reload
-agentflow play --no-reload
 ```
 
 ### `agentflow build`
@@ -136,28 +127,42 @@ agentflow play --no-reload
 Generate production Docker files.
 
 ```bash
-# Generate Dockerfile
-agentflow build
-
-# Generate Dockerfile and docker-compose.yml
-agentflow build --docker-compose
-
-# Custom Python version and port
+agentflow build                            # Dockerfile
+agentflow build --docker-compose           # Dockerfile + docker-compose.yml
 agentflow build --python-version 3.12 --port 9000
-
-# Force overwrite
 agentflow build --force
+```
+
+### `agentflow eval` / `agentflow test`
+
+Run agent evaluations (discovers `*_eval.py` / `eval_*.py`, writes HTML + JSON to `eval_reports/`) and project tests (pytest).
+
+```bash
+agentflow eval --parallel --threshold 0.8
+agentflow test --coverage
+```
+
+### `agentflow skills`
+
+Install bundled coding-agent skills (Codex, Claude, GitHub Copilot) into your project so your AI assistant knows how to build with Agentflow.
+
+```bash
+agentflow skills --all          # install for every supported agent
+agentflow skills --agent claude # install for one
+agentflow skills --list         # show supported agents
 ```
 
 ### `agentflow version`
 
-Display version information.
+Display CLI and package version information.
 
 ```bash
 agentflow version
 ```
 
-## Configuration
+---
+
+## ⚙️ Configuration
 
 The configuration file (`agentflow.json`) defines your agent, authentication, and infrastructure settings:
 
@@ -170,7 +175,8 @@ The configuration file (`agentflow.json`) defines your agent, authentication, an
   "injectq": null,
   "store": null,
   "redis": null,
-  "thread_name_generator": null
+  "thread_name_generator": null,
+  "rate_limit": {}
 }
 ```
 
@@ -178,37 +184,30 @@ The configuration file (`agentflow.json`) defines your agent, authentication, an
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `agent` | string | Path to your compiled agent graph (required) |
+| `agent` | string | Path to your compiled agent graph, `"module:attribute"` (required) |
 | `env` | string | Path to environment variables file |
-| `auth` | null\|"jwt"\|object | Authentication configuration |
-| `checkpointer` | string\|null | Path to custom checkpointer |
-| `injectq` | string\|null | Path to InjectQ container |
-| `store` | string\|null | Path to data store |
-| `redis` | string\|null | Redis connection URL |
-| `rate_limit` | object\|null | Sliding-window rate limiting configuration |
-| `thread_name_generator` | string\|null | Path to custom thread name generator |
+| `auth` | null \| "jwt" \| object | Authentication configuration |
+| `authorization` | string \| null | Path to an `AuthorizationBackend` (RBAC / per-tool access) |
+| `checkpointer` | string \| null | Path to a custom checkpointer |
+| `injectq` | string \| null | Path to an InjectQ container |
+| `store` | string \| null | Path to a data store |
+| `redis` | string \| null | Redis connection URL |
+| `rate_limit` | object \| null | Sliding-window rate limiting configuration |
+| `thread_name_generator` | string \| null | Path to a custom thread name generator |
 
-See the [Configuration Guide](./docs/configuration.md) for complete details.
+See the **[Configuration Guide](./docs/configuration.md)** for complete details.
 
-## Authentication
+---
 
-AgentFlow supports multiple authentication strategies. See the [Authentication Guide](./docs/authentication.md) for complete details.
+## 🔐 Authentication
 
-### No Authentication
-
-```json
-{
-  "auth": null
-}
-```
+Agentflow supports multiple authentication strategies. See the **[Authentication Guide](./docs/authentication.md)** for details.
 
 ### JWT Authentication
 
 **agentflow.json:**
 ```json
-{
-  "auth": "jwt"
-}
+{ "auth": "jwt" }
 ```
 
 **.env:**
@@ -221,12 +220,7 @@ JWT_ALGORITHM=HS256
 
 **agentflow.json:**
 ```json
-{
-  "auth": {
-    "method": "custom",
-    "path": "auth.custom:MyAuthBackend"
-  }
-}
+{ "auth": { "method": "custom", "path": "auth.custom:MyAuthBackend" } }
 ```
 
 **auth/custom.py:**
@@ -235,51 +229,42 @@ from agentflow_cli import BaseAuth
 from fastapi import Response, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
+
 class MyAuthBackend(BaseAuth):
     def authenticate(
         self,
         res: Response,
-        credential: HTTPAuthorizationCredentials
+        credential: HTTPAuthorizationCredentials,
     ) -> dict[str, any] | None:
-        # Your authentication logic
         token = credential.credentials
         user = verify_token(token)
-
         if not user:
             raise HTTPException(401, "Invalid token")
-
-        return {
-            "user_id": user.id,
-            "username": user.username,
-            "email": user.email
-        }
+        return {"user_id": user.id, "username": user.username, "email": user.email}
 ```
 
-## ID Generation
+---
 
-AgentFlow includes Snowflake ID generation for distributed, time-sortable unique IDs.
+## 🆔 ID Generation
+
+Agentflow includes Snowflake ID generation for distributed, time-sortable unique IDs.
 
 ```bash
 pip install "10xscale-agentflow-cli[snowflakekit]"
 ```
 
-**Usage:**
 ```python
 from agentflow_cli import SnowFlakeIdGenerator
 
-# Initialize
 generator = SnowFlakeIdGenerator(
     snowflake_epoch=1704067200000,  # Jan 1, 2024
     snowflake_node_id=1,
-    snowflake_worker_id=1
+    snowflake_worker_id=1,
 )
-
-# Generate ID
-id = await generator.generate()
-print(f"Generated ID: {id}")
+new_id = await generator.generate()
 ```
 
-**Environment Configuration:**
+**Environment configuration:**
 ```bash
 SNOWFLAKE_EPOCH=1704067200000
 SNOWFLAKE_NODE_ID=1
@@ -289,9 +274,11 @@ SNOWFLAKE_NODE_BITS=5
 SNOWFLAKE_WORKER_BITS=8
 ```
 
-See the [ID Generation Guide](./docs/id-generation.md) for more details.
+See the **[ID Generation Guide](./docs/id-generation.md)** for more details.
 
-## Thread Name Generation
+---
+
+## 🧵 Thread Name Generation
 
 Generate human-friendly names for conversation threads.
 
@@ -300,18 +287,18 @@ from agentflow_cli.src.app.utils.thread_name_generator import AIThreadNameGenera
 
 generator = AIThreadNameGenerator()
 name = generator.generate_name()
-# Output: "thoughtful-dialogue", "exploring-ideas", etc.
+# "thoughtful-dialogue", "exploring-ideas", ...
 ```
 
-See the [Thread Name Generator Guide](./docs/thread-name-generator.md) for custom implementations.
+See the **[Thread Name Generator Guide](./docs/thread-name-generator.md)** for custom implementations.
 
-## Security
+---
 
-AgentFlow CLI provides enterprise-grade security features for production deployments.
+## 🛡️ Security
 
-### Security Features
+Agentflow CLI provides production-grade security features.
 
-- ✅ **Authentication** - Built-in JWT and custom authentication backends
+- ✅ **Authentication** - JWT and custom authentication backends
 - ✅ **Authorization** - Resource-based access control with extensible backends
 - ✅ **Request Limits** - DoS protection with configurable size limits (default 10MB)
 - ✅ **Error Sanitization** - Production-safe error messages preventing information disclosure
@@ -321,95 +308,25 @@ AgentFlow CLI provides enterprise-grade security features for production deploym
 
 ### Production Security Checklist
 
-Before deploying to production, ensure:
-
 ```bash
-# Required: Set production mode
-MODE=production
-
-# Required: Strong JWT secret (32+ characters)
-JWT_SECRET_KEY=<generate-with-secrets.token_urlsafe(32)>
-
-# Required: Disable debug mode
-IS_DEBUG=false
-
-# Required: Specific CORS origins (not *)
-ORIGINS=https://yourdomain.com
-
-# Required: Specific allowed hosts (not *)
-ALLOWED_HOST=yourdomain.com
-
-# Recommended: Disable API docs
-DOCS_PATH=
+MODE=production                  # production mode
+JWT_SECRET_KEY=<32+ chars>       # strong secret (secrets.token_urlsafe(32))
+IS_DEBUG=false                   # disable debug
+ORIGINS=https://yourdomain.com   # specific CORS origins (never *)
+ALLOWED_HOST=yourdomain.com      # specific allowed hosts (never *)
+DOCS_PATH=                       # recommended: disable API docs
 REDOCS_PATH=
-
-# Recommended: Configure request size limit
-MAX_REQUEST_SIZE=10485760  # 10MB default
+MAX_REQUEST_SIZE=10485760        # request size limit (10MB default)
 ```
 
-### Quick Security Setup
+For deployment hardening and authentication patterns, see the
+**[Deployment Guide](./docs/deployment.md)** and **[Authentication Guide](./docs/authentication.md)**.
 
-**1. Enable JWT Authentication:**
-```json
-{
-  "auth": "jwt"
-}
-```
+---
 
-**2. Implement Authorization:**
-```python
-# auth/rbac_backend.py
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+## 🐳 Deployment
 
-class RBACAuthorizationBackend(AuthorizationBackend):
-    async def authorize(self, user, resource, action, resource_id=None, **context):
-        role = user.get("role", "viewer")
-        # Implement your authorization logic
-        return role == "admin" or (role == "developer" and action == "read")
-```
-
-**3. Configure in agentflow.json:**
-```json
-{
-  "auth": "jwt",
-  "authorization": {
-    "path": "auth.rbac_backend:RBACAuthorizationBackend"
-  }
-}
-```
-
-### Security Validation
-
-AgentFlow automatically validates your configuration and warns about security issues:
-
-```
-⚠️  SECURITY WARNING: CORS ORIGINS='*' in production.
-   Set ORIGINS to specific domains.
-
-⚠️  SECURITY WARNING: DEBUG mode enabled in production!
-   Set IS_DEBUG=false
-```
-
-### Comprehensive Security Guide
-
-For detailed security documentation, threat model, best practices, and deployment guidelines, see:
-
-📖 **[SECURITY.md](./SECURITY.md)** - Complete Security Guide
-
-Topics covered:
-- Threat model and attack vectors
-- Authentication and authorization patterns
-- Production deployment checklist
-- Docker and Kubernetes security configurations
-- Security testing and monitoring
-- Incident response procedures
-- Vulnerability reporting
-
-## Deployment
-
-See the [Deployment Guide](./docs/deployment.md) for complete deployment instructions.
-
-### Docker Deployment
+See the **[Deployment Guide](./docs/deployment.md)** for full instructions.
 
 ```bash
 # Generate Docker files
@@ -422,137 +339,102 @@ docker compose up --build -d
 docker compose logs -f
 ```
 
-### Kubernetes
+Cloud targets covered in the guide: [AWS ECS](./docs/deployment.md#aws-ecs),
+[Google Cloud Run](./docs/deployment.md#google-cloud-run),
+[Azure Container Instances](./docs/deployment.md#azure-container-instances),
+[Kubernetes](./docs/deployment.md#kubernetes), and [Heroku](./docs/deployment.md#heroku).
 
-See [Deployment Guide - Kubernetes](./docs/deployment.md#kubernetes) for complete manifests.
+---
 
-### Cloud Platforms
-
-- [AWS ECS](./docs/deployment.md#aws-ecs)
-- [Google Cloud Run](./docs/deployment.md#google-cloud-run)
-- [Azure Container Instances](./docs/deployment.md#azure-container-instances)
-- [Heroku](./docs/deployment.md#heroku)
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 agentflow-cli/
 ├── agentflow_cli/          # Main package
-│   ├── __init__.py        # Package exports
-│   ├── cli/               # CLI commands
-│   │   ├── main.py       # CLI entry point
-│   │   └── commands/     # Command implementations
-│   └── src/              # Application source
-│       └── app/          # FastAPI application
-│           ├── main.py   # App entry point
-│           ├── core/     # Core functionality
-│           ├── routers/  # API routes
-│           └── utils/    # Utilities
-├── graph/                 # Agent graphs
-│   ├── __init__.py
-│   └── react.py          # Sample React agent
-├── docs/                  # Documentation
-├── tests/                 # Test suite
-├── agentflow.json        # Configuration
-├── pyproject.toml        # Project metadata
-└── README.md             # This file
+│   ├── __init__.py        # Package exports (BaseAuth, SnowFlakeIdGenerator, ThreadNameGenerator)
+│   ├── cli/               # Typer CLI: main.py + commands/ + templates/
+│   └── src/app/           # FastAPI application (main.py, loader.py, core/, routers/, utils/)
+├── docs/                   # Documentation
+├── tests/                  # Test suite
+├── agentflow.json          # Configuration
+├── pyproject.toml          # Project metadata
+└── README.md               # This file
 ```
 
-## Development
+---
 
-### Setup
+## 🔧 Development
 
 ```bash
-# Clone repository
+# Clone and set up
 git clone https://github.com/10xHub/agentflow-cli.git
 cd agentflow-cli
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install in development mode
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-
-# Install pre-commit hooks
 pre-commit install
-```
 
-### Testing
-
-```bash
-# Run all tests
-pytest
-
-# With coverage
+# Quality gate
+pytest                                # tests (coverage gate: 80%)
 pytest --cov=agentflow_cli --cov-report=html
-
-# Run specific test file
-pytest tests/test_cli.py -v
-```
-
-### Code Quality
-
-```bash
-# Format code
-ruff format .
-
-# Lint code
-ruff check .
-
-# Fix auto-fixable issues
-ruff check --fix .
+ruff check . && ruff format .         # lint + format
+pre-commit run --all-files            # full gate (ruff + bandit, pinned versions)
 ```
 
 ### Using the Makefile
 
 ```bash
-# Show available commands
-make help
-
-# Install development dependencies
-make dev-install
-
-# Run tests
-make test
-
-# Format and lint
-make format
-make lint
-
-# Build package
-make build
-
-# Clean build artifacts
-make clean
+make build     # build sdist + wheel
+make test      # run tests
+make test-cov  # run tests with coverage
+make publish   # upload to PyPI (maintainers)
+make clean     # remove build artifacts
 ```
 
-## Contributing
+### Releasing
 
-Contributions are welcome! Please follow these steps:
+Releases are cut by pushing a version tag that matches `pyproject.toml`. The
+[`release.yml`](./.github/workflows/release.yml) workflow then verifies the tag, builds the
+sdist + wheel, checks the distribution metadata, and creates a GitHub Release with auto-generated
+notes and the artifacts attached. PyPI publishing is manual (`make publish`).
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests and linting
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+```bash
+git tag v0.3.2.9 && git push origin v0.3.2.9
+```
 
-## License
+---
 
-MIT License - see LICENSE file for details.
+## 📄 License
 
-## Support
+MIT License - see [LICENSE](https://github.com/10xHub/agentflow-cli/blob/main/LICENSE) for details.
 
-- **Documentation:** [Complete Documentation](./docs/)
+---
+
+## 🔗 Links & Resources
+
+- **[Documentation](https://agentflow.10xscale.ai/)** - Full framework docs
+- **[Core framework (`10xscale-agentflow`)](https://github.com/10xHub/agentflow)** - The orchestration engine this CLI serves
+- **[This repository](https://github.com/10xHub/agentflow-cli)** - Source code and issues
+- **[PyPI Project](https://pypi.org/project/10xscale-agentflow-cli/)** - Package releases
+- **[Local docs](./docs/)** - CLI, configuration, deployment, auth, rate limiting, IDs, thread names
+
+---
+
+## 🙏 Contributing
+
+Contributions are welcome! Fork the repo, create a feature branch, run tests and linting, and open a
+Pull Request. See the [repository](https://github.com/10xHub/agentflow-cli) for issue reporting and
+guidelines.
+
+---
+
+## 💬 Support
+
+- **Documentation:** [agentflow.10xscale.ai](https://agentflow.10xscale.ai/) and [local docs](./docs/)
 - **Issues:** [GitHub Issues](https://github.com/10xHub/agentflow-cli/issues)
 - **Repository:** [GitHub](https://github.com/10xHub/agentflow-cli)
 
-## Credits
+---
 
 Developed by [10xScale](https://10xscale.ai) and maintained by the community.
-
----
 
 **Made with ❤️ for the AI agent development community**
