@@ -21,7 +21,8 @@ Use this when deciding where a change belongs or explaining how Agentflow packag
 | Sub-package | Key exports |
 |---|---|
 | `agentflow.core` | `StateGraph`, `Agent`, `ToolNode`, `AgentState`, `Message`, `StreamChunk` |
-| `agentflow.prebuilt.agent` | `ReactAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, `SwarmAgent`, `RAGAgent` |
+| `agentflow.prebuilt.agent` | `ReactAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, `SwarmAgent`, `RAGAgent`, `AudioAgent` (realtime voice) |
+| `agentflow.core.realtime` | `LiveInputQueue`, `RealtimeConfig`, `RealtimeEvent` (Gemini Live audio-to-audio) |
 | `agentflow.prebuilt.tools` | `fetch_url`, `safe_calculator`, `file_read`, `file_write`, `file_search`, `google_web_search`, `vertex_ai_search`, `memory_tool`, `create_handoff_tool` |
 | `agentflow.storage.checkpointer` | `InMemoryCheckpointer`, `PgCheckpointer` |
 | `agentflow.storage.store` | `QdrantStore`, `Mem0Store` |

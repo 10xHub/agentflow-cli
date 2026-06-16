@@ -21,6 +21,11 @@ Registered in https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/sr
 - `POST /v1/graph/stop`
 - `POST /v1/graph/setup`
 - `POST /v1/graph/fix`
+- `WS /v1/graph/live` — realtime audio bridge, exposed only when the configured graph is rooted at a
+  `LiveAgent`. First frame is a JSON control frame (`model`, `thread_id`, `voice`, ... override
+  build-time config); upstream binary = PCM16 input audio, JSON control = text/activity/close;
+  downstream binary = PCM16 model audio, JSON = transcripts/turn_complete/interrupted/tool_call/
+  error. See `realtime.md`.
 
 ## Thread / Checkpointer Routes
 

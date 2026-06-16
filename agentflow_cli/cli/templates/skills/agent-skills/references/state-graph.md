@@ -143,6 +143,17 @@ messages = result["messages"]
 
 `ainvoke()` is the async equivalent. Returns the full state dict.
 
+### Lifecycle / async context manager
+
+`CompiledGraph` supports `async with`; `aclose()` runs on exit even if the body raises, and is
+idempotent (a second call returns `{"status": "already_closed"}`).
+
+```python
+async with await build_and_compile_graph() as graph:
+    await graph.ainvoke(input_data)
+# aclose() runs automatically here
+```
+
 ---
 
 ## Streaming
@@ -159,6 +170,14 @@ for chunk in app.stream(
 ```
 
 `astream()` is the async equivalent. See `streaming.md` for full details on `StreamChunk` fields and `StreamEvent` values.
+
+### Realtime (audio) graphs
+
+A graph rooted at a `LiveAgent` is driven by `arealtime(input_queue, config=None, state=None)` (async
+generator of `RealtimeEvent`s) or the sync `realtime(...)` wrapper, not `invoke` / `stream`. The
+forcing rule is mutual: a graph with a `LiveAgent` must use `arealtime()` (`invoke` / `stream`
+raise), and `arealtime()` requires exactly one `LiveAgent` (ordinary graphs raise). See
+`realtime.md`.
 
 ---
 

@@ -37,6 +37,7 @@ Treat https://agentflow.10xscale.ai/ as the first source of truth for public pac
    - Context management, ID generation, and background tasks: `.github/skills/agentflow/references/context-id-background.md`
    - Provider internals and adapters: `.github/skills/agentflow/references/providers-and-adapters.md`
    - Prompt-injection and validation safety: `.github/skills/agentflow/references/security-and-validators.md`
+   - Realtime audio-to-audio voice agents (AudioAgent, Gemini Live, `arealtime`, WebSocket bridge): `.github/skills/agentflow/references/realtime.md`
 
    ### API/CLI SDK
    - CLI commands and generated project files: `.github/skills/agentflow/references/cli-commands.md`

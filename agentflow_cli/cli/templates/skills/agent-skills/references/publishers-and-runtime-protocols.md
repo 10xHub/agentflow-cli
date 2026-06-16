@@ -24,6 +24,13 @@ Implementations:
 
 Publishers receive structured events from graph/tool execution. Use them for tracing, monitoring, audit logs, and external streaming/event bus integrations.
 
+`ConsolePublisher` is a dev/debug, opt-in publisher (use a real transport in production). It writes
+to stdout by default; pass `ConsolePublisher({"use_logger": True})` to route events through the
+`agentflow.publisher` logger instead of stdout.
+
+Realtime adds an `Event.REALTIME` event source and a `ContentType.TRANSCRIPT` content type (see
+`realtime.md`).
+
 ## Runtime Adapters
 
 LLM adapters:

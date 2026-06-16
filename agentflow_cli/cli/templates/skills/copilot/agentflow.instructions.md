@@ -42,6 +42,7 @@ Compile graphs once at startup. Keep graph code storage-agnostic; wire dependenc
   - `SupervisorTeamAgent` — central supervisor routes to specialist worker agents
   - `SwarmAgent` — peer-to-peer agent handoff without a central supervisor
   - `RAGAgent` — retrieves documents from a vector store before each LLM call
+  - `AudioAgent` — realtime full-duplex voice agent (Gemini Live); needs the `[realtime]` extra and is driven by `arealtime()`, not `invoke`/`stream`
 - Persist conversation state with **checkpointers**. Use **stores** only for cross-thread memory.
 - Inject business services through **`InjectQ`**, not module-level globals.
 - Keep API/CLI graph modules storage-agnostic; wire dependencies via `agentflow.json`.
