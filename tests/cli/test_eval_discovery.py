@@ -157,6 +157,73 @@ class TestLoadConfeval:
         assert result is None
 
 
+# ── confeval.py discovery (independent of target) ───────────────────────────────
+
+
+class TestConfevalDiscovery:
+    """confeval.py is the global config; discovery must not depend on the target.
+
+    Regression: targeting a single eval file used to look for
+    `<file>/confeval.py`, which never exists, so files without a per-file
+    config silently fell back to built-in defaults instead of the global
+    confeval.py.
+    """
+
+    def test_search_dirs_walks_up_from_file(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        evals_dir = tmp_path / "evals"
+        sub = evals_dir / "sub"
+        sub.mkdir(parents=True)
+        target = sub / "weather_eval.py"
+        target.write_text("")
+        dirs = cmd._confeval_search_dirs(target, evals_dir)
+        # Parent of the file is searched first, walking up; the evals dir is included.
+        assert dirs[0] == sub.resolve()
+        assert evals_dir.resolve() in dirs
+
+    def test_search_dirs_includes_evals_dir_for_directory_target(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        evals_dir = tmp_path / "evals"
+        evals_dir.mkdir()
+        dirs = cmd._confeval_search_dirs(evals_dir, evals_dir)
+        assert evals_dir.resolve() in dirs
+
+    def test_resolve_confeval_finds_for_single_file_target(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        from agentflow.qa.evaluation import EvalConfig
+
+        evals_dir = tmp_path / "evals"
+        evals_dir.mkdir()
+        target_file = evals_dir / "weather_eval.py"
+        target_file.write_text("")
+        expected = EvalConfig()
+
+        # confeval.py lives in the evals dir, not alongside nothing under the file.
+        def fake_load(d: Path):
+            return expected if d.resolve() == evals_dir.resolve() else None
+
+        with patch.object(cmd, "_load_confeval", side_effect=fake_load):
+            cfg, path = cmd._resolve_confeval(target_file, evals_dir)
+
+        assert cfg is expected
+        assert path == evals_dir / "confeval.py"
+
+    def test_resolve_confeval_returns_none_when_absent(
+        self, tmp_path: Path, cmd: EvalCommand
+    ) -> None:
+        evals_dir = tmp_path / "evals"
+        evals_dir.mkdir()
+        target_file = evals_dir / "weather_eval.py"
+        target_file.write_text("")
+        with patch.object(cmd, "_load_confeval", return_value=None):
+            cfg, path = cmd._resolve_confeval(target_file, evals_dir)
+        assert cfg is None
+        assert path is None
+
+
 # ── _collect_from_file ────────────────────────────────────────────────────────
 
 
@@ -193,9 +260,11 @@ class TestCollectFromFile:
         ):
             result = cmd._collect_from_file(self._dummy_path(tmp_path), global_cfg)
 
-        _, _, used_config, _ = mock_make.call_args.args
+        used_config = mock_make.call_args.args[2]
+        used_source = mock_make.call_args.args[4]
         assert used_config is file_cfg
         assert used_config is not global_cfg
+        assert used_source == "per-file"
         assert result == fake_pending
 
     def test_file_config_used_when_no_global(self, tmp_path: Path, cmd: EvalCommand) -> None:
@@ -215,8 +284,10 @@ class TestCollectFromFile:
         ):
             result = cmd._collect_from_file(self._dummy_path(tmp_path), None)
 
-        _, _, used_config, _ = mock_make.call_args.args
+        used_config = mock_make.call_args.args[2]
+        used_source = mock_make.call_args.args[4]
         assert used_config is file_cfg
+        assert used_source == "per-file"
 
     def test_default_config_used_when_no_configs(self, tmp_path: Path, cmd: EvalCommand) -> None:
         from agentflow.qa.evaluation import EvalConfig
@@ -235,8 +306,10 @@ class TestCollectFromFile:
         ):
             result = cmd._collect_from_file(self._dummy_path(tmp_path), None)
 
-        _, _, used_config, _ = mock_make.call_args.args
+        used_config = mock_make.call_args.args[2]
+        used_source = mock_make.call_args.args[4]
         assert used_config is default_cfg
+        assert used_source == "built-in defaults"
 
     def test_no_entry_point_returns_empty_and_warns(
         self, tmp_path: Path, cmd: EvalCommand
@@ -267,8 +340,10 @@ class TestCollectFromFile:
         ):
             result = cmd._collect_from_file(self._dummy_path(tmp_path), global_cfg)
 
-        _, _, used_config, _ = mock_make.call_args.args
+        used_config = mock_make.call_args.args[2]
+        used_source = mock_make.call_args.args[4]
         assert used_config is global_cfg
+        assert used_source == "confeval.py"
         assert result == fake_pending
 
 

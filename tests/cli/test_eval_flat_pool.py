@@ -123,9 +123,11 @@ class TestConfEvalPriorityChain:
         ):
             cmd._collect_from_file(self._dummy_path(tmp_path), global_cfg)
 
-        _, _, used_config, _ = mock_make.call_args.args
+        used_config = mock_make.call_args.args[2]
+        used_source = mock_make.call_args.args[4]
         assert used_config is per_file_cfg
         assert used_config is not global_cfg
+        assert used_source == "per-file"
 
     def test_per_file_config_used_when_no_confeval(
         self, tmp_path: Path, cmd: EvalCommand
@@ -146,8 +148,10 @@ class TestConfEvalPriorityChain:
         ):
             cmd._collect_from_file(self._dummy_path(tmp_path), None)
 
-        _, _, used_config, _ = mock_make.call_args.args
+        used_config = mock_make.call_args.args[2]
+        used_source = mock_make.call_args.args[4]
         assert used_config is per_file_cfg
+        assert used_source == "per-file"
 
     def test_default_config_used_when_no_config_anywhere(
         self, tmp_path: Path, cmd: EvalCommand
@@ -168,5 +172,7 @@ class TestConfEvalPriorityChain:
         ):
             cmd._collect_from_file(self._dummy_path(tmp_path), None)
 
-        _, _, used_config, _ = mock_make.call_args.args
+        used_config = mock_make.call_args.args[2]
+        used_source = mock_make.call_args.args[4]
         assert used_config is default_cfg
+        assert used_source == "built-in defaults"

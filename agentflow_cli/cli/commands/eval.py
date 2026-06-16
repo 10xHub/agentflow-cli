@@ -43,6 +43,7 @@ class _PendingCase:
     file_name: str
     eval_set_id: str
     eval_set_name: str
+    config_source: str = ""  # where config came from: per-file / confeval.py / defaults
 
 
 @dataclass
@@ -180,6 +181,50 @@ class EvalCommand(BaseCommand):
         )
         return None
 
+    def _confeval_search_dirs(self, target_path: Path, evals_dir: Path) -> list[Path]:
+        """Directories to search for a global confeval.py, nearest-first.
+
+        confeval.py is the GLOBAL criteria config, so its discovery must not
+        depend on what the user targets. Walk up from the target (its parent
+        when the target is a file) toward the current working directory, then
+        append the configured evals directory. This way evals/confeval.py is
+        found whether the user runs the whole evals/ dir, a subfolder, or a
+        single file inside it.
+        """
+        start = target_path.parent if target_path.is_file() else target_path
+        try:
+            cur = start.resolve()
+            cwd = Path.cwd().resolve()
+        except OSError:
+            return [evals_dir]
+
+        dirs: list[Path] = []
+        while True:
+            dirs.append(cur)
+            if cur in (cwd, cur.parent):
+                break
+            cur = cur.parent
+
+        ev = evals_dir.resolve()
+        if ev not in dirs:
+            dirs.append(ev)
+        return dirs
+
+    def _resolve_confeval(
+        self, target_path: Path, evals_dir: Path
+    ) -> tuple[EvalConfig | None, Path | None]:
+        """Find and load the nearest global confeval.py.
+
+        Returns (config, path_to_confeval) for the first directory that yields a
+        usable confeval.py, or (None, None) when none is found so callers fall
+        back to per-file config and then the built-in defaults.
+        """
+        for d in self._confeval_search_dirs(target_path, evals_dir):
+            cfg = self._load_confeval(d)
+            if cfg is not None:
+                return cfg, d / "confeval.py"
+        return None, None
+
     def _collect_eval_functions(self, mod: Any) -> tuple[list[tuple[str, Any]], Any]:
         """Pytest-style discovery: functions annotated -> EvalSet are evals, ->
         EvalConfig is config."""
@@ -254,9 +299,8 @@ class EvalCommand(BaseCommand):
                 file_config = mod.get_eval_config()
             elif hasattr(mod, "EVAL_CONFIG"):
                 file_config = mod.EVAL_CONFIG
-            # Priority: per-file > confeval > defaults
-            config = file_config or global_config or self._default_config()
-            return self._make_pending(mod, mod.get_eval_set(), config, file_name)
+            config, source = self._resolve_case_config(file_config, global_config)
+            return self._make_pending(mod, mod.get_eval_set(), config, file_name, source)
 
         # pytest-style discovery
         eval_pairs, discovered_config = self._collect_eval_functions(mod)
@@ -268,15 +312,29 @@ class EvalCommand(BaseCommand):
                 if hasattr(mod, "EVAL_CONFIG")
                 else None
             )
-            # Priority: per-file > confeval > defaults
-            config = file_config or global_config or self._default_config()
+            config, source = self._resolve_case_config(file_config, global_config)
             pending: list[_PendingCase] = []
             for _, es in eval_pairs:
-                pending.extend(self._make_pending(mod, es, config, file_name))
+                pending.extend(self._make_pending(mod, es, config, file_name, source))
             return pending
 
         self.output.warning(f"Skipping {file_name} — no eval entry point found.")
         return []
+
+    def _resolve_case_config(
+        self, file_config: EvalConfig | None, global_config: EvalConfig | None
+    ) -> tuple[EvalConfig, str]:
+        """Resolve the config for a file and label its source.
+
+        Priority (highest first): per-file get_eval_config()/EVAL_CONFIG, then the
+        global confeval.py, then the built-in defaults. The returned label is shown
+        in the criteria block so users can see which level each file resolved to.
+        """
+        if file_config is not None:
+            return file_config, "per-file"
+        if global_config is not None:
+            return global_config, "confeval.py"
+        return self._default_config(), "built-in defaults"
 
     def _collect_simulations(
         self, mod: Any, scenarios: list[Any], file_name: str
@@ -321,7 +379,12 @@ class EvalCommand(BaseCommand):
         ]
 
     def _make_pending(
-        self, mod: Any, eval_set: Any, config: EvalConfig, file_name: str
+        self,
+        mod: Any,
+        eval_set: Any,
+        config: EvalConfig,
+        file_name: str,
+        config_source: str = "",
     ) -> list[_PendingCase]:
         graph = getattr(mod, "app", None) or self._load_agent_from_config()
         collector = TrajectoryCollector(capture_all_events=True)
@@ -334,6 +397,7 @@ class EvalCommand(BaseCommand):
                 file_name=file_name,
                 eval_set_id=eval_set.eval_set_id,
                 eval_set_name=eval_set.name,
+                config_source=config_source,
             )
             for c in eval_set.eval_cases
         ]
@@ -345,11 +409,16 @@ class EvalCommand(BaseCommand):
     def _print_criteria_block(
         self,
         confeval_config: EvalConfig | None,
-        target_path: Path,
+        confeval_path: Path | None,
     ) -> None:
-        """Print the active criteria and their source before any case runs."""
+        """Print the active global criteria and their source before any case runs.
+
+        This is the global fallback config (confeval.py, else built-in defaults)
+        applied to files without their own get_eval_config()/EVAL_CONFIG. Files
+        that define a per-file config override this for their own cases.
+        """
         if confeval_config is not None:
-            source = str(target_path / "confeval.py")
+            source = str(confeval_path) if confeval_path else "confeval.py"
             criteria = confeval_config.criteria
         else:
             source = "built-in defaults"
@@ -369,6 +438,86 @@ class EvalCommand(BaseCommand):
                 parts.append(f"samples={cfg.num_samples}")
             print(f"  {name:<40} {'  '.join(parts)}", flush=True)  # noqa: T201
         print("", flush=True)  # noqa: T201
+
+    def _criteria_rows(self, config: EvalConfig) -> list[tuple[str, str, dict[str, Any]]]:
+        """Return (name, human_summary, machine_dict) for each active criterion."""
+        criteria = config.criteria
+        rows: list[tuple[str, str, dict[str, Any]]] = []
+        for name in type(criteria).model_fields:
+            cfg = getattr(criteria, name)
+            if cfg is None:
+                continue
+            match_type = getattr(getattr(cfg, "match_type", None), "value", None)
+            parts = [f"threshold={cfg.threshold}"]
+            detail: dict[str, Any] = {"threshold": cfg.threshold}
+            if match_type:
+                parts.append(match_type)
+                detail["match_type"] = match_type
+            if cfg.judge_model:
+                parts.append(f"judge={cfg.judge_model}")
+                detail["judge_model"] = cfg.judge_model
+            if cfg.num_samples and cfg.num_samples != 1:
+                parts.append(f"samples={cfg.num_samples}")
+                detail["num_samples"] = cfg.num_samples
+            rows.append((name, "  ".join(parts), detail))
+        return rows
+
+    def _criteria_by_file(
+        self, pending: list[_PendingCase | _PendingSimulation]
+    ) -> dict[str, dict[str, Any]]:
+        """Map each file to its resolved criteria source and active criteria.
+
+        Used both for the per-file console block and the merged report metadata so
+        a single combined run still records which criteria applied to which file.
+        """
+        out: dict[str, dict[str, Any]] = {}
+        for pc in pending:
+            if pc.file_name in out:
+                continue
+            if isinstance(pc, _PendingCase):
+                rows = self._criteria_rows(pc.config)
+                out[pc.file_name] = {
+                    "source": pc.config_source,
+                    "criteria": {name: detail for name, _, detail in rows},
+                }
+            elif isinstance(pc, _PendingSimulation):
+                out[pc.file_name] = {"source": "user-simulator goals", "criteria": {}}
+        return out
+
+    def _print_criteria_per_file(
+        self,
+        pending: list[_PendingCase | _PendingSimulation],
+        confeval_path: Path | None,
+    ) -> None:
+        """Print the criteria each file resolved to, before any case runs.
+
+        Unlike the single global block, this shows per-file criteria so a combined
+        run makes clear that each file is evaluated against its own config
+        (per-file > confeval.py > built-in defaults).
+        """
+        seen: set[str] = set()
+        for pc in pending:
+            if pc.file_name in seen:
+                continue
+            seen.add(pc.file_name)
+
+            if isinstance(pc, _PendingSimulation):
+                print(  # noqa: T201
+                    f"Criteria  {pc.file_name}  (source: user-simulator goals)", flush=True
+                )
+                print("", flush=True)  # noqa: T201
+                continue
+
+            source = pc.config_source
+            if source == "confeval.py" and confeval_path:
+                source = str(confeval_path)
+            print(f"Criteria  {pc.file_name}  (source: {source})", flush=True)  # noqa: T201
+            rows = self._criteria_rows(pc.config)
+            if not rows:
+                print("  (no active criteria)", flush=True)  # noqa: T201
+            for name, summary, _ in rows:
+                print(f"  {name:<40} {summary}", flush=True)  # noqa: T201
+            print("", flush=True)  # noqa: T201
 
     # ------------------------------------------------------------------
     # Progress printing
@@ -627,8 +776,12 @@ class EvalCommand(BaseCommand):
                 )
                 return 1
 
-        # 4. Load confeval.py → global criteria config (None if not found)
-        confeval_config = self._load_confeval(target_path)
+        # 4. Load confeval.py → global criteria config (None if not found).
+        #    confeval.py is the GLOBAL config: discover it independently of the
+        #    target so it applies whether the user evaluates the whole evals/
+        #    directory, a subfolder, or a single file inside it.
+        evals_dir = Path.cwd() / json_directory
+        confeval_config, confeval_path = self._resolve_confeval(target_path, evals_dir)
 
         # 5. Discover files
         files = self._discover(target_path)
@@ -637,7 +790,7 @@ class EvalCommand(BaseCommand):
             return 1
 
         # 6. Collect all pending cases across every file
-        pending: list[_PendingCase] = []
+        pending: list[_PendingCase | _PendingSimulation] = []
         for f in files:
             try:
                 cases = self._collect_from_file(f, confeval_config)
@@ -666,8 +819,8 @@ class EvalCommand(BaseCommand):
             f"Found {', '.join(parts)} across {n_files} file(s) in {target_path}",
         )
 
-        # 7. Print criteria block so users know what is being evaluated
-        self._print_criteria_block(confeval_config, target_path)
+        # 7. Print per-file criteria so users see which config each file resolved to
+        self._print_criteria_per_file(pending, confeval_path)
 
         # 8. Run all cases under a single asyncio event loop
         quads = asyncio.run(self._run_flat_pool(pending, effective_concurrency, effective_parallel))
@@ -701,6 +854,12 @@ class EvalCommand(BaseCommand):
 
         # 8. Merge into a single report
         merged = self._merge_reports(reports, base_config=confeval_config or self._default_config())
+
+        # Record per-file criteria in the merged report so a single combined run still
+        # captures which criteria applied to which file (the merged config_used alone
+        # collapses to one config and loses this).
+        if isinstance(getattr(merged, "metadata", None), dict):
+            merged.metadata["criteria_by_file"] = self._criteria_by_file(pending)
 
         # 9. Determine exit code
         if threshold is not None and merged.summary.pass_rate < threshold:

@@ -467,6 +467,56 @@ def test_print_criteria_block_custom(cmd, capsys):
     assert "judge=gpt-4" in captured.out
 
 
+def _pending_case(file_name, config, source):
+    return _PendingCase(
+        case=MagicMock(),
+        evaluator=MagicMock(),
+        config=config,
+        file_name=file_name,
+        eval_set_id="id",
+        eval_set_name="name",
+        config_source=source,
+    )
+
+
+def test_print_criteria_per_file_shows_each_files_criteria(cmd, capsys):
+    tool_cfg = EvalConfig(
+        criteria=CriteriaConfig(tool_name_match=CriterionConfig.tool_name_match(threshold=0.6))
+    )
+    rouge_cfg = EvalConfig(
+        criteria=CriteriaConfig(rouge_match=CriterionConfig.rouge_match(threshold=0.8))
+    )
+    pending = [
+        _pending_case("eval_tool_agents.py", tool_cfg, "per-file"),
+        _pending_case("weather_agents_eval.py", rouge_cfg, "confeval.py"),
+    ]
+    cmd._print_criteria_per_file(pending, Path("evals/confeval.py"))
+    out = capsys.readouterr().out
+    # Each file is listed with its own criteria and resolved source.
+    assert "eval_tool_agents.py  (source: per-file)" in out
+    assert "tool_name_match" in out
+    assert "weather_agents_eval.py  (source: evals/confeval.py)" in out
+    assert "rouge_match" in out
+
+
+def test_criteria_by_file_maps_source_and_criteria(cmd):
+    tool_cfg = EvalConfig(
+        criteria=CriteriaConfig(tool_name_match=CriterionConfig.tool_name_match(threshold=0.6))
+    )
+    rouge_cfg = EvalConfig(
+        criteria=CriteriaConfig(rouge_match=CriterionConfig.rouge_match(threshold=0.8))
+    )
+    pending = [
+        _pending_case("eval_tool_agents.py", tool_cfg, "per-file"),
+        _pending_case("weather_agents_eval.py", rouge_cfg, "confeval.py"),
+    ]
+    by_file = cmd._criteria_by_file(pending)
+    assert by_file["eval_tool_agents.py"]["source"] == "per-file"
+    assert "tool_name_match" in by_file["eval_tool_agents.py"]["criteria"]
+    assert by_file["weather_agents_eval.py"]["source"] == "confeval.py"
+    assert by_file["weather_agents_eval.py"]["criteria"]["rouge_match"]["threshold"] == 0.8
+
+
 @pytest.mark.asyncio
 async def test_run_flat_pool_simulation_no_criterion(cmd):
     from agentflow.qa.evaluation.token_usage import TokenUsage
