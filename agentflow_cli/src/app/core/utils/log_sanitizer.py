@@ -5,6 +5,7 @@ This module provides utilities to sanitize sensitive data before logging,
 preventing tokens, passwords, and other credentials from appearing in logs.
 """
 
+import logging
 import re
 from typing import Any
 
@@ -154,11 +155,14 @@ def sanitize_log_message(message: str, *args: Any, **kwargs: Any) -> tuple[str, 
     return message, sanitized_args, sanitized_kwargs
 
 
-class SanitizingFormatter:
+class SanitizingFormatter(logging.Formatter):
     """
-    A mixin or wrapper for log formatters that sanitizes sensitive data.
+    A wrapper for log formatters that sanitizes sensitive data.
 
-    This can be used to wrap existing formatters to add sanitization.
+    This can be used to wrap existing formatters to add sanitization. It is a
+    proper ``logging.Formatter`` subclass so it can be passed to
+    ``Handler.setFormatter`` without type errors, while delegating the actual
+    formatting to the wrapped base formatter.
 
     Example:
         import logging
@@ -168,16 +172,17 @@ class SanitizingFormatter:
         handler.setFormatter(sanitizing_formatter)
     """
 
-    def __init__(self, base_formatter):
+    def __init__(self, base_formatter: logging.Formatter) -> None:
         """
         Initialize the sanitizing formatter.
 
         Args:
             base_formatter: The underlying formatter to wrap
         """
+        super().__init__()
         self.base_formatter = base_formatter
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         """
         Format the log record with sanitization.
 

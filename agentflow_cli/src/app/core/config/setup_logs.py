@@ -31,31 +31,6 @@ def init_logger(level: int | str = logging.INFO) -> None:
     fastapi_logger.handlers = gunicorn_error_logger.handlers
     fastapi_logger.setLevel(level)
 
-    # will print debug sql
-    logger_db_client = logging.getLogger("db_client")
-    logger_db_client.setLevel(level)
-    logger_db_client.addHandler(fastapi_logger)
-
-    logger_tortoise = logging.getLogger("tortoise")
-    logger_tortoise.setLevel(level)
-    logger_tortoise.addHandler(fastapi_logger)
-
-    # register custom logger here
-    injector_logging = logging.getLogger("injector")
-    injector_logging.setLevel(level)
-    injector_logging.addHandler(fastapi_logger)
-
-    # Register custom logger for coding
-    # TODO: Change the logger name to the appropriate name
-    backend_logging = logging.getLogger("BACKEND_BASE")
-    backend_logging.setLevel(level)
-    backend_logging.addHandler(fastapi_logger)
-
-    # Package logger
-    package_logger = logging.getLogger("PACKAGE")
-    package_logger.setLevel(level)
-    package_logger.addHandler(fastapi_logger)
-
     # Create console handler and set level to DEBUG
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level)
@@ -71,3 +46,10 @@ def init_logger(level: int | str = logging.INFO) -> None:
     console_handler.setFormatter(formatter)
     # Add console handler to logger
     fastapi_logger.addHandler(console_handler)
+
+    # Route application loggers through the same sanitizing console handler.
+    # NOTE: addHandler expects a logging.Handler, not a Logger.
+    for logger_name in ("db_client", "tortoise", "injector", "BACKEND_BASE", "PACKAGE"):
+        app_logger = logging.getLogger(logger_name)
+        app_logger.setLevel(level)
+        app_logger.addHandler(console_handler)
