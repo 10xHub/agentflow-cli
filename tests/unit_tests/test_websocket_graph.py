@@ -36,6 +36,7 @@ def _make_service(stream_chunks_per_call: list[list[str]]) -> MagicMock:
     Call count is tracked via service._stream_calls.
     """
     service = MagicMock()
+    service.is_live_agent = False  # turn-based graph: allowed on /v1/graph/ws
     calls: list = []
 
     async def _stream_generator(chunks):
@@ -252,7 +253,26 @@ class TestWebSocketGraphEndpoint:
             for t in sent
         )
 
-    # ── 10. invoke_type logged ────────────────────────────────────────────
+    # ── 10. Live agent rejected on the turn-based socket ──────────────────
+
+    async def test_live_agent_rejected_with_1008(self):
+        """A live (realtime) graph must be sent to /v1/graph/live, not /v1/graph/ws."""
+        ws = _make_websocket([_FRESH_REQUEST, WebSocketDisconnect()])
+        service = _make_service([[]])
+        service.is_live_agent = True
+
+        await websocket_graph(websocket=ws, service=service, user={})
+
+        # Rejected up front: error sent, socket closed 1008, stream never invoked.
+        ws.close.assert_called_once_with(code=1008)
+        assert len(service._stream_calls) == 0
+        sent = [c.args[0] for c in ws.send_text.call_args_list]
+        assert len(sent) == 1
+        payload = json.loads(sent[0])
+        assert payload["event"] == StreamEvent.ERROR
+        assert "/v1/graph/live" in payload["data"]["reason"]
+
+    # ── 11. invoke_type logged ────────────────────────────────────────────
 
     async def test_fresh_and_resume_both_reach_stream_graph(self):
         """Both fresh and resume go through stream_graph identically."""

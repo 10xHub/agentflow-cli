@@ -388,3 +388,177 @@ def test_setup_middleware_all():
         mock_setup_otel.assert_called_once_with(app, settings)
         mock_attach.assert_called_once_with(container, settings)
 
+
+
+# ── _setup_observability ──────────────────────────────────────────────────────
+
+
+def _obs_modules(*, setup_side_effect=None, existing=None, composite_cls=None):
+    """Fake agentflow.runtime.publisher modules used by _setup_observability."""
+
+    class FakeBasePublisher:
+        pass
+
+    class FakeCompositePublisher:
+        def __init__(self, publishers=None):
+            self.publishers = list(publishers or [])
+
+        def add_publisher(self, pub):
+            self.publishers.append(pub)
+
+    class FakeObservabilityLevel:
+        STANDARD = "standard"
+
+        def __init__(self, val):
+            if val not in ("standard", "spans", "full"):
+                raise ValueError(f"bad level {val}")
+            self.val = val
+
+        def __repr__(self):
+            return f"level:{self.val}"
+
+    class FakeOtelPublisher:
+        def __init__(self, level=None):
+            self.level = level
+
+    setup_observability = MagicMock(side_effect=setup_side_effect)
+
+    modules = {
+        "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
+        "agentflow.runtime.publisher.composite_publisher": MagicMock(
+            CompositePublisher=composite_cls or FakeCompositePublisher
+        ),
+        "agentflow.runtime.publisher.exporters": MagicMock(setup_observability=setup_observability),
+        "agentflow.runtime.publisher.otel_publisher": MagicMock(
+            ObservabilityLevel=FakeObservabilityLevel,
+            OtelPublisher=FakeOtelPublisher,
+        ),
+    }
+    return modules, setup_observability, FakeBasePublisher, FakeCompositePublisher
+
+
+def _graph_config(observability):
+    gc = MagicMock()
+    gc.observability = observability
+    return gc
+
+
+def test_setup_observability_noop_when_container_none():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    # Should not raise when there is nothing to wire.
+    _setup_observability(None, _graph_config({"logfire": {"enabled": True}}))
+
+
+def test_setup_observability_noop_when_no_block():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    container = MagicMock()
+    _setup_observability(container, _graph_config(None))
+    container.bind_instance.assert_not_called()
+
+
+def test_setup_observability_noop_when_no_backend_enabled():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    container = MagicMock()
+    cfg = {"logfire": {"enabled": False}, "langsmith": {"enabled": False}}
+    _setup_observability(container, _graph_config(cfg))
+    container.bind_instance.assert_not_called()
+
+
+def test_setup_observability_binds_when_none_existing():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    modules, setup_obs, _base, _comp = _obs_modules()
+    cfg = {"level": "standard", "logfire": {"enabled": True, "service_name": "svc"}}
+    container = MagicMock()
+    container.try_get.return_value = None
+
+    with patch.dict(sys.modules, modules):
+        _setup_observability(container, _graph_config(cfg))
+
+    # provider config invoked in graph=None (provider-only) mode
+    setup_obs.assert_called_once()
+    assert setup_obs.call_args[0][0] is None
+    assert setup_obs.call_args[0][1] == cfg
+    container.bind_instance.assert_called_once()
+
+
+def test_setup_observability_adds_to_existing_composite():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    modules, _setup_obs, _base, comp_cls = _obs_modules()
+    existing = comp_cls()
+    cfg = {"langsmith": {"enabled": True, "project": "p"}}
+    container = MagicMock()
+    container.try_get.return_value = existing
+
+    with patch.dict(sys.modules, modules):
+        _setup_observability(container, _graph_config(cfg))
+
+    assert len(existing.publishers) == 1
+    container.bind_instance.assert_not_called()
+
+
+def test_setup_observability_wraps_single_existing():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    modules, _setup_obs, _base, _comp = _obs_modules()
+
+    class SinglePublisher:
+        pass
+
+    cfg = {"logfire": {"enabled": True}}
+    container = MagicMock()
+    container.try_get.return_value = SinglePublisher()
+
+    with patch.dict(sys.modules, modules):
+        _setup_observability(container, _graph_config(cfg))
+
+    container.bind_instance.assert_called_once()
+
+
+def test_setup_observability_skips_on_value_error():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    # setup_observability raising ValueError (e.g. LangSmith key missing) must
+    # not crash startup and must not bind a publisher.
+    modules, _setup_obs, _base, _comp = _obs_modules(
+        setup_side_effect=ValueError("LANGSMITH_API_KEY not set")
+    )
+    cfg = {"langsmith": {"enabled": True}}
+    container = MagicMock()
+    container.try_get.return_value = None
+
+    with patch.dict(sys.modules, modules):
+        _setup_observability(container, _graph_config(cfg))
+
+    container.bind_instance.assert_not_called()
+
+
+def test_setup_observability_import_error_warns():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    cfg = {"logfire": {"enabled": True}}
+    container = MagicMock()
+
+    with patch.dict(sys.modules, {"agentflow.runtime.publisher.base_publisher": None}):
+        _setup_observability(container, _graph_config(cfg))
+
+    container.bind_instance.assert_not_called()
+
+
+def test_setup_observability_invalid_level_falls_back():
+    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+
+    modules, _setup_obs, _base, _comp = _obs_modules()
+    cfg = {"level": "bogus", "logfire": {"enabled": True}}
+    container = MagicMock()
+    container.try_get.return_value = None
+
+    with patch.dict(sys.modules, modules):
+        _setup_observability(container, _graph_config(cfg))
+
+    # Falls back to STANDARD and still binds.
+    container.bind_instance.assert_called_once()

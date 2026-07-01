@@ -343,11 +343,31 @@ async def websocket_graph(
     Close codes
     -----------
     1000  normal closure (client disconnected cleanly)
+    1008  rejected: this graph is a live (realtime) agent — use ``/v1/graph/live``
     1011  unexpected server error
     1013  rejected: rate limit or connection cap exceeded (try again later)
     """
     await websocket.accept(subprotocol=ws_bearer_subprotocol(websocket))
     logger.info("WebSocket graph connection accepted")
+
+    # Wrong agent type for this endpoint: a live (realtime) graph cannot be driven over
+    # the turn-based stream socket. Reject up front with a clear error instead of failing
+    # mid-run when the graph refuses invoke/stream.
+    if service.is_live_agent:
+        logger.warning("Rejected /v1/graph/ws connection: graph is a live agent")
+        with contextlib.suppress(Exception):
+            await websocket.send_text(
+                StreamChunk(
+                    event=StreamEvent.ERROR,
+                    data={
+                        "reason": "This graph is a live (realtime) agent; connect to "
+                        "/v1/graph/live instead of /v1/graph/ws.",
+                    },
+                ).model_dump_json()
+            )
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1008)
+        return
 
     try:
         while True:
@@ -426,10 +446,31 @@ async def realtime_graph_ws(  # noqa: PLR0915
     Auth: ``RequirePermission("graph","stream")`` — bearer via the ``Authorization`` header,
     the ``agentflow-bearer`` Sec-WebSocket-Protocol (browser-safe), or the ``?token=`` query
     fallback. Handshakes are subject to the global rate limit and the
-    ``websocket.max_connections`` cap (rejected with close code 1013).
+    ``websocket.max_connections`` cap (rejected with close code 1013). A non-live
+    (turn-based) graph is rejected up front with close code 1008 — use ``/v1/graph/ws``.
     """
     await websocket.accept(subprotocol=ws_bearer_subprotocol(websocket))
     logger.info("Realtime WebSocket connection accepted")
+
+    # Wrong agent type for this endpoint: the realtime bridge requires a graph rooted at a
+    # LiveAgent. Reject a turn-based graph up front with a normalized fatal error instead
+    # of accepting the init frame and failing later inside ``arealtime``.
+    if not service.is_live_agent:
+        logger.warning("Rejected /v1/graph/live connection: graph is not a live agent")
+        with contextlib.suppress(Exception):
+            await websocket.send_text(
+                _realtime_event_json(
+                    ErrorEvent(
+                        code="not_live",
+                        message="This graph is not a live (realtime) agent; use the "
+                        "turn-based /v1/graph/ws endpoint instead of /v1/graph/live.",
+                        fatal=True,
+                    )
+                )
+            )
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1008)
+        return
 
     try:
         init = await websocket.receive_json()

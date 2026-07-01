@@ -16,6 +16,7 @@ DEFAULT_CONFIG_JSON: Final[str] = json.dumps(
         "injectq": None,
         "store": None,
         "thread_name_generator": None,
+        "observability": None,
     },
     indent=2,
 )

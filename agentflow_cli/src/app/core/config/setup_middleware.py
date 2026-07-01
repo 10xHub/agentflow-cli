@@ -143,6 +143,80 @@ def _attach_otel_publisher(container: InjectQ, settings) -> None:
         )
 
 
+def _setup_observability(container: InjectQ | None, graph_config: GraphConfig | None) -> None:
+    """Wire Logfire/LangSmith from the ``observability`` block of ``agentflow.json``.
+
+    Configures the tracer provider(s)/exporters and binds an ``OtelPublisher``
+    into the DI container. This runs at app-construction time, before the graph
+    is loaded and compiled — the only reliable attach point, because InjectQ
+    freezes the ``BasePublisher`` binding at ``container.compile()`` (which runs
+    inside ``StateGraph.compile()``). The core ``StateGraph.compile()`` guard
+    preserves a publisher already present in the container instead of clobbering
+    it with ``None``.
+
+    Secrets stay in the environment (``LOGFIRE_TOKEN``, ``LANGSMITH_API_KEY``);
+    only non-secret settings live in ``agentflow.json``.
+    """
+    if container is None or graph_config is None:
+        return
+
+    obs_cfg = graph_config.observability
+    if not obs_cfg:
+        return
+
+    logfire_on = bool((obs_cfg.get("logfire") or {}).get("enabled", False))
+    langsmith_on = bool((obs_cfg.get("langsmith") or {}).get("enabled", False))
+    if not logfire_on and not langsmith_on:
+        return
+
+    try:
+        from agentflow.runtime.publisher.base_publisher import BasePublisher
+        from agentflow.runtime.publisher.composite_publisher import CompositePublisher
+        from agentflow.runtime.publisher.exporters import setup_observability
+        from agentflow.runtime.publisher.otel_publisher import ObservabilityLevel, OtelPublisher
+    except ImportError:
+        logger.warning(
+            "observability is configured but required packages are not installed. "
+            "Install with: pip install '10xscale-agentflow[observability]'"
+        )
+        return
+
+    # Configure the provider(s)/exporter(s) only. graph=None means no publisher
+    # is attached here; we bind it into the container ourselves below so it is
+    # in place before the graph compiles.
+    try:
+        setup_observability(None, obs_cfg)
+    except (ImportError, ValueError) as exc:
+        logger.warning("Observability setup skipped: %s", exc)
+        return
+
+    try:
+        level = ObservabilityLevel(str(obs_cfg.get("level", "standard")).lower())
+    except ValueError:
+        logger.warning(
+            "Invalid observability level=%r, falling back to 'standard'.",
+            obs_cfg.get("level"),
+        )
+        level = ObservabilityLevel.STANDARD
+
+    otel_publisher = OtelPublisher(level=level)
+    existing = container.try_get(BasePublisher)
+
+    if existing is None:
+        container.bind_instance(BasePublisher, otel_publisher)
+    elif isinstance(existing, CompositePublisher):
+        existing.add_publisher(otel_publisher)
+    else:
+        container.bind_instance(BasePublisher, CompositePublisher([existing, otel_publisher]))
+
+    logger.info(
+        "Observability enabled (logfire=%s, langsmith=%s, level=%s)",
+        logfire_on,
+        langsmith_on,
+        level,
+    )
+
+
 def _setup_otel(app: FastAPI, settings) -> None:
     """Configure OpenTelemetry tracing and instrument the FastAPI app.
 
@@ -217,6 +291,9 @@ def setup_middleware(
         _setup_otel(app, settings)
         if container is not None:
             _attach_otel_publisher(container, settings)
+
+    # Declarative Logfire/LangSmith wiring from agentflow.json (before compile).
+    _setup_observability(container, graph_config)
     # init cors
     app.add_middleware(
         CORSMiddleware,

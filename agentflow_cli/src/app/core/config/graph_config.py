@@ -214,6 +214,23 @@ class GraphConfig:
         return self.data.get("thread_name_generator", None)
 
     @property
+    def observability(self) -> dict | None:
+        """The declarative ``observability`` block (Logfire / LangSmith).
+
+        Shape mirrors ``agentflow.runtime.publisher.setup_observability``::
+
+            {
+              "level": "standard",
+              "logfire":   {"enabled": true, "service_name": "my-agent", ...},
+              "langsmith": {"enabled": true, "project": "my-agent", "endpoint": null}
+            }
+
+        Secrets (``LOGFIRE_TOKEN``, ``LANGSMITH_API_KEY``) stay in the
+        environment and are never read from here.
+        """
+        return self.data.get("observability", None)
+
+    @property
     def authorization_path(self) -> str | None:
         """
         Get the authorization backend path from configuration.

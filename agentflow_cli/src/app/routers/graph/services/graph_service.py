@@ -60,6 +60,25 @@ class GraphService:
         self._media_service = None
 
     @property
+    def is_live_agent(self) -> bool:
+        """Whether the configured graph is a realtime (live) agent.
+
+        A live graph must be driven over the ``/v1/graph/live`` realtime WebSocket; a
+        non-live (turn-based) graph must use ``/v1/graph/ws``. The WebSocket handlers use
+        this to reject the wrong agent type up front.
+
+        Prefers the public ``CompiledGraph.is_realtime()`` (newer core releases) and falls
+        back to the internal ``_find_live_nodes()`` probe on releases that predate it.
+        """
+        is_realtime = getattr(self._graph, "is_realtime", None)
+        if callable(is_realtime):
+            return bool(is_realtime())
+        find_live_nodes = getattr(self._graph, "_find_live_nodes", None)
+        if callable(find_live_nodes):
+            return bool(find_live_nodes())
+        return False
+
+    @property
     def media_service(self):
         if self._media_service is None:
             try:
