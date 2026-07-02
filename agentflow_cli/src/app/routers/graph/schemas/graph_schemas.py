@@ -118,6 +118,104 @@ class GraphSchema(BaseModel):
     edges: list[EdgeSchema] = Field(..., description="List of edges in the graph")
 
 
+class ToolSchema(BaseModel):
+    """Schema for a single tool exposed by a tool node."""
+
+    name: str = Field(..., description="Name of the tool")
+    description: str = Field("", description="Human-readable description of the tool")
+    source: Literal["local", "mcp", "remote"] = Field(
+        ...,
+        description=(
+            "Where the tool is defined: 'local' (a Python function on the node), "
+            "'mcp' (provided by a connected MCP server), or 'remote' "
+            "(client-side tool attached via /v1/graph/setup)."
+        ),
+    )
+    parameters: dict[str, Any] = Field(
+        default_factory=dict,
+        description="JSON Schema of the tool's parameters (OpenAI function-calling shape)",
+    )
+
+
+class ToolNodeSchema(BaseModel):
+    """Schema for a tool node and the tools it exposes."""
+
+    node_name: str = Field(..., description="Name of the tool node in the graph")
+    tool_count: int = Field(..., description="Number of tools exposed by this node")
+    tools: list[ToolSchema] = Field(
+        default_factory=list, description="Tools exposed by this node"
+    )
+
+
+class GraphToolsSchema(BaseModel):
+    """Schema for all tool nodes and their tools across the graph."""
+
+    node_count: int = Field(..., description="Number of tool nodes in the graph")
+    tool_count: int = Field(..., description="Total number of tools across all tool nodes")
+    nodes: list[ToolNodeSchema] = Field(
+        default_factory=list, description="Tool nodes and their tools"
+    )
+
+
+class ObsSpanSchema(BaseModel):
+    """A reconstructed span in the run trace."""
+
+    id: str = Field(..., description="Span id (stable within the run)")
+    name: str = Field(..., description="Display name, e.g. 'node: agent' or 'tool: get_weather'")
+    kind: Literal["root", "node", "llm", "tool"] = Field(..., description="Span kind")
+    parent: str | None = Field(None, description="Parent span id")
+    start_ms: float = Field(..., description="Start offset from run start, in ms")
+    duration_ms: float = Field(..., description="Duration in ms")
+    model: str | None = Field(None, description="LLM model (llm spans)")
+    input_tokens: int | None = Field(None, description="Prompt tokens (llm spans)")
+    output_tokens: int | None = Field(None, description="Completion tokens (llm spans)")
+
+
+class ObsEventSchema(BaseModel):
+    """A reconstructed event in the run trace."""
+
+    id: str = Field(..., description="Event id")
+    type: str = Field(..., description="Event type: message | updates | state | error | result")
+    node: str = Field("", description="Node the event is attributed to")
+    offset_ms: float = Field(..., description="Offset from run start, in ms")
+    summary: str = Field("", description="Human-readable one-line summary")
+
+
+class ObsTokenUsageSchema(BaseModel):
+    """Aggregated token usage for the run."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    reasoning_tokens: int = 0
+    total_tokens: int = 0
+
+
+class ObsRunSchema(BaseModel):
+    """A single reconstructed run trace."""
+
+    run_id: str
+    thread_id: str
+    status: str = Field(..., description="running | done | error | stopped")
+    started_at: float | None = None
+    finished_at: float | None = None
+    duration_ms: float = 0.0
+    spans: list[ObsSpanSchema] = Field(default_factory=list)
+    events: list[ObsEventSchema] = Field(default_factory=list)
+    usage: ObsTokenUsageSchema = Field(default_factory=ObsTokenUsageSchema)
+    llm_calls: int = 0
+    tool_calls: int = 0
+    iterations: int = 0
+
+
+class ObservabilitySchema(BaseModel):
+    """Observability payload for a thread: available runs + the selected run."""
+
+    thread_id: str
+    run_count: int = 0
+    run_ids: list[str] = Field(default_factory=list)
+    run: ObsRunSchema | None = Field(None, description="The requested/latest run, if any")
+
+
 class GraphStopSchema(BaseModel):
     """Schema for stopping graph execution."""
 

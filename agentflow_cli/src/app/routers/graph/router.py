@@ -9,6 +9,7 @@ from agentflow.core.state import StreamChunk, StreamEvent
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
+from injectq import InjectQ
 from injectq.integrations import InjectAPI
 from pydantic import ValidationError
 
@@ -24,6 +25,8 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphSchema,
     GraphSetupSchema,
     GraphStopSchema,
+    GraphToolsSchema,
+    ObservabilitySchema,
     WsGraphInputSchema,
 )
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
@@ -52,6 +55,26 @@ REALTIME_MAX_FRAME_BYTES = 1024 * 1024
 router = APIRouter(
     tags=["Graph"],
 )
+
+
+async def _bind_ws_container() -> None:
+    """Set the active InjectQ container for a WebSocket handshake.
+
+    ``setup_fastapi`` installs its container-activation via Starlette middleware,
+    which runs for HTTP scopes only — WebSocket handshakes bypass it, so every
+    ``InjectAPI`` dependency (here and inside ``RequirePermission``) would raise
+    "No InjectQ container in current request context". Declaring this dependency
+    *before* the ``InjectAPI`` ones makes FastAPI resolve it first, so the
+    ContextVar is set by the time the container-backed deps resolve.
+
+    Idempotent and cheap; harmless if the container is already active.
+    """
+    try:
+        from injectq.integrations.fastapi import _request_container
+
+        _request_container.set(InjectQ.get_instance())
+    except Exception:  # pragma: no cover - defensive: never block the handshake here
+        logger.exception("Failed to bind InjectQ container for WebSocket scope")
 
 
 @router.post(
@@ -139,6 +162,62 @@ async def graph_details(
     result: GraphSchema = await service.graph_details()
 
     logger.info("Graph invoke completed successfully")
+
+    return success_response(
+        result,
+        request,
+    )
+
+
+@router.get(
+    "/v1/graph/tools",
+    summary="List graph tools",
+    responses=generate_swagger_responses(GraphToolsSchema),
+    description=(
+        "List the tools exposed by every ToolNode in the graph, grouped by node. "
+        "Each tool is tagged with its source (local, mcp, or remote)."
+    ),
+    openapi_extra={},
+)
+async def graph_tools(
+    request: Request,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(RequirePermission("graph", "read")),
+):
+    """List the tools exposed by the graph's tool nodes."""
+    logger.info("Graph getting tools")
+
+    result: GraphToolsSchema = await service.get_tools()
+
+    logger.info("Graph tools listed successfully")
+
+    return success_response(
+        result,
+        request,
+    )
+
+
+@router.get(
+    "/v1/observability/{thread_id}",
+    summary="Get observability trace for a thread",
+    responses=generate_swagger_responses(ObservabilitySchema),
+    description=(
+        "Reconstruct a run trace (spans, events, token cost) for a thread from the "
+        "events its runs emitted. Returns the latest run by default, or ?run_id=..."
+    ),
+    openapi_extra={},
+)
+async def observability(
+    request: Request,
+    thread_id: str,
+    run_id: str | None = None,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(RequirePermission("graph", "read")),
+):
+    """Return the reconstructed observability trace for a thread."""
+    logger.info(f"Observability requested for thread {thread_id}")
+
+    result: ObservabilitySchema = await service.get_observability(thread_id, run_id)
 
     return success_response(
         result,
@@ -306,6 +385,7 @@ async def fix_graph(
 @router.websocket("/v1/graph/ws")
 async def websocket_graph(
     websocket: WebSocket,
+    _bind: None = Depends(_bind_ws_container),
     _guard: None = Depends(realtime_connection_guard),
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(RequirePermission("graph", "stream")),
@@ -428,6 +508,7 @@ def _realtime_event_json(event: Any) -> str:
 @router.websocket("/v1/graph/live")
 async def realtime_graph_ws(  # noqa: PLR0915
     websocket: WebSocket,
+    _bind: None = Depends(_bind_ws_container),
     _guard: None = Depends(realtime_connection_guard),
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(RequirePermission("graph", "stream")),

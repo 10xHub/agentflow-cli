@@ -311,9 +311,17 @@ async def attach_all_modules(
     # checkpointer = load_checkpointer(config.checkpointer_path)
     # container.bind_instance(BaseCheckpointer, checkpointer, allow_none=True)
 
-    # # Bind store instance if configured
-    # store = load_store(config.store_path)
-    # container.bind_instance(BaseStore, store, allow_none=True)
+    # Bind the store instance (if configured) so the /v1/store endpoints — which
+    # inject BaseStore via StoreService — can serve it. Without this the store
+    # router reports "Store is not configured" even when agentflow.json sets one.
+    store = load_store(config.store_path)
+    container.bind_instance(BaseStore, store, allow_none=True)
+
+    # Bind the in-memory telemetry store so the graph service can record run
+    # events and the /v1/observability endpoints can reconstruct traces.
+    from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
+
+    container.bind_instance(TelemetryStore, TelemetryStore())
 
     # load auth backend
     auth_config = config.auth_config()
