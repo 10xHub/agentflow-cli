@@ -319,9 +319,20 @@ async def attach_all_modules(
 
     # Bind the in-memory telemetry store so the graph service can record run
     # events and the /v1/observability endpoints can reconstruct traces.
+    #
+    # This is a dev-only convenience: it lets the playground show a trace without
+    # any external observability backend. It is NOT durable and NOT meant for
+    # production (use OTEL / a publisher there instead). So we only bind it
+    # outside production; in production the store stays unbound and the
+    # /v1/observability endpoints return a clean, empty "disabled" response.
+    from agentflow_cli.src.app.core.config.settings import get_settings
     from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
 
-    container.bind_instance(TelemetryStore, TelemetryStore())
+    if get_settings().MODE != "production":
+        container.bind_instance(TelemetryStore, TelemetryStore())
+        logger.info("Local in-memory telemetry store bound (dev mode)")
+    else:
+        logger.info("Production mode: local telemetry store disabled (use OTEL/publisher)")
 
     # load auth backend
     auth_config = config.auth_config()

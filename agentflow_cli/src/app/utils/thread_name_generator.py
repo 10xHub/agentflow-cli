@@ -281,14 +281,14 @@ class ThreadNameGenerator(ABC):
         """
 
 
-class DummyThreadNameGenerator(ThreadNameGenerator):
-    """Deprecated dummy thread name generator.
+class DefaultThreadNameGenerator(ThreadNameGenerator):
+    """Fallback thread name generator used when no custom generator is configured.
 
-    Use AIThreadNameGenerator instead.
+    Delegates to AIThreadNameGenerator.
     """
 
     async def generate_name(self, messages: list[str]) -> str:
-        """Generate a dummy thread name.
+        """Generate a thread name.
 
         Args:
             messages (list[str]): List of message text.
@@ -297,7 +297,7 @@ class DummyThreadNameGenerator(ThreadNameGenerator):
             str: A meaningful thread name.
 
         Example:
-            >>> DummyThreadNameGenerator().generate_name()
+            >>> DefaultThreadNameGenerator().generate_name()
             'thoughtful-dialogue'
         """
         generator = AIThreadNameGenerator()

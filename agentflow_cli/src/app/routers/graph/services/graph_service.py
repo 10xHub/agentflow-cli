@@ -22,18 +22,18 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphSchema,
     GraphSetupSchema,
     GraphToolsSchema,
+    ObservabilitySchema,
     ObsEventSchema,
     ObsRunSchema,
     ObsSpanSchema,
     ObsTokenUsageSchema,
-    ObservabilitySchema,
     ToolNodeSchema,
     ToolSchema,
 )
 from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
     preprocess_multimodal_messages,
 )
-from agentflow_cli.src.app.utils import DummyThreadNameGenerator, ThreadNameGenerator
+from agentflow_cli.src.app.utils import DefaultThreadNameGenerator, ThreadNameGenerator
 from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
 
 
@@ -114,8 +114,8 @@ class GraphService:
         Save the generated thread name to the database.
         """
         if not self.thread_name_generator:
-            thread_name = await DummyThreadNameGenerator().generate_name([])
-            logger.debug("No thread name generator configured, using dummy thread name generator.")
+            thread_name = await DefaultThreadNameGenerator().generate_name([])
+            logger.debug("No thread name generator configured, using default generator.")
             return thread_name
 
         thread_name = await self.thread_name_generator.generate_name(messages)
@@ -496,9 +496,7 @@ class GraphService:
             logger.info("Graph streaming completed successfully")
 
             if self.telemetry:
-                self.telemetry.finish_run(
-                    thread_id, run_id, datetime.now().timestamp(), run_status
-                )
+                self.telemetry.finish_run(thread_id, run_id, datetime.now().timestamp(), run_status)
 
             if meta["is_new_thread"] and self.config.thread_name_generator_path:
                 thread_name = await self._save_thread_name(
@@ -600,6 +598,11 @@ class GraphService:
         try:
             logger.info("Getting graph details")
             res = self._graph.generate_graph()
+            # Surface live/realtime capability so clients can route to /v1/graph/live
+            # and gate their UI. Not part of core's generate_graph() output.
+            info = res.get("info")
+            if isinstance(info, dict):
+                info["is_realtime"] = self.is_live_agent
             return GraphSchema(**res)
         except ValueError as e:
             logger.warning(f"Graph details validation failed: {e}")
@@ -729,9 +732,7 @@ class GraphService:
         # Fall back to the first record's timestamp if start wasn't stamped.
         first_ts = next((r.get("timestamp") for r in records if r.get("timestamp")), started)
         base = started or first_ts or 0.0
-        last_ts = max(
-            [r.get("timestamp") or base for r in records] + [trace.finished_at or base]
-        )
+        last_ts = max([r.get("timestamp") or base for r in records] + [trace.finished_at or base])
         total_ms = max(0.0, (last_ts - base) * 1000.0)
 
         def off_ms(ts: float | None) -> float:

@@ -496,6 +496,11 @@ def generate_dockerfile_content(
         "ENV PYTHONDONTWRITEBYTECODE=1",
         "ENV PYTHONUNBUFFERED=1",
         "ENV PYTHONPATH=/app",
+        "# Default to production; overridable via .env or runtime env.",
+        "# In production the local in-memory telemetry store stays disabled",
+        "# (use OTEL / a publisher for observability instead).",
+        "ENV MODE=production",
+        "ENV IS_DEBUG=false",
         "",
         "# Set work directory",
         "WORKDIR /app",
@@ -579,6 +584,9 @@ def generate_docker_compose_content(service_name: str, port: int) -> str:
             "    environment:",
             "      - PYTHONUNBUFFERED=1",
             "      - PYTHONDONTWRITEBYTECODE=1",
+            # Default to production; local in-memory telemetry stays disabled.
+            "      - MODE=production",
+            "      - IS_DEBUG=false",
             "    ports:",
             f"      - '{port}:{port}'",
             (

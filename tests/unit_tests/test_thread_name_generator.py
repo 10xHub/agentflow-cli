@@ -7,7 +7,7 @@ import pytest
 
 from agentflow_cli.src.app.utils.thread_name_generator import (
     AIThreadNameGenerator,
-    DummyThreadNameGenerator,
+    DefaultThreadNameGenerator,
 )
 
 
@@ -253,20 +253,20 @@ class TestAIThreadNameGeneratorGenerateName:
         assert len(names) >= 20
 
 
-class TestDummyThreadNameGenerator:
-    """Tests for DummyThreadNameGenerator."""
+class TestDefaultThreadNameGenerator:
+    """Tests for DefaultThreadNameGenerator."""
 
     @pytest.mark.asyncio
-    async def test_dummy_generate_name_returns_string(self):
-        """Test that DummyThreadNameGenerator.generate_name returns a string."""
-        generator = DummyThreadNameGenerator()
+    async def test_default_generate_name_returns_string(self):
+        """Test that DefaultThreadNameGenerator.generate_name returns a string."""
+        generator = DefaultThreadNameGenerator()
         name = await generator.generate_name([])
         assert isinstance(name, str)
 
     @pytest.mark.asyncio
-    async def test_dummy_generate_name_ignores_messages(self):
-        """Test that DummyThreadNameGenerator ignores input messages."""
-        generator = DummyThreadNameGenerator()
+    async def test_default_generate_name_ignores_messages(self):
+        """Test that DefaultThreadNameGenerator ignores input messages."""
+        generator = DefaultThreadNameGenerator()
 
         # Should work with any messages parameter
         name1 = await generator.generate_name([])
@@ -278,18 +278,18 @@ class TestDummyThreadNameGenerator:
         assert isinstance(name3, str)
 
     @pytest.mark.asyncio
-    async def test_dummy_generate_name_has_separator(self):
-        """Test that DummyThreadNameGenerator uses separator."""
-        generator = DummyThreadNameGenerator()
+    async def test_default_generate_name_has_separator(self):
+        """Test that DefaultThreadNameGenerator uses separator."""
+        generator = DefaultThreadNameGenerator()
         name = await generator.generate_name([])
 
         # Should have hyphen as separator
         assert "-" in name
 
     @pytest.mark.asyncio
-    async def test_dummy_generate_name_multiple_calls(self):
-        """Test that DummyThreadNameGenerator generates different names."""
-        generator = DummyThreadNameGenerator()
+    async def test_default_generate_name_multiple_calls(self):
+        """Test that DefaultThreadNameGenerator generates different names."""
+        generator = DefaultThreadNameGenerator()
 
         names = set()
         for _ in range(20):

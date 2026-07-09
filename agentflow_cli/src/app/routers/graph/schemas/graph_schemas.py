@@ -97,6 +97,10 @@ class GraphInfoSchema(BaseModel):
 
     node_count: int = Field(..., description="Number of nodes in the graph")
     edge_count: int = Field(..., description="Number of edges in the graph")
+    is_realtime: bool = Field(
+        False,
+        description="Whether the graph is a realtime/live agent (driven over /v1/graph/live)",
+    )
     checkpointer: bool = Field(..., description="Whether checkpointer is enabled")
     checkpointer_type: str | None = Field(None, description="Type of checkpointer if enabled")
     publisher: bool = Field(..., description="Whether publisher is enabled")
