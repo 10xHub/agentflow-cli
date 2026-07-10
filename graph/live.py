@@ -1,37 +1,76 @@
 """
-Dummy *live* (realtime audio) AgentFlow graph — no API key, no network at import.
+Real *live* (realtime audio-to-audio) AgentFlow graph — Gemini Live.
 
-Purpose: give the API + playground a graph the server recognises as a realtime
-agent. ``CompiledGraph._find_live_nodes()`` finds the ``LiveAgent`` node, so:
+This is a genuine realtime agent: ``LiveAgent`` with no ``realtime_client_factory``
+override, so it uses the framework's real ``GeminiLiveClient``. That client reads the
+API key lazily at connect time from ``GEMINI_API_KEY`` (or ``GOOGLE_API_KEY``) in the
+environment — set one in ``.env`` before opening a session.
 
-* ``GET /v1/graph`` reports ``info.is_realtime = true`` (added in graph_service),
-* the playground connection probe lights the "live" capability chip, and
-* the Live page shows the live-capable state instead of "not available".
+What the server does with this graph:
 
-This is a MOCK. ``LiveAgent`` is built with a Gemini Live model *name* only — the
-provider (google) is validated at construction time, but no key is needed until a
-session is actually opened. Constructing + compiling this graph touches no network.
+* ``CompiledGraph`` recognises the ``LiveAgent`` node, so ``GET /v1/graph`` reports
+  ``info.is_realtime = true`` and the playground lights the "live" capability chip.
+* A session runs over ``WS /v1/graph/live``: mic PCM in, model audio out, plus input
+  and output transcripts (both transcriptions enabled below).
 
-Note: a live graph is realtime-only. Turn-based endpoints (invoke/stream/ws) reject
-it by design, so the playground's Chat page won't work while this is the active
-agent. Point ``agent`` back at ``graph.react:app`` in agentflow.json for the
-turn-based demo. Actually opening a session over ``WS /v1/graph/live`` needs a real
-Gemini Live API key + provider.
+VAD is disabled (``VADConfig(enabled=False)``) so the session uses *manual* activity
+detection — the playground's push-to-talk (activity_start -> stream audio ->
+activity_end) is the supported flow. Leave VAD enabled instead if you want the model
+to auto-detect turn boundaries from a continuously open mic.
+
+Constructing/compiling this graph touches no network and needs no key; only opening a
+session does. A live graph is realtime-only: turn-based endpoints (invoke/stream/ws)
+reject it by design, so the playground's Chat page won't work while this is the active
+agent. Point ``agent`` back at ``graph.react:app`` in agentflow.json for turn-based.
+
+(A keyless, network-free stand-in for local UI testing lives in
+``graph.fake_realtime_client``; pass ``realtime_client_factory=FakeRealtimeClient`` to
+the ``LiveAgent`` below to use it instead of the real provider.)
 
 Exposed as ``app`` and referenced in agentflow.json as ``"agent": "graph.live:app"``.
 """
 
 from __future__ import annotations
 
+import os
+
 from agentflow.core.graph import StateGraph
+from agentflow.core.realtime.base import RealtimeConfig, VADConfig
 from agentflow.core.realtime.live_agent import LiveAgent
 
 
-# Gemini Live model. Only the provider ("google") is checked when the agent is
-# constructed; the API key is lazy (used by the provider client at connect time).
-LIVE_MODEL = "gemini-2.5-flash-live"
+# Gemini Live model. Live model availability is key/region specific: list yours with
+#   client.models.list()  -> keep those whose supported_actions include "bidiGenerateContent".
+# The default below is a native-audio dialog model verified to accept this graph's
+# push-to-talk (manual VAD) session. Override with LIVE_MODEL to use another (e.g.
+# "gemini-3.1-flash-live-preview"). detect_provider only needs the name to resolve to the
+# "google" provider; the exact id is validated by Gemini at connect.
+LIVE_MODEL = os.getenv("LIVE_MODEL", "gemini-2.5-flash-native-audio-latest")
 
-live_agent = LiveAgent(model=LIVE_MODEL)
+# A Gemini prebuilt voice (Puck, Charon, Kore, Fenrir, Aoede, Leda, Orus, Zephyr).
+LIVE_VOICE = os.getenv("LIVE_VOICE", "Puck")
+
+SYSTEM_PROMPT = (
+    "You are a friendly, concise voice assistant running inside the AgentFlow "
+    "playground. Keep spoken replies short and natural, and ask a brief clarifying "
+    "question when a request is ambiguous."
+)
+
+realtime_config = RealtimeConfig(
+    model=LIVE_MODEL,
+    response_modalities=["AUDIO"],
+    voice=LIVE_VOICE,
+    # Manual activity detection so push-to-talk (activity_start/activity_end) is valid.
+    vad=VADConfig(enabled=False),
+    input_audio_transcription=True,
+    output_audio_transcription=True,
+)
+
+live_agent = LiveAgent(
+    model=LIVE_MODEL,
+    realtime_config=realtime_config,
+    system_prompt=[{"role": "system", "content": SYSTEM_PROMPT}],
+)
 
 graph = StateGraph()
 graph.add_node("LIVE", live_agent)

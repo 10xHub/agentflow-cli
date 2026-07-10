@@ -1,5 +1,5 @@
 {
-  "agent": "graph.live:app",
+  "agent": "graph.react:app",
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "store": "graph.dummy_store:store",
   "env": ".env",
