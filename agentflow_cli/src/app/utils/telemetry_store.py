@@ -112,3 +112,11 @@ class TelemetryStore:
         with self._lock:
             runs = self._threads.get(str(thread_id))
             return runs.get(str(run_id)) if runs else None
+
+    def delete_thread(self, thread_id: str) -> None:
+        """Completely clear a thread's traces from the in-memory telemetry cache."""
+        thread_id = str(thread_id)
+        with self._lock:
+            self._threads.pop(thread_id, None)
+            if thread_id in self._thread_order:
+                self._thread_order.remove(thread_id)

@@ -1,28 +1,31 @@
-# from starlette.testclient import TestClient
+"""App assembly smoke tests.
 
-# from src.app.core.auth import get_current_user
-# from src.app.main import app, injector
-# from src.app.routers.auth.repositories import UserRepo
-# from src.app.utils.schemas import AuthUserSchema
-# from src.tests.fake_data.fake_user_repo import FakeUserRepo
+Prove the app wires up (middleware + routers + DI) and a public route serves, which the
+old fully-commented module did not.
+"""
 
+from __future__ import annotations
 
-# client = TestClient(app)
-# injector.binder.bind(UserRepo, FakeUserRepo())
+from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer_router
+from agentflow_cli.src.app.routers.ping.router import router as ping_router
 
-
-# def override_current_user():
-#     return AuthUserSchema(
-#         name="Test User",
-#         role="admin",
-#         company=1,
-#         uuid="1234",
-#         user_id="1234",
-#         email="someone@gmail.com",
-#         email_verified=True,
-#         firebase={},
-#         uid="1234",
-#     )
+from .conftest import build_app, make_client
 
 
-# app.dependency_overrides[get_current_user] = override_current_user
+HTTP_OK = 200
+
+
+def test_ping_is_public():
+    app = build_app(routers=[ping_router])
+    client = make_client(app)
+    r = client.get("/ping")
+    assert r.status_code == HTTP_OK
+    assert r.json()["data"] == "pong"
+
+
+def test_protected_and_public_routers_coexist():
+    app = build_app(routers=[ping_router, checkpointer_router])
+    client = make_client(app)
+    # Public route open, protected route requires identity.
+    assert client.get("/ping").status_code == HTTP_OK
+    assert client.get("/v1/threads/t1/state").status_code == 401

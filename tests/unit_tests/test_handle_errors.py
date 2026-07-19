@@ -36,6 +36,15 @@ HTTP_NOT_FOUND = 404
 def setup_app(mode: str = "development"):
     """Helper to set up app with specified mode."""
     os.environ["MODE"] = mode
+
+    # In production, wildcard CORS combined with credentials is refused at
+    # startup (it would reflect any Origin back as trusted+credentialed). A real
+    # production deployment must declare its origins, so these tests do too.
+    if mode == "production":
+        os.environ["ORIGINS"] = "https://example.com"
+    else:
+        os.environ.pop("ORIGINS", None)
+
     from agentflow_cli.src.app.core.config.settings import get_settings
 
     get_settings.cache_clear()

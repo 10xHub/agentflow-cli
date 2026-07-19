@@ -91,28 +91,28 @@ class TestWebSocketAuthResolves:
 
 class TestExtractCredential:
     def test_bearer_header_parsed(self):
-        conn = type("_C", (), {"headers": {"Authorization": "Bearer xyz"}, "query_params": {}})()
+        conn = type("_C", (), {"headers": {"Authorization": "Bearer xyz"}, "query_params": {}, "scope": {"type": "http"}})()
         cred = _extract_credential(conn)
         assert cred is not None
         assert cred.credentials == "xyz"
         assert cred.scheme == "Bearer"
 
     def test_query_token_fallback_when_no_header(self):
-        conn = type("_C", (), {"headers": {}, "query_params": {"token": "qtok"}})()
+        conn = type("_C", (), {"headers": {}, "query_params": {"token": "qtok"}, "scope": {"type": "websocket"}})()
         cred = _extract_credential(conn)
         assert cred is not None
         assert cred.credentials == "qtok"
 
     def test_header_takes_priority_over_query(self):
         conn = type(
-            "_C", (), {"headers": {"Authorization": "Bearer hdr"}, "query_params": {"token": "q"}}
+            "_C", (), {"headers": {"Authorization": "Bearer hdr"}, "query_params": {"token": "q"}, "scope": {"type": "websocket"}}
         )()
         assert _extract_credential(conn).credentials == "hdr"
 
     def test_non_bearer_scheme_ignored(self):
-        conn = type("_C", (), {"headers": {"Authorization": "Basic abc"}, "query_params": {}})()
+        conn = type("_C", (), {"headers": {"Authorization": "Basic abc"}, "query_params": {}, "scope": {"type": "http"}})()
         assert _extract_credential(conn) is None
 
     def test_no_credentials_returns_none(self):
-        conn = type("_C", (), {"headers": {}, "query_params": {}})()
+        conn = type("_C", (), {"headers": {}, "query_params": {}, "scope": {"type": "http"}})()
         assert _extract_credential(conn) is None

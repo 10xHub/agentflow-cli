@@ -11,7 +11,9 @@ from agentflow_cli.cli.core.validation import Validator
 from agentflow_cli.cli.exceptions import DockerError, FileOperationError, ValidationError
 from agentflow_cli.cli.templates.defaults import (
     generate_docker_compose_content,
+    generate_k8s_manifest_content,
     generate_dockerfile_content,
+    generate_dockerignore_content,
 )
 
 
@@ -25,6 +27,7 @@ class BuildCommand(BaseCommand):
         python_version: str = DEFAULT_PYTHON_VERSION,
         port: int = DEFAULT_PORT,
         docker_compose: bool = False,
+        k8s: bool = False,
         service_name: str = DEFAULT_SERVICE_NAME,
         **kwargs: Any,
     ) -> int:
@@ -36,6 +39,7 @@ class BuildCommand(BaseCommand):
             python_version: Python version to use
             port: Port to expose
             docker_compose: Generate docker-compose.yml
+            k8s: Generate a Kubernetes manifest (Deployment + Service)
             service_name: Service name for docker-compose
             **kwargs: Additional arguments
 
@@ -81,6 +85,16 @@ class BuildCommand(BaseCommand):
             self._write_dockerfile(output_path, dockerfile_content)
             self.output.success(f"Successfully generated Dockerfile at {output_path}")
 
+            # Write .dockerignore in the same directory
+            dockerignore_path = output_path.parent / ".dockerignore"
+            if not dockerignore_path.exists() or force:
+                try:
+                    dockerignore_content = generate_dockerignore_content()
+                    dockerignore_path.write_text(dockerignore_content, encoding="utf-8")
+                    self.output.success(f"Successfully generated .dockerignore at {dockerignore_path}")
+                except Exception as e:
+                    self.output.warning(f"Could not generate .dockerignore: {e}")
+
             # Show requirements info
             if requirements_files:
                 self.output.info(f"Using requirements file: {requirements_files[0]}")
@@ -92,6 +106,12 @@ class BuildCommand(BaseCommand):
             # Generate docker-compose.yml if requested
             if docker_compose:
                 self._write_docker_compose(
+                    force=force, service_name=validated_service_name, port=validated_port
+                )
+
+            # Generate a Kubernetes manifest if requested
+            if k8s:
+                self._write_k8s_manifest(
                     force=force, service_name=validated_service_name, port=validated_port
                 )
 
@@ -153,6 +173,35 @@ class BuildCommand(BaseCommand):
         except OSError as e:
             raise FileOperationError(
                 f"Failed to write Dockerfile: {e}", file_path=str(output_path)
+            ) from e
+
+    def _write_k8s_manifest(self, force: bool, service_name: str, port: int) -> None:
+        """Write k8s.yaml (Deployment + Service).
+
+        No manifest was generated before, so users hand-rolled one -- usually with
+        the default 30s termination grace period, which SIGKILLs an agent run
+        mid-LLM-call on every rolling deploy. The generated one sets a grace period
+        that matches how long a run can actually take, plus a preStop hook.
+
+        Raises:
+            FileOperationError: If writing fails
+        """
+        manifest_path = Path("k8s.yaml")
+
+        if manifest_path.exists() and not force:
+            raise FileOperationError(
+                f"k8s.yaml already exists at {manifest_path}. Use --force to overwrite.",
+                file_path=str(manifest_path),
+            )
+
+        content = generate_k8s_manifest_content(service_name, port)
+
+        try:
+            manifest_path.write_text(content, encoding="utf-8")
+            self.output.success(f"Generated k8s.yaml at {manifest_path}")
+        except OSError as e:
+            raise FileOperationError(
+                f"Failed to write k8s.yaml: {e}", file_path=str(manifest_path)
             ) from e
 
     def _write_docker_compose(self, force: bool, service_name: str, port: int) -> None:

@@ -172,13 +172,61 @@ class MediaService:
     # File operations
     # ------------------------------------------------------------------
 
+    async def ensure_can_access(self, file_id: str, user_id: str | None) -> None:
+        """Reject access to a file owned by a different user.
+
+        Files had no owner concept at all: `get_file(file_id)` returned bytes to any
+        authenticated caller who knew (or guessed) the id. Ownership is recorded in
+        the file's own metadata at upload time, so it is as durable as the file.
+
+        Legacy files uploaded before ownership existed carry no `owner_id`. Those are
+        allowed through (with a warning) rather than becoming unreadable, unless
+        ``MEDIA_REQUIRE_OWNER`` is set -- deployments that need a hard guarantee can
+        turn the check strict.
+        """
+        if not user_id:
+            return
+
+        try:
+            metadata = await self.store.get_metadata(file_id)
+        except Exception:
+            metadata = None
+
+        if metadata is None:
+            raise KeyError(f"File not found: {file_id}")
+
+        owner_id = metadata.get("owner_id")
+
+        if owner_id is None:
+            if getattr(self._settings, "MEDIA_REQUIRE_OWNER", False):
+                raise PermissionError(f"File has no recorded owner: {file_id}")
+            logger.warning(
+                "File %s has no recorded owner (uploaded before ownership tracking); "
+                "allowing access. Set MEDIA_REQUIRE_OWNER=true to deny these.",
+                file_id,
+            )
+            return
+
+        if str(owner_id) != str(user_id):
+            # Deliberately not "you don't own this" -- do not confirm the id exists.
+            logger.warning(
+                "User %s attempted to access file %s owned by another user",
+                user_id,
+                file_id,
+            )
+            raise PermissionError(f"File not accessible: {file_id}")
+
     async def upload_file(
         self,
         data: bytes,
         filename: str,
         mime_type: str,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         """Upload a file: store binary + optionally extract text.
+
+        Records the uploader as the file's owner, so it cannot later be read by a
+        different user who happens to know the id.
 
         Returns a dict with file_id, mime_type, size_bytes, filename,
         extracted_text (nullable), and url.
@@ -188,11 +236,17 @@ class MediaService:
                 f"File size {len(data)} exceeds maximum {self._settings.MEDIA_MAX_SIZE_MB}MB"
             )
 
-        # Store binary in the configured MediaStore
+        # Store binary in the configured MediaStore. The owner is written into the
+        # file's own metadata, so ownership survives as long as the file does --
+        # unlike a cache entry, which would expire and silently un-own it.
+        file_metadata: dict[str, Any] = {"filename": filename}
+        if user_id:
+            file_metadata["owner_id"] = str(user_id)
+
         storage_key = await self.store.store(
             data,
             mime_type,
-            metadata={"filename": filename},
+            metadata=file_metadata,
         )
 
         result: dict[str, Any] = {
@@ -228,12 +282,16 @@ class MediaService:
 
         return result
 
-    async def get_file(self, file_id: str) -> tuple[bytes, str]:
+    async def get_file(self, file_id: str, user_id: str | None = None) -> tuple[bytes, str]:
         """Retrieve file bytes and MIME type."""
+        if user_id:
+            await self.ensure_can_access(file_id, user_id)
         return await self.store.retrieve(file_id)
 
-    async def get_file_info(self, file_id: str) -> dict[str, Any]:
+    async def get_file_info(self, file_id: str, user_id: str | None = None) -> dict[str, Any]:
         """Return metadata about a stored file."""
+        if user_id:
+            await self.ensure_can_access(file_id, user_id)
         metadata = await self.store.get_metadata(file_id)
         if metadata is None:
             raise KeyError(f"File not found: {file_id}")

@@ -25,6 +25,18 @@ from .services.checkpointer_service import CheckpointerService
 
 router = APIRouter(tags=["checkpointer"])
 
+# Bound pagination so an unbounded/huge ``limit`` (or ``limit=None``) can never ask the
+# backend to load a whole table into memory. Applied server-side regardless of client input.
+DEFAULT_PAGE_LIMIT = 100
+MAX_PAGE_LIMIT = 1000
+
+
+def _clamp_limit(limit: int | None) -> int:
+    """Return a bounded page size: default when unset, capped at MAX_PAGE_LIMIT."""
+    if limit is None:
+        return DEFAULT_PAGE_LIMIT
+    return min(limit, MAX_PAGE_LIMIT)
+
 
 def validate_thread_id(thread_id: int | str) -> None:
     if isinstance(thread_id, str):
@@ -289,7 +301,7 @@ async def list_messages(
         user,
         search,
         offset,
-        limit,
+        _clamp_limit(limit),
     )
 
     return success_response(
@@ -409,11 +421,16 @@ async def list_threads(
     Returns:
         Threads list response with threads data or error
     """
+    if limit is not None and limit <= 0:
+        raise HTTPException(status_code=422, detail="limit must be > 0")
+    if offset is not None and offset < 0:
+        raise HTTPException(status_code=422, detail="offset must be >= 0")
+
     result = await service.list_threads(
         user,
         search,
         offset,
-        limit,
+        _clamp_limit(limit),
     )
 
     return success_response(

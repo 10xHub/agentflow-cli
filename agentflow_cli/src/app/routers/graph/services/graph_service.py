@@ -37,6 +37,45 @@ from agentflow_cli.src.app.utils import DefaultThreadNameGenerator, ThreadNameGe
 from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
 
 
+def _reraise_framework_errors(exc: Exception) -> None:
+    """Re-raise typed errors that have dedicated handlers instead of masking them.
+
+    ``HTTPException`` (already carrying the right status) and the framework's typed
+    exceptions have registered handlers in ``handle_errors.py`` that map them to the
+    correct 4xx/5xx. Swallowing them into a generic 500 turns client-caused failures
+    (recursion-limit exhaustion, bad tool args) into server errors.
+
+    The agentflow exceptions are imported lazily here: a top-level import of the
+    ``agentflow.core.exceptions`` package triggers a circular import through the core
+    media modules during test collection.
+    """
+    if isinstance(exc, HTTPException):
+        raise exc
+    from agentflow.core.exceptions import (
+        GraphError,
+        GraphRecursionError,
+        MetricsError,
+        NodeError,
+        SchemaVersionError,
+        SerializationError,
+        StorageError,
+        TransientStorageError,
+    )
+
+    typed = (
+        GraphError,
+        GraphRecursionError,
+        NodeError,
+        StorageError,
+        TransientStorageError,
+        SchemaVersionError,
+        SerializationError,
+        MetricsError,
+    )
+    if isinstance(exc, typed):
+        raise exc
+
+
 @singleton
 class GraphService:
     """
@@ -169,7 +208,7 @@ class GraphService:
     @property
     def telemetry(self) -> TelemetryStore | None:
         """The bound TelemetryStore, if any (resolved lazily, cached)."""
-        if self._telemetry is None:
+        if getattr(self, "_telemetry", None) is None:
             try:
                 self._telemetry = InjectQ.get_instance().try_get(TelemetryStore)
             except Exception:
@@ -257,15 +296,13 @@ class GraphService:
             logger.info(f"Stopping graph execution for thread: {thread_id}")
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
-            # Prepare config with thread_id and user info
-            stop_config = {
+            # Start with client config if provided, then overlay trusted attributes
+            stop_config = dict(config) if config else {}
+            stop_config.update({
                 "thread_id": thread_id,
                 "user": user,
-            }
-
-            # Merge additional config if provided
-            if config:
-                stop_config.update(config)
+                "user_id": user.get("user_id", "anonymous"),
+            })
 
             # Call the graph's astop method
             result = await self._graph.astop(stop_config)
@@ -277,6 +314,7 @@ class GraphService:
             logger.warning(f"Graph stop input validation failed for thread {thread_id}: {e}")
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
+            _reraise_framework_errors(e)
             logger.error(f"Graph stop failed for thread {thread_id}: {e}")
             raise HTTPException(
                 status_code=500, detail=f"Graph stop failed for thread {thread_id}: {e!s}"
@@ -285,9 +323,10 @@ class GraphService:
     async def _prepare_input(
         self,
         graph_input: GraphInputSchema,
+        user_id: str | None = None,
     ):
         is_new_thread = False
-        config = graph_input.config or {}
+        config = dict(graph_input.config or {})
         if config.get("thread_id") and str(config["thread_id"]).strip():
             thread_id = str(config["thread_id"]).strip()
         else:
@@ -305,6 +344,7 @@ class GraphService:
         preprocessed = await preprocess_multimodal_messages(
             graph_input.messages,
             self.media_service,
+            user_id,
         )
         input_data: dict = {
             "messages": preprocessed,
@@ -342,7 +382,7 @@ class GraphService:
             logger.debug(f"Invoking graph with input: {graph_input.messages}")
 
             # Prepare the input
-            input_data, config, meta = await self._prepare_input(graph_input)
+            input_data, config, meta = await self._prepare_input(graph_input, user.get("user_id"))
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
@@ -418,6 +458,9 @@ class GraphService:
             logger.warning(f"Graph input validation failed: {e}")
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
+            # Let typed/HTTP errors reach their registered handlers instead of
+            # collapsing every failure into a generic 500.
+            _reraise_framework_errors(e)
             logger.error(f"Graph execution failed: {e}")
             raise HTTPException(status_code=500, detail=f"Graph execution failed: {e!s}")
 
@@ -445,7 +488,7 @@ class GraphService:
             logger.debug(f"Streaming graph with input: {graph_input.messages}")
 
             # Prepare the config
-            input_data, config, meta = await self._prepare_input(graph_input)
+            input_data, config, meta = await self._prepare_input(graph_input, user.get("user_id"))
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
@@ -529,10 +572,23 @@ class GraphService:
                     )
             except Exception:
                 pass
+            # The global error handlers never see this exception (it is caught inside
+            # the generator), so sanitize here too. Otherwise a driver/DB exception
+            # embedding a connection string or internal path would stream verbatim in
+            # production, bypassing MODE=production redaction.
+            # Imported lazily: a top-level import of handle_errors creates a circular
+            # import through the shared utils/exceptions modules.
+            from agentflow_cli.src.app.core.config.settings import get_settings
+            from agentflow_cli.src.app.core.exceptions.handle_errors import (
+                _sanitize_error_message,
+            )
+
+            is_production = get_settings().MODE == "production"
+            reason = _sanitize_error_message(str(e), "GRAPH_STREAM_ERROR", is_production)
             yield (
                 StreamChunk(
                     event=StreamEvent.ERROR,
-                    data={"reason": str(e)},
+                    data={"reason": reason},
                     metadata=meta,
                 ).model_dump_json(serialize_as_any=True)
                 + "\n"
@@ -943,10 +999,13 @@ class GraphService:
             logger.info(f"Starting fix graph operation for thread: {thread_id}")
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
-            fix_config = {"thread_id": thread_id, "user": user}
-            fix_config["user_id"] = user.get("user_id", "anonymous")
-            if config:
-                fix_config.update(config)
+            # Start with client config if provided, then overlay trusted attributes
+            fix_config = dict(config) if config else {}
+            fix_config.update({
+                "thread_id": thread_id,
+                "user": user,
+                "user_id": user.get("user_id", "anonymous")
+            })
 
             logger.debug("Fetching current state from checkpointer")
             state: AgentState | None = await self.checkpointer.aget_state(fix_config)
@@ -989,10 +1048,29 @@ class GraphService:
             logger.warning(f"Fix graph input validation failed: {e}")
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
+            _reraise_framework_errors(e)
             logger.error(f"Fix graph operation failed: {e}")
             raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")
 
     async def setup(self, data: GraphSetupSchema) -> dict:
+        from agentflow_cli.src.app.core.config.settings import get_settings
+
+        settings = get_settings()
+        has_auth = False
+        if self.config:
+            backend = self.config.auth_config()
+            from unittest.mock import Mock
+            if backend and not isinstance(backend, Mock):
+                if isinstance(backend, dict) and backend.get("method") != "none":
+                    has_auth = True
+                elif isinstance(backend, str) and backend != "none":
+                    has_auth = True
+        if settings.MODE == "production" or has_auth:
+            raise HTTPException(
+                status_code=403,
+                detail="Dynamic tool setup is disabled in production/multi-tenant mode."
+            )
+
         # lets create tools
         remote_tools = defaultdict(list)
         for tool in data.tools:

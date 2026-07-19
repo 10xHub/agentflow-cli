@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     #################################
     ORIGINS: str = "*"
     ALLOWED_HOST: str = "*"
+    # Whether cross-origin requests may carry credentials (cookies / auth headers).
+    #
+    # Combined with ORIGINS="*" this is the dangerous case: Starlette reflects the
+    # request's Origin back with Access-Control-Allow-Credentials: true, which
+    # effectively makes EVERY origin a trusted, credentialed origin. In production
+    # that combination is refused at startup (see setup_middleware); set explicit
+    # ORIGINS, or set CORS_ALLOW_CREDENTIALS=false to serve a public,
+    # non-credentialed API from any origin.
+    CORS_ALLOW_CREDENTIALS: bool = True
 
     #################################
     ###### Paths ####################

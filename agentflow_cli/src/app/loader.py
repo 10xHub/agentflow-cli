@@ -13,6 +13,7 @@ from agentflow_cli import BaseAuth
 from agentflow_cli.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
+    OwnershipAuthorizationBackend,
 )
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
@@ -288,15 +289,100 @@ def load_and_bind_auth(container: InjectQ, auth_config: dict) -> None:
     container.bind_instance(BaseAuth, auth_backend, allow_none=True)
 
 
-def load_and_bind_authorization(container: InjectQ, authorization_path: str | None) -> None:
-    if authorization_path:
-        authorization_backend = load_authorization(authorization_path)
-        container.bind_instance(AuthorizationBackend, authorization_backend)
-    else:
-        # Use default authorization backend if not configured
-        default_authorization = DefaultAuthorizationBackend()
-        container.bind_instance(AuthorizationBackend, default_authorization)
-        logger.info("Using DefaultAuthorizationBackend (allows all authenticated users)")
+# Built-in authorization backends selectable by name in ``agentflow.json``.
+_BUILTIN_AUTHORIZATION = {
+    "ownership": OwnershipAuthorizationBackend,  # object-level: owner-only thread access
+    "allow_all": DefaultAuthorizationBackend,  # authenticated == authorized
+    "default": DefaultAuthorizationBackend,  # alias for allow_all
+    "none": DefaultAuthorizationBackend,  # alias for allow_all
+}
+
+
+def _build_ownership_redis(redis_url: str | None) -> object | None:
+    """Build an async Redis client for the ownership L2 cache, or None.
+
+    Returns None (L1-only) when no URL is configured or the ``redis`` package is absent;
+    the resolver degrades gracefully either way.
+    """
+    if not redis_url:
+        return None
+    try:
+        from redis.asyncio import Redis as AsyncRedis  # type: ignore[import]
+    except ImportError:
+        logger.warning(
+            "REDIS configured but the 'redis' package is not installed; ownership cache "
+            "runs in-process only (L1). Install the redis extra to share it across workers."
+        )
+        return None
+    try:
+        client = AsyncRedis.from_url(redis_url, decode_responses=False)
+        logger.info("Ownership authorization L2 cache enabled (shared Redis).")
+        return client
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to build ownership Redis client: %s; using L1 cache only.", exc)
+        return None
+
+
+def _resolve_authorization_backend(
+    authorization: str | None, redis_url: str | None = None
+) -> AuthorizationBackend:
+    """Pick the authorization backend from config, defaulting by run mode.
+
+    Resolution order (developer choice always wins):
+
+    1. ``"module:attr"`` -> the developer's custom :class:`AuthorizationBackend`.
+    2. A built-in name (``"ownership"``, ``"allow_all"``/``"default"``/``"none"``) ->
+       that backend, regardless of mode.
+    3. Not configured (``null``) -> secure-by-default in production
+       (:class:`OwnershipAuthorizationBackend`), permissive in development
+       (:class:`DefaultAuthorizationBackend`). Either can be overridden via (1)/(2).
+
+    ``redis_url`` (when set) backs the ownership cache's shared L2 tier.
+    """
+    if authorization and ":" in authorization:
+        backend = load_authorization(authorization)
+        logger.info("Using custom AuthorizationBackend from '%s'.", authorization)
+        return backend  # type: ignore[return-value]
+
+    if authorization:
+        key = authorization.strip().lower()
+        builtin = _BUILTIN_AUTHORIZATION.get(key)
+        if builtin is None:
+            raise ValueError(
+                f"Unknown authorization backend '{authorization}'. Use a 'module:attr' "
+                f"path or one of: {', '.join(sorted(_BUILTIN_AUTHORIZATION))}."
+            )
+        logger.info("Using built-in '%s' authorization backend.", key)
+        if builtin is OwnershipAuthorizationBackend:
+            return OwnershipAuthorizationBackend(redis=_build_ownership_redis(redis_url))
+        return builtin()
+
+    # Not configured: default by mode.
+    from agentflow_cli.src.app.core.config.settings import get_settings
+
+    if get_settings().MODE == "production":
+        logger.info(
+            "No authorization configured; defaulting to OwnershipAuthorizationBackend "
+            "(owner-only thread access) because MODE=production. Set "
+            '"authorization": "allow_all" to opt out.'
+        )
+        return OwnershipAuthorizationBackend(redis=_build_ownership_redis(redis_url))
+
+    logger.info(
+        "No authorization configured; defaulting to DefaultAuthorizationBackend "
+        "(allows all authenticated users) in development. Set "
+        '"authorization": "ownership" to enforce owner-only access here too.'
+    )
+    return DefaultAuthorizationBackend()
+
+
+def load_and_bind_authorization(
+    container: InjectQ,
+    authorization_path: str | None,
+    redis_url: str | None = None,
+) -> None:
+    backend = _resolve_authorization_backend(authorization_path, redis_url)
+    container.bind_instance(AuthorizationBackend, backend)
 
 
 async def attach_all_modules(
@@ -339,6 +425,14 @@ async def attach_all_modules(
     if auth_config:
         load_and_bind_auth(container, auth_config)
     else:
+        # Auth disabled is a legitimate choice (single-user / trusted network), but it
+        # must not be silent -- an operator who simply forgot to set `auth` should see
+        # it at startup. This warns; it does not force auth on.
+        logger.warning(
+            "⚠️  Authentication is DISABLED (no `auth` configured). Every request runs "
+            "as `anonymous` with no access control. This is fine for single-user or "
+            "trusted-network deployments; set `auth` in agentflow.json to enable it."
+        )
         # bind None
         container.bind_instance(BaseAuth, None, allow_none=True)
 
@@ -351,9 +445,13 @@ async def attach_all_modules(
         # bind None if not configured
         container.bind_instance(ThreadNameGenerator, None, allow_none=True)
 
-    # load authorization backend
+    # load authorization backend. The ownership cache's shared L2 tier reuses the
+    # configured Redis URL (config `redis`, else settings.REDIS_URL); absent -> L1 only.
+    from agentflow_cli.src.app.core.config.settings import get_settings
+
     authorization_path = config.authorization_path
-    load_and_bind_authorization(container, authorization_path)
+    ownership_redis_url = config.redis_url or get_settings().REDIS_URL
+    load_and_bind_authorization(container, authorization_path, ownership_redis_url)
 
     # --- Media service wiring ---
     from agentflow_cli.src.app.core.config.media_settings import (

@@ -428,8 +428,11 @@ class TestJwtAuth:
         mock_response: Response,
         jwt_env_vars,
     ):
-        """Test authentication with minimal valid token (just user_id)."""
-        minimal_payload = {"user_id": "minimal-user"}
+        """Test authentication with minimal valid token (user_id and exp)."""
+        minimal_payload = {
+            "user_id": "minimal-user",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        }
         token = self.create_token(minimal_payload)
         credentials = self.create_credentials(token)
 
@@ -437,6 +440,25 @@ class TestJwtAuth:
 
         assert result is not None
         assert result["user_id"] == "minimal-user"
+
+    def test_authenticate_token_without_exp_raises_error(
+        self,
+        jwt_auth: JwtAuth,
+        mock_response: Response,
+        jwt_env_vars,
+    ):
+        """Test that token without exp claim raises UserAccountError."""
+        payload_without_exp = {
+            "user_id": "user-123",
+        }
+        token = self.create_token(payload_without_exp)
+        credentials = self.create_credentials(token)
+
+        with pytest.raises(UserAccountError) as exc_info:
+            jwt_auth.authenticate(None, mock_response, credentials)
+
+        assert exc_info.value.error_code == "INVALID_TOKEN"
+        assert "Invalid token" in exc_info.value.message
 
     def test_authenticate_with_numeric_user_id(
         self,

@@ -24,6 +24,10 @@ from agentflow_cli.src.app.utils import success_response
 
 router = APIRouter(tags=["Files"])
 
+# Read uploads in 1 MiB chunks so a size-cap breach is caught before the whole body
+# is buffered in memory.
+_UPLOAD_CHUNK_BYTES = 1024 * 1024
+
 
 # ------------------------------------------------------------------
 # 4.1  POST /v1/files/upload
@@ -46,16 +50,42 @@ async def upload_file(
     if file.filename is None:
         raise HTTPException(status_code=400, detail="filename is required")
 
-    data = await file.read()
+    media_settings = get_media_settings()
+    mime = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
+
+    if not media_settings.is_content_type_allowed(mime):
+        raise HTTPException(status_code=415, detail=f"Content type not allowed: {mime}")
+
+    # Read with a running size cap instead of ``await file.read()``. A chunked upload
+    # (no Content-Length) slips past RequestSizeLimitMiddleware, so a naive full read
+    # would let a multi-GB body OOM-kill the worker. Stop as soon as we exceed the
+    # limit and reject, never materializing more than max_size + one chunk.
+    max_bytes = int(media_settings.MEDIA_MAX_SIZE_MB * 1024 * 1024)
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_UPLOAD_CHUNK_BYTES)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File exceeds maximum {media_settings.MEDIA_MAX_SIZE_MB}MB",
+            )
+        chunks.append(chunk)
+    data = b"".join(chunks)
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
-
-    mime = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
 
     logger.info("File upload: %s (%s, %d bytes)", file.filename, mime, len(data))
 
     try:
-        result = await service.upload_file(data, file.filename, mime)
+        # Record the uploader as the owner, so the file cannot later be read by a
+        # different user who knows the id.
+        result = await service.upload_file(
+            data, file.filename, mime, user_id=user.get("user_id")
+        )
     except ValueError as exc:
         raise HTTPException(status_code=413, detail=str(exc))
 
@@ -76,8 +106,14 @@ async def get_file(
     user: dict[str, Any] = Depends(RequirePermission("files", "read")),
 ):
     try:
-        data, mime_type = await service.get_file(file_id)
+        # Authentication alone is not enough: without this, ANY authenticated user
+        # who knew a file_id could download another user's file.
+        await service.ensure_can_access(file_id, user.get("user_id"))
+        data, mime_type = await service.get_file(file_id, user.get("user_id"))
     except KeyError:
+        raise HTTPException(status_code=404, detail="File not found")
+    except PermissionError:
+        # 404, not 403: do not confirm that someone else's file_id exists.
         raise HTTPException(status_code=404, detail="File not found")
 
     return Response(content=data, media_type=mime_type)
@@ -98,8 +134,11 @@ async def get_file_info(
     user: dict[str, Any] = Depends(RequirePermission("files", "read")),
 ):
     try:
-        info = await service.get_file_info(file_id)
+        await service.ensure_can_access(file_id, user.get("user_id"))
+        info = await service.get_file_info(file_id, user.get("user_id"))
     except KeyError:
+        raise HTTPException(status_code=404, detail="File not found")
+    except PermissionError:
         raise HTTPException(status_code=404, detail="File not found")
 
     return success_response(FileInfoResponse(**info), request)
@@ -117,8 +156,14 @@ async def get_file_access_url(
     user: dict[str, Any] = Depends(RequirePermission("files", "read")),
 ):
     try:
+        # Especially important here: this hands out a *signed direct URL*, which
+        # bypasses the API entirely. Handing one to a non-owner would leak the file
+        # even after this check was added elsewhere.
+        await service.ensure_can_access(file_id, user.get("user_id"))
         info = await service.get_file_info(file_id)
     except KeyError:
+        raise HTTPException(status_code=404, detail="File not found")
+    except PermissionError:
         raise HTTPException(status_code=404, detail="File not found")
 
     payload = FileAccessUrlResponse(

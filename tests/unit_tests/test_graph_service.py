@@ -66,6 +66,7 @@ class TestGraphServiceMethods:
         srv.config = mock_config
         srv.thread_name_generator = mock_thread_name_generator
         srv._media_service = None
+        srv._telemetry = None
         return srv
 
     def test_media_service_property(self, service):
@@ -106,7 +107,8 @@ class TestGraphServiceMethods:
         mock_graph.astop.assert_called_once_with({
             "thread_id": "thread-123",
             "user": user,
-            "extra": "val"
+            "extra": "val",
+            "user_id": "123"
         })
 
     @pytest.mark.asyncio
@@ -251,7 +253,10 @@ class TestGraphServiceMethods:
         assert len(chunks) == 1
         data = json.loads(chunks[0])
         assert data["event"] == "error"
-        assert "stream crash" in data["data"]["reason"]
+        # H2: the raw exception text must not stream verbatim. In production it is
+        # replaced with a generic message; the internal detail never leaks.
+        assert "stream crash" not in data["data"]["reason"]
+        assert data["data"]["reason"]  # some non-empty, sanitized reason is present
 
     @pytest.mark.asyncio
     async def test_graph_details_success_and_errors(self, service, mock_graph):
@@ -291,29 +296,36 @@ class TestGraphServiceMethods:
 
     @pytest.mark.asyncio
     async def test_setup(self, service, mock_graph):
-        # Mock GraphSetupSchema data
-        class MockTool:
-            node_name = "n1"
-            name = "t1"
-            description = "desc"
-            parameters = {}
+        from agentflow_cli.src.app.core.config.settings import get_settings
+        settings = get_settings()
+        old_mode = settings.MODE
+        settings.MODE = "development"
+        try:
+            # Mock GraphSetupSchema data
+            class MockTool:
+                node_name = "n1"
+                name = "t1"
+                description = "desc"
+                parameters = {}
 
-        class MockSetupData:
-            tools = [MockTool()]
+            class MockSetupData:
+                tools = [MockTool()]
 
-        mock_graph.attach_remote_tools = MagicMock()
-        res = await service.setup(MockSetupData())
-        assert res["status"] == "success"
-        mock_graph.attach_remote_tools.assert_called_once_with([
-            {
-                "type": "function",
-                "function": {
-                    "name": "t1",
-                    "description": "desc",
-                    "parameters": {}
+            mock_graph.attach_remote_tools = MagicMock()
+            res = await service.setup(MockSetupData())
+            assert res["status"] == "success"
+            mock_graph.attach_remote_tools.assert_called_once_with([
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "t1",
+                        "description": "desc",
+                        "parameters": {}
+                    }
                 }
-            }
-        ], "n1")
+            ], "n1")
+        finally:
+            settings.MODE = old_mode
 
     def test_extract_context_info(self, service):
         # Case 1: Result has values

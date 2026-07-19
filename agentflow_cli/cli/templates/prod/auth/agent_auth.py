@@ -13,7 +13,4 @@ class AgentAuth(BaseAuth):
         credential: HTTPAuthorizationCredentials,
     ) -> dict[str, Any] | None:
         # TODO: Implement actual authentication logic here
-
-        return {
-            "user_id": "random_user_id",
-        }
+        raise NotImplementedError("AgentAuth.authenticate is not implemented")

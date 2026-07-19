@@ -24,7 +24,7 @@ def mock_service():
 @pytest.fixture
 def mock_user():
     """Mock authenticated user."""
-    return {"id": "user-123", "name": "Test User"}
+    return {"id": "user-123", "user_id": "user-123", "name": "Test User"}
 
 
 class TestUploadFileLogic:
@@ -89,7 +89,8 @@ class TestUploadFileLogic:
         mock_file = MagicMock(spec=UploadFile)
         mock_file.filename = "test.txt"
         mock_file.content_type = "text/plain"
-        mock_file.read = AsyncMock(return_value=b"test data")
+        # The handler reads in chunks until an empty read signals EOF.
+        mock_file.read = AsyncMock(side_effect=[b"test data", b""])
 
         result = await upload_file(
             request=mock_request,
@@ -110,7 +111,8 @@ class TestUploadFileLogic:
         mock_file = MagicMock(spec=UploadFile)
         mock_file.filename = "test.txt"
         mock_file.content_type = "text/plain"
-        mock_file.read = AsyncMock(return_value=b"test data")
+        # The handler reads in chunks until an empty read signals EOF.
+        mock_file.read = AsyncMock(side_effect=[b"test data", b""])
 
         with pytest.raises(HTTPException) as exc_info:
             await upload_file(
@@ -138,7 +140,7 @@ class TestGetFileLogic:
             user=mock_user,
         )
 
-        mock_service.get_file.assert_called_once_with("file-1")
+        mock_service.get_file.assert_called_once_with("file-1", "user-123")
         assert result.body == b"file content"
         assert result.media_type == "text/plain"
 
@@ -185,7 +187,7 @@ class TestGetFileInfoLogic:
             user=mock_user,
         )
 
-        mock_service.get_file_info.assert_called_once_with("file-1")
+        mock_service.get_file_info.assert_called_once_with("file-1", "user-123")
 
     @pytest.mark.asyncio
     async def test_get_file_info_handles_not_found(self, mock_request, mock_service, mock_user):

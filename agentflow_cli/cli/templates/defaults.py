@@ -6,6 +6,25 @@ import json
 from typing import Final
 
 
+# How long a worker gets to finish in-flight work after SIGTERM.
+#
+# An agent run is not a typical web request: the LLM client alone allows up to
+# 600s, and tools add more on top. Gunicorn's default graceful timeout is 30s, so
+# every rolling deploy was hard-killing runs that were still in progress, ~30s in.
+# Matching the LLM budget means a run in flight gets to finish rather than being
+# truncated. Kubernetes needs a slightly larger window than the app, so the pod is
+# not killed while the app is still draining.
+GRACEFUL_TIMEOUT_SECONDS: Final[int] = 600
+
+# Gunicorn kills a worker it considers hung. Long LLM calls must not look hung.
+WORKER_TIMEOUT_SECONDS: Final[int] = 660
+
+# terminationGracePeriodSeconds must exceed the app's graceful timeout, plus the
+# preStop sleep that lets the load balancer stop sending new traffic first.
+K8S_TERMINATION_GRACE_SECONDS: Final[int] = GRACEFUL_TIMEOUT_SECONDS + 60
+K8S_PRESTOP_SLEEP_SECONDS: Final[int] = 15
+
+
 # Default configuration template
 DEFAULT_CONFIG_JSON: Final[str] = json.dumps(
     {
@@ -501,6 +520,10 @@ def generate_dockerfile_content(
         "# (use OTEL / a publisher for observability instead).",
         "ENV MODE=production",
         "ENV IS_DEBUG=false",
+        "# Gunicorn worker count. Gunicorn reads WEB_CONCURRENCY natively; a sane default",
+        "# here beats gunicorn's built-in default of 1 worker. Tune to your CPU/memory",
+        "# at deploy time, e.g. `docker run -e WEB_CONCURRENCY=8 ...`.",
+        "ENV WEB_CONCURRENCY=2",
         "",
         "# Set work directory",
         "WORKDIR /app",
@@ -562,15 +585,122 @@ def generate_dockerfile_content(
                 "# Run the application (production)",
                 "# Use Gunicorn with Uvicorn workers for better performance and multi-core",
                 "# utilization",
+                "#",
+                "# --graceful-timeout is critical: an agent run can legitimately take",
+                "# minutes (the LLM client alone allows up to 600s). Gunicorn's default",
+                "# graceful timeout is 30s, so on every rolling deploy SIGTERM would",
+                "# hard-kill runs that were still mid-flight, truncating them. Give",
+                "# in-flight runs time to finish draining instead.",
                 (
                     'CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", '
-                    f'"-b", "0.0.0.0:{port}", "agentflow_cli.src.app.main:app"]'
+                    f'"-b", "0.0.0.0:{port}", '
+                    f'"--graceful-timeout", "{GRACEFUL_TIMEOUT_SECONDS}", '
+                    f'"--timeout", "{WORKER_TIMEOUT_SECONDS}", '
+                    '"agentflow_cli.src.app.main:app"]'
                 ),
                 "",
             ]
         )
 
     return "\n".join(dockerfile_lines)
+
+
+def generate_k8s_manifest_content(service_name: str, port: int) -> str:
+    """Generate a Kubernetes Deployment + Service manifest.
+
+    Exists because rolling deploys were the main way in-flight agent runs got
+    truncated, and no manifest was generated at all -- so every user hand-rolled
+    one, typically with the default 30s grace period that kills a run mid-LLM-call.
+
+    The three settings that matter here:
+
+    - ``terminationGracePeriodSeconds`` must exceed the app's own graceful timeout,
+      or the kubelet SIGKILLs the pod while it is still draining.
+    - The ``preStop`` sleep gives the load balancer time to notice the pod is
+      terminating and stop routing NEW requests to it. Without it, Kubernetes sends
+      SIGTERM and removes the endpoint concurrently, so requests can still arrive
+      at a pod that has already begun shutting down.
+    - The readiness probe is what takes the pod out of rotation; the liveness probe
+      must be slack enough that a busy worker is not restarted mid-run.
+    """
+    return "\n".join(
+        [
+            "apiVersion: apps/v1",
+            "kind: Deployment",
+            "metadata:",
+            f"  name: {service_name}",
+            "spec:",
+            "  replicas: 2",
+            "  selector:",
+            "    matchLabels:",
+            f"      app: {service_name}",
+            "  template:",
+            "    metadata:",
+            "      labels:",
+            f"        app: {service_name}",
+            "    spec:",
+            # Must be > the app's graceful timeout, else the kubelet SIGKILLs a
+            # pod that is still finishing a run.
+            f"      terminationGracePeriodSeconds: {K8S_TERMINATION_GRACE_SECONDS}",
+            "      containers:",
+            f"        - name: {service_name}",
+            "          image: agentflow-cli:latest",
+            "          ports:",
+            f"            - containerPort: {port}",
+            "          env:",
+            "            - name: MODE",
+            '              value: "production"',
+            "            - name: IS_DEBUG",
+            '              value: "false"',
+            "            # CORS: production refuses wildcard origins with credentials.",
+            "            - name: ORIGINS",
+            '              value: "https://your-frontend.example.com"',
+            "          lifecycle:",
+            "            preStop:",
+            "              exec:",
+            "                # Let the load balancer stop sending new traffic before",
+            "                # the app starts shutting down.",
+            "                command:",
+            '                  - "/bin/sh"',
+            '                  - "-c"',
+            f'                  - "sleep {K8S_PRESTOP_SLEEP_SECONDS}"',
+            "          readinessProbe:",
+            "            httpGet:",
+            "              path: /ping",
+            f"              port: {port}",
+            "            initialDelaySeconds: 5",
+            "            periodSeconds: 10",
+            "          livenessProbe:",
+            "            httpGet:",
+            "              path: /ping",
+            f"              port: {port}",
+            "            # Deliberately slack: a worker busy with a long agent run",
+            "            # must not be mistaken for a hung one and restarted.",
+            "            initialDelaySeconds: 30",
+            "            periodSeconds: 30",
+            "            failureThreshold: 5",
+            "          resources:",
+            "            requests:",
+            '              cpu: "500m"',
+            '              memory: "512Mi"',
+            "            limits:",
+            '              cpu: "2"',
+            '              memory: "2Gi"',
+            "---",
+            "apiVersion: v1",
+            "kind: Service",
+            "metadata:",
+            f"  name: {service_name}",
+            "spec:",
+            "  selector:",
+            f"    app: {service_name}",
+            "  ports:",
+            "    - protocol: TCP",
+            f"      port: 80",
+            f"      targetPort: {port}",
+            "",
+        ]
+    )
 
 
 def generate_docker_compose_content(service_name: str, port: int) -> str:
@@ -592,8 +722,13 @@ def generate_docker_compose_content(service_name: str, port: int) -> str:
             (
                 f"    command: [ 'gunicorn', '-k', 'uvicorn.workers.UvicornWorker', "
                 f"'-b', '0.0.0.0:{port}', "
+                f"'--graceful-timeout', '{GRACEFUL_TIMEOUT_SECONDS}', "
+                f"'--timeout', '{WORKER_TIMEOUT_SECONDS}', "
                 "'agentflow_cli.src.app.main:app' ]"
             ),
+            # Give in-flight agent runs time to drain on `docker compose down`
+            # instead of being killed after the default 10s.
+            f"    stop_grace_period: {GRACEFUL_TIMEOUT_SECONDS}s",
             "    restart: unless-stopped",
             "    # Consider adding resource limits and deploy configurations in a swarm/stack",
             "    # deploy:",
@@ -602,5 +737,53 @@ def generate_docker_compose_content(service_name: str, port: int) -> str:
             "    #     limits:",
             "    #       cpus: '1.0'",
             "    #       memory: 512M",
+        ]
+    )
+
+
+def generate_dockerignore_content() -> str:
+    """Generate a standard .dockerignore file content."""
+    return "\n".join(
+        [
+            "# Exclude environment secrets and local configs",
+            ".env",
+            ".env.*",
+            "secrets/",
+            "configs/",
+            "*.env",
+            "",
+            "# Exclude Python artifacts and caches",
+            "__pycache__/",
+            "*.py[cod]",
+            "*$py.class",
+            ".pytest_cache/",
+            ".coverage",
+            "htmlcov/",
+            ".mypy_cache/",
+            ".ruff_cache/",
+            "",
+            "# Exclude virtual environments",
+            ".venv/",
+            "venv/",
+            "env/",
+            "",
+            "# Exclude version control and IDE files",
+            ".git/",
+            ".gitignore",
+            ".idea/",
+            ".vscode/",
+            "*.swp",
+            "*.swo",
+            "",
+            "# Exclude built assets and distribution files",
+            "build/",
+            "dist/",
+            "*.egg-info/",
+            "",
+            "# Exclude local data directories",
+            "data/",
+            "db.sqlite3",
+            "store/",
+            "",
         ]
     )

@@ -12,8 +12,11 @@ Endpoints:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from typing import Any
 
+from fastapi import APIRouter, Depends, Request
+
+from agentflow_cli.src.app.core.auth.permissions import RequirePermission
 from agentflow_cli.src.app.routers.evals.services.eval_report_service import EvalReportService
 from agentflow_cli.src.app.utils.response_helper import success_response
 
@@ -22,14 +25,21 @@ router = APIRouter(tags=["evals"])
 
 
 @router.get("/v1/evals/runs", summary="List eval runs")
-async def list_eval_runs(request: Request):
+async def list_eval_runs(
+    request: Request,
+    user: dict[str, Any] = Depends(RequirePermission("evals", "read")),
+):
     """List all eval runs (summary rows) found under eval_reports/."""
     service = EvalReportService()
     return success_response({"runs": service.list_runs()}, request)
 
 
 @router.get("/v1/evals/runs/{run_id}", summary="Get eval run detail")
-async def get_eval_run(run_id: str, request: Request):
+async def get_eval_run(
+    run_id: str,
+    request: Request,
+    user: dict[str, Any] = Depends(RequirePermission("evals", "read")),
+):
     """Return the full drilldown for one eval run."""
     service = EvalReportService()
     return success_response(service.get_run_detail(run_id), request)

@@ -1,26 +1,31 @@
-# from src.tests.integration_tests.test_main import client
+"""Auth enforcement on protected routes.
+
+With auth enabled, a request that carries no identity must be refused -- the endpoints
+are guarded by the real ``RequirePermission`` dependency, not by hand-rolled checks.
+"""
+
+from __future__ import annotations
+
+from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer_router
+
+from .conftest import build_app, make_client, user_headers
 
 
-#
-# def test_get_user_api():
-#     user_id = "123e4567-e89b-12d3-a456-426614174000"
-#     response = client.get(f"v1/users/{user_id}")
-
-#     assert response.status_code == 200
-#     user_data = response.json()
-#     data = user_data["data"]
-#     assert data["user_id"] == user_id
-#     assert data["fullname"] == "testuser"
-#     assert data["email"] == "testuser@example.com"
+HTTP_OK = 200
+HTTP_UNAUTHORIZED = 401
 
 
-# def test_get_invalid_input():
-#     user_id = "nonexistent-uuid"
-#     response = client.get(f"v1/users/{user_id}")
-#     assert response.status_code == 422
+def test_request_without_identity_is_rejected():
+    app = build_app(routers=[checkpointer_router])
+    client = make_client(app)
+
+    r = client.get("/v1/threads/t1/state")  # no X-Test-User header
+    assert r.status_code == HTTP_UNAUTHORIZED
 
 
-# def test_get_not_found():
-#     user_id = "90387798-cbc0-4df7-9ce2-308fd9ee9fbf"
-#     response = client.get(f"v1/users/{user_id}")
-#     assert response.status_code == 404
+def test_request_with_identity_is_authenticated():
+    app = build_app(routers=[checkpointer_router])
+    client = make_client(app)
+
+    r = client.get("/v1/threads/t1/state", headers=user_headers("alice"))
+    assert r.status_code == HTTP_OK

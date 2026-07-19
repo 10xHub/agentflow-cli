@@ -9,11 +9,17 @@
   "injectq": "graph.agent:container",
   "rate_limit": {
     "enabled": true,
-    "backend": "memory",
+    "backend": "redis",
+    "redis": {
+      "url": "${REDIS_URL}",
+      "prefix": "agentflow:rate-limit"
+    },
     "requests": 100,
     "window": 60,
-    "by": "ip",
-    "trusted_proxy_headers": false,
+    "by": "user",
+    "trusted_proxy_headers": true,
+    "trusted_proxy_hops": 1,
+    "fail_open": false,
     "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
   },
   "test": {

@@ -79,7 +79,14 @@ def _extract_credential(
 
     ws_token = connection.query_params.get("token")
     if ws_token:
-        return HTTPAuthorizationCredentials(scheme="Bearer", credentials=ws_token)
+        is_ws = False
+        if hasattr(connection, "scope") and isinstance(connection.scope, dict):
+            is_ws = connection.scope.get("type") == "websocket"
+        if not is_ws:
+            from fastapi import WebSocket
+            is_ws = isinstance(connection, WebSocket)
+        if is_ws:
+            return HTTPAuthorizationCredentials(scheme="Bearer", credentials=ws_token)
 
     return None
 
@@ -205,6 +212,8 @@ class RequirePermission:
             resource_id = self.extract_resource_id_fn(connection)
         else:
             resource_id = self._extract_resource_id_from_path(connection)
+            if resource_id is None:
+                resource_id = await self._extract_resource_id_from_body(connection)
 
         # Step 4: Authorization
         if not await authz.authorize(
@@ -251,4 +260,31 @@ class RequirePermission:
             if param_name in path_params:
                 return str(path_params[param_name])
 
+        return None
+
+    async def _extract_resource_id_from_body(self, connection: HTTPConnection) -> str | None:
+        """Extract resource ID (like thread_id) from the request body.
+
+        Only parsed if content-type is JSON and connection is a standard HTTP Request.
+        """
+        from starlette.requests import Request
+        if not isinstance(connection, Request):
+            return None
+
+        content_type = connection.headers.get("content-type", "")
+        if "application/json" not in content_type.lower():
+            return None
+
+        try:
+            body = await connection.json()
+            if isinstance(body, dict):
+                # 1. Root level thread_id
+                if "thread_id" in body and body["thread_id"]:
+                    return str(body["thread_id"])
+                # 2. Nested inside config block
+                cfg = body.get("config")
+                if isinstance(cfg, dict) and "thread_id" in cfg and cfg["thread_id"]:
+                    return str(cfg["thread_id"])
+        except Exception:
+            pass
         return None
