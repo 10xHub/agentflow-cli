@@ -45,7 +45,16 @@ class HeaderAuth(BaseAuth):
             from fastapi import HTTPException
 
             raise HTTPException(status_code=401, detail="X-Test-User header required")
-        return {"user_id": user_id}
+        info: dict[str, Any] = {"user_id": user_id}
+        # Optional comma-separated scopes, so tests can exercise scope enforcement.
+        scopes_header = request.headers.get("X-Test-Scopes")
+        if scopes_header is not None:
+            info["scopes"] = [s.strip() for s in scopes_header.split(",") if s.strip()]
+        # Optional comma-separated roles, for the RBAC backend.
+        roles_header = request.headers.get("X-Test-Role")
+        if roles_header is not None:
+            info["roles"] = [r.strip() for r in roles_header.split(",") if r.strip()]
+        return info
 
 
 class OwnershipAuthz(AuthorizationBackend):

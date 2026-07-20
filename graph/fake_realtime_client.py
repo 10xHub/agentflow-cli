@@ -33,6 +33,7 @@ from agentflow.core.realtime.base import (
 
 OUTPUT_SAMPLE_RATE = 24000
 
+
 # A short, quiet 440 Hz tone (PCM16 mono @ 24 kHz) reused as the agent's "audio".
 # Precomputed once so responding is cheap and deterministic.
 def _make_tone(freq: int = 440, ms: int = 320, amplitude: float = 0.18) -> bytes:
@@ -50,7 +51,7 @@ _TONE = _make_tone()
 
 _REPLIES = cycle(
     [
-        "You're talking to a mock live agent — no real model is connected, so this reply is canned.",
+        "You're talking to a mock live agent; no real model is connected, so this reply is canned.",
         "Got it. This session runs over the real /v1/graph/live socket, but the provider is faked.",
         "Heard you. Wire in a Gemini Live key to swap this stub for a real audio-to-audio model.",
         "Still here. Everything you see is scripted server-side to exercise the Live page.",

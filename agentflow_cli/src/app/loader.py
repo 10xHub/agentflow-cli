@@ -14,6 +14,7 @@ from agentflow_cli.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
     OwnershipAuthorizationBackend,
+    RoleBasedAuthorizationBackend,
 )
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
@@ -324,21 +325,38 @@ def _build_ownership_redis(redis_url: str | None) -> object | None:
 
 
 def _resolve_authorization_backend(
-    authorization: str | None, redis_url: str | None = None
+    authorization: str | dict | None, redis_url: str | None = None
 ) -> AuthorizationBackend:
     """Pick the authorization backend from config, defaulting by run mode.
 
     Resolution order (developer choice always wins):
 
-    1. ``"module:attr"`` -> the developer's custom :class:`AuthorizationBackend`.
-    2. A built-in name (``"ownership"``, ``"allow_all"``/``"default"``/``"none"``) ->
+    1. A dict ``{"backend": "rbac", "roles": {...}, ...}`` -> role-based access control.
+    2. ``"module:attr"`` -> the developer's custom :class:`AuthorizationBackend`.
+    3. A built-in name (``"ownership"``, ``"allow_all"``/``"default"``/``"none"``) ->
        that backend, regardless of mode.
-    3. Not configured (``null``) -> secure-by-default in production
+    4. Not configured (``null``) -> secure-by-default in production
        (:class:`OwnershipAuthorizationBackend`), permissive in development
-       (:class:`DefaultAuthorizationBackend`). Either can be overridden via (1)/(2).
+       (:class:`DefaultAuthorizationBackend`). Either can be overridden via (1)/(2)/(3).
 
     ``redis_url`` (when set) backs the ownership cache's shared L2 tier.
     """
+    # 1. Config-driven RBAC: {"backend": "rbac", "roles": {...}, "default_scopes": [...]}
+    if isinstance(authorization, dict):
+        backend_name = (authorization.get("backend") or authorization.get("type") or "").lower()
+        if backend_name in ("rbac", "role_based", "roles"):
+            logger.info("Using RoleBasedAuthorizationBackend (config-driven roles).")
+            return RoleBasedAuthorizationBackend(
+                role_scopes=authorization.get("roles") or authorization.get("role_scopes") or {},
+                default_scopes=authorization.get("default_scopes") or (),
+                isolation=authorization.get("isolation", "owner"),
+                redis=_build_ownership_redis(redis_url),
+            )
+        raise ValueError(
+            f"Unknown authorization backend config: {authorization!r}. For RBAC use "
+            '{"backend": "rbac", "roles": {...}}.'
+        )
+
     if authorization and ":" in authorization:
         backend = load_authorization(authorization)
         logger.info("Using custom AuthorizationBackend from '%s'.", authorization)

@@ -11,9 +11,9 @@ from agentflow_cli.cli.core.validation import Validator
 from agentflow_cli.cli.exceptions import DockerError, FileOperationError, ValidationError
 from agentflow_cli.cli.templates.defaults import (
     generate_docker_compose_content,
-    generate_k8s_manifest_content,
     generate_dockerfile_content,
     generate_dockerignore_content,
+    generate_k8s_manifest_content,
 )
 
 
@@ -91,7 +91,9 @@ class BuildCommand(BaseCommand):
                 try:
                     dockerignore_content = generate_dockerignore_content()
                     dockerignore_path.write_text(dockerignore_content, encoding="utf-8")
-                    self.output.success(f"Successfully generated .dockerignore at {dockerignore_path}")
+                    self.output.success(
+                        f"Successfully generated .dockerignore at {dockerignore_path}"
+                    )
                 except Exception as e:
                     self.output.warning(f"Could not generate .dockerignore: {e}")
 

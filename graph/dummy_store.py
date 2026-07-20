@@ -13,7 +13,7 @@ real ``QdrantStore``/``Mem0Store`` when embeddings + a vector DB are available.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from agentflow.core.state import Message
@@ -22,7 +22,7 @@ from agentflow.storage.store.store_schema import MemorySearchResult, MemoryType
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _content_str(content: str | Message) -> str:
@@ -68,7 +68,7 @@ class DummyInMemoryStore(BaseStore):
                 {"thread_id": "th_q2report", "tools": ["get_report", "send_email"]},
             ),
             (
-                "To summarise a report: fetch it, extract the top 3 metrics, then draft 2 sentences.",
+                "To summarise a report: fetch it, extract 3 metrics, draft 2 sentences.",
                 MemoryType.PROCEDURAL,
                 "skills",
                 {"steps": 3},

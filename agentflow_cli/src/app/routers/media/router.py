@@ -83,9 +83,7 @@ async def upload_file(
     try:
         # Record the uploader as the owner, so the file cannot later be read by a
         # different user who knows the id.
-        result = await service.upload_file(
-            data, file.filename, mime, user_id=user.get("user_id")
-        )
+        result = await service.upload_file(data, file.filename, mime, user_id=user.get("user_id"))
     except ValueError as exc:
         raise HTTPException(status_code=413, detail=str(exc))
 

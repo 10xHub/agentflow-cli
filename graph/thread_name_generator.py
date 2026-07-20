@@ -8,9 +8,11 @@ from agentflow_cli import ThreadNameGenerator
 class MyNameGenerator(ThreadNameGenerator):
     """Derive a short thread title from the first user message (no LLM)."""
 
+    MAX_TITLE_LEN = 50
+
     async def generate_name(self, messages: list[str]) -> str:
         first = next((m for m in messages if m and m.strip()), "")
         first = " ".join(first.split())
         if not first:
             return "new-conversation"
-        return first[:50] + ("…" if len(first) > 50 else "")
+        return first[: self.MAX_TITLE_LEN] + ("…" if len(first) > self.MAX_TITLE_LEN else "")

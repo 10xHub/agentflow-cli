@@ -127,7 +127,7 @@ class ThreadOwnershipResolver:
             return None
         if value is None:
             return None
-        return value.decode() if isinstance(value, (bytes, bytearray)) else str(value)
+        return value.decode() if isinstance(value, bytes | bytearray) else str(value)
 
     async def _redis_set(self, key: str, owner: str) -> None:
         if self._redis is None:

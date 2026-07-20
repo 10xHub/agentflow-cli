@@ -175,7 +175,7 @@ class TestSubprotocolToken:
             "/ws", subprotocols=[WS_BEARER_SUBPROTOCOL, "alice"]
         ) as conn:
             msg = conn.receive_json()
-            assert msg["user"] == {"user_id": "alice"}
+            assert msg["user"]["user_id"] == "alice"
             # Server must echo the sentinel subprotocol or browsers fail the handshake.
             assert conn.accepted_subprotocol == WS_BEARER_SUBPROTOCOL
 

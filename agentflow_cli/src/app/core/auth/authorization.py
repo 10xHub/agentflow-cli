@@ -57,6 +57,37 @@ class AuthorizationBackend(ABC):
             Exception: Can raise exceptions for auth failures or errors
         """
 
+    def isolation_scope(self) -> str:
+        """The data-isolation policy this backend implies, sent to storage per request.
+
+        The API stamps this (server-side, non-hijackable) into ``config["policy"]`` so the
+        checkpointer scopes storage the *same* way this backend decides access -- no
+        contradiction between "allow_all" authz and a data layer that still filters.
+
+        - ``"owner"`` -> storage is scoped to the caller's ``user_id`` (owner-only).
+        - ``"none"``  -> storage is not scoped (any authenticated user sees everything).
+
+        Defaults to ``"none"``. Override (or return ``"owner"``) to make a custom backend
+        drive per-user storage isolation too.
+        """
+        return "none"
+
+    def scopes_for(self, user: dict[str, Any]) -> list[str] | None:
+        """Return the scopes this identity is granted, or None for "unrestricted".
+
+        ``RequirePermission`` checks the required ``"<resource>:<action>"`` scope against
+        this list. Returning ``None`` means the identity is not scope-restricted
+        (permissive -- the default, so nothing breaks until scopes are issued).
+
+        The default passes through scopes the identity already carries
+        (``user["scopes"]``, e.g. from a JWT ``scope`` claim). A role-based backend
+        overrides this to map ``user["roles"]`` to scopes.
+        """
+        scopes = user.get("scopes") if isinstance(user, dict) else None
+        if isinstance(scopes, list | tuple | set | frozenset):
+            return list(scopes)
+        return None
+
 
 class DefaultAuthorizationBackend(AuthorizationBackend):
     """
@@ -131,6 +162,10 @@ class OwnershipAuthorizationBackend(AuthorizationBackend):
 
     # Resources whose ``resource_id`` is a thread_id and therefore ownership-checkable.
     THREAD_RESOURCES = frozenset({"graph", "checkpointer"})
+
+    def isolation_scope(self) -> str:
+        # Owner-only access -> storage must be scoped to the caller too.
+        return "owner"
 
     def __init__(
         self,
@@ -227,8 +262,20 @@ class OwnershipAuthorizationBackend(AuthorizationBackend):
             )
             return True
 
+        return await self._authorize_ownership(
+            resolver, str(resource_id), str(user_id), resource, action
+        )
+
+    async def _authorize_ownership(
+        self,
+        resolver: Any,
+        resource_id: str,
+        user_id: str,
+        resource: str,
+        action: str,
+    ) -> bool:
         try:
-            owner = await resolver.owner_of(str(resource_id))
+            owner = await resolver.owner_of(resource_id)
         except NotImplementedError:
             logger.warning(
                 "Checkpointer %s cannot resolve thread ownership; ownership "
@@ -254,4 +301,69 @@ class OwnershipAuthorizationBackend(AuthorizationBackend):
         # caller must be the owner, for EVERY action (invoke/stream included).
         if owner is None:
             return True
-        return str(owner) == str(user_id)
+        return str(owner) == user_id
+
+
+class RoleBasedAuthorizationBackend(OwnershipAuthorizationBackend):
+    """RBAC: map a user's roles to scopes, on top of owner-only object isolation.
+
+    Combines two things in one backend:
+
+    - **Scopes** (what actions are allowed) -- ``scopes_for`` maps ``user["roles"]`` (or
+      ``user["role"]``) to a set of scopes via the ``role_scopes`` table. ``RequirePermission``
+      then enforces the required ``"<resource>:<action>"`` scope. A role granting ``"*"``
+      gets every scope in :data:`agentflow.core.authz.ALL_SCOPES`.
+    - **Isolation** (which rows are visible) -- inherited from
+      :class:`OwnershipAuthorizationBackend` (owner-only threads), configurable via
+      ``isolation``.
+
+    Example::
+
+        RoleBasedAuthorizationBackend(
+            role_scopes={
+                "admin": ["*"],
+                "member": ["graph:invoke", "graph:stream", "checkpointer:read"],
+            },
+            default_scopes=["graph:read"],  # granted to everyone, even with no role
+        )
+    """
+
+    def __init__(
+        self,
+        role_scopes: dict[str, Any] | None = None,
+        *,
+        default_scopes: Any = (),
+        isolation: str = "owner",
+        checkpointer: Any | None = None,
+        resolver: Any | None = None,
+        redis: object | None = None,
+    ) -> None:
+        super().__init__(checkpointer=checkpointer, resolver=resolver, redis=redis)
+        self._role_scopes = {str(r): list(s) for r, s in (role_scopes or {}).items()}
+        self._default_scopes = list(default_scopes)
+        self._isolation = isolation if isolation in ("owner", "none") else "owner"
+
+    def isolation_scope(self) -> str:
+        return self._isolation
+
+    @staticmethod
+    def _roles_of(user: dict[str, Any]) -> list[str]:
+        if not isinstance(user, dict):
+            return []
+        roles = user.get("roles")
+        if roles is None:
+            role = user.get("role")
+            roles = [role] if role else []
+        elif isinstance(roles, str):
+            roles = [roles]
+        return [str(r) for r in roles]
+
+    def scopes_for(self, user: dict[str, Any]) -> list[str]:
+        from agentflow.core.authz import ALL_SCOPES
+
+        granted: set[str] = set(self._default_scopes)
+        for role in self._roles_of(user):
+            granted.update(self._role_scopes.get(role, []))
+        if "*" in granted:
+            return sorted(ALL_SCOPES)
+        return sorted(granted)

@@ -23,7 +23,14 @@ from agentflow_cli.src.app.core.auth.permissions import RequirePermission
 logger = logging.getLogger("agentflow-cli.route_guard")
 
 # Paths that are intentionally public (no authorization). Keep this list tiny and explicit.
-DEFAULT_PUBLIC_PATHS = frozenset({"/ping"})
+# Evals is a dev-only report viewer over local files (no user data, not a production surface).
+DEFAULT_PUBLIC_PATHS = frozenset(
+    {
+        "/ping",
+        "/v1/evals/runs",
+        "/v1/evals/runs/{run_id}",
+    }
+)
 
 
 def _has_permission_guard(dependant) -> bool:
@@ -42,7 +49,7 @@ def find_unprotected_routes(
     """Return ``"METHODS path"`` for every route missing a RequirePermission guard."""
     unprotected: list[str] = []
     for route in app.routes:
-        if not isinstance(route, (APIRoute, APIWebSocketRoute)):
+        if not isinstance(route, APIRoute | APIWebSocketRoute):
             # Starlette infra routes (docs, openapi.json, redoc) are not APIRoutes.
             continue
         if route.path in public_paths:

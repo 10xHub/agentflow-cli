@@ -18,8 +18,8 @@ from agentflow_cli.src.app.core import (
     init_logger,
     setup_middleware,
 )
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.core.auth.route_guard import assert_all_routes_protected
+from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.loader import attach_all_modules, load_container
 from agentflow_cli.src.app.routers import init_routes
 

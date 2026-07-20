@@ -146,9 +146,7 @@ class ToolNodeSchema(BaseModel):
 
     node_name: str = Field(..., description="Name of the tool node in the graph")
     tool_count: int = Field(..., description="Number of tools exposed by this node")
-    tools: list[ToolSchema] = Field(
-        default_factory=list, description="Tools exposed by this node"
-    )
+    tools: list[ToolSchema] = Field(default_factory=list, description="Tools exposed by this node")
 
 
 class GraphToolsSchema(BaseModel):

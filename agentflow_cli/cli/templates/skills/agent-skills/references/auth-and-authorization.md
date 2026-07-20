@@ -1,66 +1,126 @@
 # Auth and Authorization
 
-Use this when changing HTTP authentication, authorization, permission checks, or client auth examples.
+Use this when changing HTTP authentication, authorization, permission checks, scopes, storage
+isolation, or client auth examples.
+
+Two independent layers:
+
+- Authentication (`BaseAuth`): who is the caller? Produces a `user` dict.
+- Authorization (`AuthorizationBackend`): what may they do, and whose data can they touch?
 
 ## Authentication Modes
 
 Default:
 
 - `auth: null`
-- No authentication.
-- Suitable only for local development or trusted gateways.
+- No authentication. Local development / trusted gateways only.
 
 JWT:
 
 - `auth: "jwt"`
-- Requires `JWT_SECRET_KEY` and `JWT_ALGORITHM`.
-- Requests use `Authorization: Bearer <token>`.
-- Decoded JWT payload becomes the endpoint `user` context.
+- Requires `JWT_SECRET_KEY` and `JWT_ALGORITHM`. Token must carry `user_id` and `exp`.
+- Requests use `Authorization: Bearer <token>`. Decoded payload becomes the `user` context.
 
 Custom:
 
 ```json
+{ "auth": { "method": "custom", "path": "graph.auth:MyAuthBackend" } }
+```
+
+Custom backends subclass `BaseAuth`. `authenticate` is **synchronous** (called without `await`)
+and takes three args:
+
+```python
+def authenticate(self, request, response, credential) -> dict | None: ...
+```
+
+- `request` may be a `Request` or a `WebSocket` (both are `HTTPConnection`) — read
+  `request.headers`, do not assume Request-only APIs.
+- `credential` is the parsed bearer token (`HTTPAuthorizationCredentials | None`). For
+  API-key/cookie schemes, ignore it and read headers directly.
+- Return a dict with at least `user_id` (keys flow into `config["user"]`); `{}`/`None` = anonymous;
+  raise `UserAccountError`/`HTTPException` to reject (401 HTTP, 1008 close on WebSocket).
+- Do NOT declare it `async def` — an un-awaited coroutine breaks auth silently.
+- Include `roles` / `scopes` in the returned dict to feed authorization.
+
+## Authorization
+
+Configured via the `authorization` key; separate from `auth`. Values:
+
+- `null` (unset): mode-based default — `"ownership"` in production, `"allow_all"` in development.
+- `"ownership"`: owner-only. A thread is readable/runnable/deletable only by its creator; a
+  foreign `invoke`/`stream` is rejected up front (403). Enforced on every thread-touching step.
+- `"allow_all"` (aliases `"default"`, `"none"`): any authenticated user may do anything.
+- `"module:attr"`: custom `AuthorizationBackend`.
+- `{ "backend": "rbac", ... }`: role-based access control (below).
+
+Ownership is scalable: ownership is immutable, so it is cached (in-process LRU + optional shared
+Redis when `redis`/`REDIS_URL` is set) via `ThreadOwnershipResolver` over
+`BaseCheckpointer.aget_thread_owner`. After the first lookup a check is an in-memory hit, not a
+per-request DB call; the cache is evicted on thread deletion. Ownership needs a persistent
+checkpointer (pg/sqlite/in-memory); with none, requests pass through.
+
+### Custom backend interface
+
+```python
+class MyAuthz(AuthorizationBackend):
+    async def authorize(
+        self, user: dict, resource: str, action: str,
+        resource_id: str | None = None, **context,
+    ) -> bool: ...                     # required; False -> 403
+
+    def isolation_scope(self) -> str:  # optional; "owner" | "none" (default "none")
+        return "owner"
+
+    def scopes_for(self, user: dict) -> list[str] | None:  # optional; None = permissive
+        return user.get("scopes")
+```
+
+Subclass `OwnershipAuthorizationBackend` to inherit cached owner-only checks and override only
+what you need.
+
+### Scopes
+
+Each endpoint requires the scope `"<resource>:<action>"`. `RequirePermission` checks it against
+`authz.scopes_for(user)`; `None` = permissive (default, nothing breaks until scopes are issued).
+
+- `graph`: `invoke`, `stream`, `stop`, `fix`, `setup`, `read`
+- `checkpointer`: `read`, `write`, `delete`
+- `store`: `read`, `write`, `delete`
+- `files`: `upload`, `read`
+- `config`: `read`
+
+### RBAC config (no code)
+
+```json
 {
-  "auth": {
-    "method": "custom",
-    "path": "graph.auth:MyAuthBackend"
+  "authorization": {
+    "backend": "rbac",
+    "roles": { "admin": ["*"], "member": ["graph:invoke", "checkpointer:read"] },
+    "default_scopes": ["graph:read"],
+    "isolation": "owner"
   }
 }
 ```
 
-Custom auth backends implement `BaseAuth.authenticate(request) -> dict | None`.
+Maps `user["roles"]` to scopes on top of owner isolation. `"*"` -> all scopes. `default_scopes`
+granted to everyone. `isolation`: `"owner"` | `"none"`.
 
-## Authorization
+### Data isolation (config["authz"])
 
-Authorization decides whether an authenticated user can perform a resource/action pair.
+API checks decide access; the storage layer (checkpointer, store) enforces isolation from a
+trusted policy. After a successful check, `RequirePermission` stamps
+`user["authz"] = {user_id, scope, scopes}` where `scope` = backend `isolation_scope()`. Services
+copy the trusted `user` into `config["user"]`, so the core library reads `config["user"]["authz"]`
+and scopes rows to the caller (`owner`) or not (`none`). Set server-side only — not client-forgeable.
 
-Configure:
+## Guarantees
 
-```json
-{
-  "authorization": "graph.auth:my_authorization_backend"
-}
-```
-
-Backends implement:
-
-```python
-async def authorize(self, user: dict, resource: str, action: str) -> bool:
-    ...
-```
-
-Common resources/actions:
-
-- `graph`: `invoke`, `stream`, `read`, `stop`, `setup`, `fix`
-- `checkpointer`: `read`, `write`, `delete`
-- `store`: `read`, `write`, `delete`
-- `files`: `upload`, `read`
-
-Routes use `RequirePermission(resource, action)`.
+- Routes are guarded by construction: `assert_all_routes_protected` refuses to boot if any
+  non-public route lacks `RequirePermission`. Public: `/ping` and dev-only eval endpoints.
+- Return 401 for auth failure, 403 for authorization/scope failure.
 
 ## TypeScript Client
-
-Pass auth headers through the client config:
 
 ```typescript
 const client = new AgentFlowClient({
@@ -71,17 +131,19 @@ const client = new AgentFlowClient({
 
 ## Rules
 
-- Do not use unauthenticated API mode in production unless a trusted gateway handles auth.
-- Keep authorization separate from graph business logic.
-- Return 401 for authentication failure and 403 for authorization failure.
-- Use sanitized logging for tokens and user payloads.
-- Update permission tables when adding routes.
+- No unauthenticated API mode in production unless a trusted gateway handles auth.
+- Keep `authenticate` synchronous; keep authorization out of graph business logic.
+- Sanitize logging for tokens and user payloads.
+- Update the scope catalog and permission tables when adding routes.
 
 ## Source Map
 
-- Base auth: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/base_auth.py
-- JWT auth: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/jwt_auth.py
-- Auth backend loader: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/auth_backend.py
-- Authorization: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/authorization.py
-- Permission dependency: https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/src/app/core/auth/permissions.py
+- Base auth: agentflow_cli/src/app/core/auth/base_auth.py
+- JWT auth: agentflow_cli/src/app/core/auth/jwt_auth.py
+- Auth loader/dependency: agentflow_cli/src/app/core/auth/auth_backend.py
+- Authorization backends (ownership, RBAC): agentflow_cli/src/app/core/auth/authorization.py
+- Permission dependency + scope check + authz stamp: agentflow_cli/src/app/core/auth/permissions.py
+- Ownership cache: agentflow_cli/src/app/core/auth/ownership_resolver.py
+- Boot-time route guard: agentflow_cli/src/app/core/auth/route_guard.py
+- Scope catalog + authz contract: agentflow/agentflow/core/authz.py
 - Docs: https://agentflow.10xscale.ai/

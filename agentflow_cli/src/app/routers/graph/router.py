@@ -13,11 +13,11 @@ from injectq import InjectQ
 from injectq.integrations import InjectAPI
 from pydantic import ValidationError
 
+from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
 from agentflow_cli.src.app.core.auth.permissions import (
     RequirePermission,
     ws_bearer_subprotocol,
 )
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
 from agentflow_cli.src.app.routers.graph.realtime_guard import realtime_connection_guard
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     FixGraphRequestSchema,
@@ -383,6 +383,39 @@ async def fix_graph(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+async def _ws_thread_authorized(
+    authz: AuthorizationBackend,
+    user: dict[str, Any],
+    thread_id: str | None,
+    action: str,
+) -> bool:
+    """Owner-check ``thread_id`` for a WebSocket run.
+
+    Returns ``True`` when the run may proceed. Ownership is only enforced when auth is
+    configured (``GraphConfig.auth_config``); an unauthenticated dev graph and fresh
+    (``"new"``/absent) threads always pass.
+    """
+    if not thread_id or thread_id == "new":
+        return True
+
+    from injectq import InjectQ
+
+    has_auth = False
+    try:
+        from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+
+        cfg = InjectQ.get_instance().get(GraphConfig)
+        if cfg and cfg.auth_config():
+            has_auth = True
+    except Exception as exc:
+        logger.debug("Could not resolve GraphConfig for WS auth check: %s", exc)
+
+    if not has_auth:
+        return True
+
+    return await authz.authorize(user, "graph", action, resource_id=str(thread_id))
+
+
 @router.websocket("/v1/graph/ws")
 async def websocket_graph(
     websocket: WebSocket,
@@ -434,10 +467,12 @@ async def websocket_graph(
 
     if hasattr(authz, "dependency"):
         from injectq import InjectQ
+
         try:
             authz = InjectQ.get_instance().get(AuthorizationBackend)
         except Exception:
             from agentflow_cli.src.app.core.auth.authorization import DefaultAuthorizationBackend
+
             authz = DefaultAuthorizationBackend()
 
     # Wrong agent type for this endpoint: a live (realtime) graph cannot be driven over
@@ -480,30 +515,18 @@ async def websocket_graph(
                 continue
 
             thread_id = (ws_input.config or {}).get("thread_id", "new")
-            if thread_id and thread_id != "new":
-                has_auth = False
-                from injectq import InjectQ
-                try:
-                    from agentflow_cli.src.app.core.config.graph_config import GraphConfig
-                    cfg = InjectQ.get_instance().get(GraphConfig)
-                    if cfg and cfg.auth_config():
-                        has_auth = True
-                except Exception:
-                    pass
-
-                if has_auth:
-                    if not await authz.authorize(user, "graph", "stream", resource_id=str(thread_id)):
-                        logger.warning(
-                            f"WebSocket authorization failed for user {user.get('user_id')} "
-                            f"on thread {thread_id}"
-                        )
-                        await websocket.send_text(
-                            StreamChunk(
-                                event=StreamEvent.ERROR,
-                                data={"reason": f"Not authorized to stream thread {thread_id}"},
-                            ).model_dump_json()
-                        )
-                        continue
+            if not await _ws_thread_authorized(authz, user, thread_id, "stream"):
+                logger.warning(
+                    f"WebSocket authorization failed for user {user.get('user_id')} "
+                    f"on thread {thread_id}"
+                )
+                await websocket.send_text(
+                    StreamChunk(
+                        event=StreamEvent.ERROR,
+                        data={"reason": f"Not authorized to stream thread {thread_id}"},
+                    ).model_dump_json()
+                )
+                continue
 
             logger.info(
                 "WebSocket graph run: invoke_type=%s, thread_id=%s",
@@ -541,7 +564,7 @@ def _realtime_event_json(event: Any) -> str:
 
 
 @router.websocket("/v1/graph/live")
-async def realtime_graph_ws(  # noqa: PLR0915
+async def realtime_graph_ws(  # noqa: PLR0912, PLR0915
     websocket: WebSocket,
     _bind: None = Depends(_bind_ws_container),
     _guard: None = Depends(realtime_connection_guard),
@@ -571,10 +594,12 @@ async def realtime_graph_ws(  # noqa: PLR0915
 
     if hasattr(authz, "dependency"):
         from injectq import InjectQ
+
         try:
             authz = InjectQ.get_instance().get(AuthorizationBackend)
         except Exception:
             from agentflow_cli.src.app.core.auth.authorization import DefaultAuthorizationBackend
+
             authz = DefaultAuthorizationBackend()
 
     # Wrong agent type for this endpoint: the realtime bridge requires a graph rooted at a
@@ -610,36 +635,24 @@ async def realtime_graph_ws(  # noqa: PLR0915
 
     if isinstance(init, dict):
         thread_id = init.get("thread_id")
-        if thread_id:
-            has_auth = False
-            from injectq import InjectQ
-            try:
-                from agentflow_cli.src.app.core.config.graph_config import GraphConfig
-                cfg = InjectQ.get_instance().get(GraphConfig)
-                if cfg and cfg.auth_config():
-                    has_auth = True
-            except Exception:
-                pass
-
-            if has_auth:
-                if not await authz.authorize(user, "graph", "stream", resource_id=str(thread_id)):
-                    logger.warning(
-                        f"Realtime WebSocket authorization failed for user {user.get('user_id')} "
-                        f"on thread {thread_id}"
-                    )
-                with contextlib.suppress(Exception):
-                    await websocket.send_text(
-                        _realtime_event_json(
-                            ErrorEvent(
-                                code="not_authorized",
-                                message=f"Not authorized to stream thread {thread_id}",
-                                fatal=True,
-                            )
+        if not await _ws_thread_authorized(authz, user, thread_id, "stream"):
+            logger.warning(
+                f"Realtime WebSocket authorization failed for user {user.get('user_id')} "
+                f"on thread {thread_id}"
+            )
+            with contextlib.suppress(Exception):
+                await websocket.send_text(
+                    _realtime_event_json(
+                        ErrorEvent(
+                            code="not_authorized",
+                            message=f"Not authorized to stream thread {thread_id}",
+                            fatal=True,
                         )
                     )
-                with contextlib.suppress(Exception):
-                    await websocket.close(code=1008)
-                return
+                )
+            with contextlib.suppress(Exception):
+                await websocket.close(code=1008)
+            return
 
     if not isinstance(init, dict):
         logger.warning("Realtime init frame must be a JSON object, got %s", type(init).__name__)

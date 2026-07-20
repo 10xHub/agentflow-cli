@@ -269,7 +269,7 @@ class GraphService:
             return
         try:
             store.record(thread_id, run_id, self._telemetry_record(chunk))
-        except Exception as e:  # noqa: BLE001 - telemetry must never break a run
+        except Exception as e:  # - telemetry must never break a run
             logger.debug("Telemetry record failed: %s", e)
 
     async def stop_graph(
@@ -298,11 +298,13 @@ class GraphService:
 
             # Start with client config if provided, then overlay trusted attributes
             stop_config = dict(config) if config else {}
-            stop_config.update({
-                "thread_id": thread_id,
-                "user": user,
-                "user_id": user.get("user_id", "anonymous"),
-            })
+            stop_config.update(
+                {
+                    "thread_id": thread_id,
+                    "user": user,
+                    "user_id": user.get("user_id", "anonymous"),
+                }
+            )
 
             # Call the graph's astop method
             result = await self._graph.astop(stop_config)
@@ -570,8 +572,8 @@ class GraphService:
                     self.telemetry.finish_run(
                         thread_id, run_id, datetime.now().timestamp(), "error"
                     )
-            except Exception:
-                pass
+            except Exception as telemetry_exc:
+                logger.debug("Telemetry finish_run failed on stream error: %s", telemetry_exc)
             # The global error handlers never see this exception (it is caught inside
             # the generator), so sanitize here too. Otherwise a driver/DB exception
             # embedding a connection string or internal path would stream verbatim in
@@ -694,7 +696,7 @@ class GraphService:
 
             try:
                 raw_tools = await tool_node.all_tools()
-            except Exception as e:  # noqa: BLE001 - one bad MCP server shouldn't 500 the page
+            except Exception as e:  # - one bad MCP server shouldn't 500 the page
                 logger.warning("Failed to list tools for node '%s': %s", node_name, e)
                 raw_tools = []
 
@@ -799,7 +801,6 @@ class GraphService:
         spans: list[ObsSpanSchema] = []
 
         # Root span spans the whole run.
-        root_name = getattr(self._graph, "__class__", type(self._graph)).__name__
         spans.append(
             ObsSpanSchema(
                 id="root",
@@ -923,10 +924,9 @@ class GraphService:
         tools = rec.get("tool_names") or []
         if rec.get("is_error"):
             return "error"
-        if tools and "tool_call" in kinds:
-            return f"tool_call {', '.join(tools)}"
-        if tools and "tool_result" in kinds:
-            return f"tool_result {', '.join(tools)}"
+        if tools and ("tool_call" in kinds or "tool_result" in kinds):
+            label = "tool_call" if "tool_call" in kinds else "tool_result"
+            return f"{label} {', '.join(tools)}"
         if rec.get("usages"):
             u = rec["usages"]
             return f"llm.generate · {u.get('total_tokens', 0)} tokens"
@@ -1001,11 +1001,9 @@ class GraphService:
 
             # Start with client config if provided, then overlay trusted attributes
             fix_config = dict(config) if config else {}
-            fix_config.update({
-                "thread_id": thread_id,
-                "user": user,
-                "user_id": user.get("user_id", "anonymous")
-            })
+            fix_config.update(
+                {"thread_id": thread_id, "user": user, "user_id": user.get("user_id", "anonymous")}
+            )
 
             logger.debug("Fetching current state from checkpointer")
             state: AgentState | None = await self.checkpointer.aget_state(fix_config)
@@ -1060,15 +1058,20 @@ class GraphService:
         if self.config:
             backend = self.config.auth_config()
             from unittest.mock import Mock
-            if backend and not isinstance(backend, Mock):
-                if isinstance(backend, dict) and backend.get("method") != "none":
-                    has_auth = True
-                elif isinstance(backend, str) and backend != "none":
-                    has_auth = True
+
+            if (
+                backend
+                and not isinstance(backend, Mock)
+                and (
+                    (isinstance(backend, dict) and backend.get("method") != "none")
+                    or (isinstance(backend, str) and backend != "none")
+                )
+            ):
+                has_auth = True
         if settings.MODE == "production" or has_auth:
             raise HTTPException(
                 status_code=403,
-                detail="Dynamic tool setup is disabled in production/multi-tenant mode."
+                detail="Dynamic tool setup is disabled in production/multi-tenant mode.",
             )
 
         # lets create tools

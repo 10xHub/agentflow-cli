@@ -84,6 +84,7 @@ def _extract_credential(
             is_ws = connection.scope.get("type") == "websocket"
         if not is_ws:
             from fastapi import WebSocket
+
             is_ws = isinstance(connection, WebSocket)
         if is_ws:
             return HTTPAuthorizationCredentials(scheme="Bearer", credentials=ws_token)
@@ -215,7 +216,21 @@ class RequirePermission:
             if resource_id is None:
                 resource_id = await self._extract_resource_id_from_body(connection)
 
-        # Step 4: Authorization
+        # Step 4: Scope check -- does this identity carry the permission for this
+        # endpoint at all? The required scope is "<resource>:<action>". Scopes come from
+        # the authenticated identity (user["scopes"], populated by the auth backend / JWT
+        # claims). If the identity declares no scopes, we stay permissive (backward
+        # compatible) -- once scopes are issued, they are enforced.
+        required_scope = f"{self.resource}:{self.action}"
+        scopes_fn = getattr(authz, "scopes_for", None)
+        granted_scopes = scopes_fn(user) if callable(scopes_fn) else None
+        if granted_scopes is None and isinstance(user, dict):
+            granted_scopes = user.get("scopes")  # fallback for backends without scopes_for
+        if granted_scopes is not None and required_scope not in granted_scopes:
+            logger.warning(f"Missing scope '{required_scope}' for user {user.get('user_id')}")
+            _reject(connection, 403, f"Missing required scope: {required_scope}")
+
+        # Step 5: Object-level authorization (ownership etc.)
         if not await authz.authorize(
             user,
             self.resource,
@@ -230,6 +245,21 @@ class RequirePermission:
                 connection,
                 403,
                 f"Not authorized to {self.action} {self.resource}",
+            )
+
+        # Step 6: Stamp the trusted authz block into the user object. Every service copies
+        # this user into config["user"], so the isolation policy + scopes reach every
+        # downstream call (checkpointer, store, graph execution). Overwrites anything the
+        # client sent -- not hijackable.
+        if isinstance(user, dict) and user.get("user_id"):
+            from agentflow.core.authz import build_authz
+
+            scope_fn = getattr(authz, "isolation_scope", None)
+            iso_scope = scope_fn() if callable(scope_fn) else "none"
+            user["authz"] = build_authz(
+                user["user_id"],
+                scope=iso_scope,
+                scopes=granted_scopes if granted_scopes is not None else [],
             )
 
         # Log successful auth/authz (with sanitized user info)
@@ -268,6 +298,7 @@ class RequirePermission:
         Only parsed if content-type is JSON and connection is a standard HTTP Request.
         """
         from starlette.requests import Request
+
         if not isinstance(connection, Request):
             return None
 
@@ -279,12 +310,12 @@ class RequirePermission:
             body = await connection.json()
             if isinstance(body, dict):
                 # 1. Root level thread_id
-                if "thread_id" in body and body["thread_id"]:
+                if body.get("thread_id"):
                     return str(body["thread_id"])
                 # 2. Nested inside config block
                 cfg = body.get("config")
                 if isinstance(cfg, dict) and "thread_id" in cfg and cfg["thread_id"]:
                     return str(cfg["thread_id"])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Failed to extract thread_id from request body: %s", exc)
         return None

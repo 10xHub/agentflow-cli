@@ -74,14 +74,14 @@ class TestWebSocketAuthResolves:
         """The ?token= fallback must resolve the dependency on a WS route (was a TypeError)."""
         client = _build_client(auth_configured=True)
         with client.websocket_connect("/ws?token=alice") as conn:
-            assert conn.receive_json() == {"user_id": "alice"}
+            assert conn.receive_json()["user_id"] == "alice"
 
     def test_authorization_header_authenticates_on_websocket(self):
         client = _build_client(auth_configured=True)
         with client.websocket_connect(
             "/ws", headers={"Authorization": "Bearer bob"}
         ) as conn:
-            assert conn.receive_json() == {"user_id": "bob"}
+            assert conn.receive_json()["user_id"] == "bob"
 
     def test_auth_not_configured_yields_empty_user_on_websocket(self):
         client = _build_client(auth_configured=False)
