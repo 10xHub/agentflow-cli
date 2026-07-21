@@ -61,14 +61,61 @@ async def main_node(state: AgentState):
             role="assistant",
             content=[
                 ReasoningBlock(
-                    summary="Read the weather result and decided on an umbrella recommendation.",
+                    summary=(
+                        "### Reading the tool result\n\n"
+                        "`get_weather` came back for **Dhaka, BD**. Pulling the four "
+                        "fields that actually matter for the question:\n\n"
+                        "| Field | Value | Reads as |\n"
+                        "| --- | --- | --- |\n"
+                        "| `temp_c` | 31.4 | hot, but not extreme |\n"
+                        "| `condition` | Partly cloudy | unstable sky |\n"
+                        "| `precip_prob_pct` | 62 | *the deciding number* |\n"
+                        "| `wind_kph` | 11 | light, umbrella stays usable |\n\n"
+                        "**How I weighed it**\n\n"
+                        "1. Anything at or above ~50% precipitation probability is a "
+                        "coin flip I would not want to lose while outside.\n"
+                        "2. 62% sits comfortably above that line, so the expected cost "
+                        "of carrying an umbrella (mild inconvenience) is smaller than "
+                        "the expected cost of skipping it (getting soaked).\n"
+                        "3. Wind at 11 km/h is low enough that an umbrella will not "
+                        "invert, so the recommendation is actually actionable — at "
+                        "25+ km/h I would have suggested a rain jacket instead.\n\n"
+                        "> Conclusion: recommend the umbrella, and surface the raw "
+                        "numbers in a card so the user can second-guess me.\n\n"
+                        "Rendering the answer as an HTML card rather than prose so the "
+                        "playground's HTML path gets exercised too."
+                    ),
                 ),
                 TextBlock(
                     text=(
-                        "It's **31.4°C** and partly cloudy in Dhaka right now, with a "
-                        "**62% chance of rain** this afternoon and light winds around "
-                        "11 km/h.\n\nYes — I'd carry the umbrella. The precipitation "
-                        "probability is high enough that an afternoon shower is likely."
+                        '<div style="max-width:340px;border:1px solid #e2e8f0;'
+                        "border-radius:12px;padding:16px;font-family:system-ui,sans-serif;"
+                        'box-shadow:0 1px 3px rgba(0,0,0,.08)">'
+                        '<div style="display:flex;justify-content:space-between;'
+                        'align-items:baseline">'
+                        '<strong style="font-size:15px">Dhaka, BD</strong>'
+                        '<span style="font-size:12px;color:#64748b">now</span>'
+                        "</div>"
+                        '<div style="font-size:34px;font-weight:600;margin:6px 0">'
+                        "31.4&deg;C</div>"
+                        '<div style="font-size:13px;color:#475569">Partly cloudy</div>'
+                        '<hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0">'
+                        '<table style="width:100%;font-size:13px;border-collapse:collapse">'
+                        '<tr><td style="color:#64748b">Rain chance</td>'
+                        '<td style="text-align:right"><strong>62%</strong></td></tr>'
+                        '<tr><td style="color:#64748b">Wind</td>'
+                        '<td style="text-align:right">11 km/h</td></tr>'
+                        "</table>"
+                        '<div style="margin-top:12px;padding:8px 10px;border-radius:8px;'
+                        'background:#eff6ff;color:#1d4ed8;font-size:13px">'
+                        "&#9730; Take the umbrella</div>"
+                        "</div>\n\n"
+                        "So: hot and muggy, and that <strong>62%</strong> is the number "
+                        "doing the work here. An afternoon shower is more likely than "
+                        "not, and with winds only around 11 km/h an umbrella will "
+                        "actually hold up.\n\n"
+                        "Plain text again, no tags — the last line is deliberately "
+                        "unstyled so you can see where the HTML stops."
                     ),
                 ),
             ],
@@ -92,7 +139,23 @@ async def main_node(state: AgentState):
         role="assistant",
         content=[
             ReasoningBlock(
-                summary="User asked about the weather. I'll call get_weather for Dhaka.",
+                summary=(
+                    "### Planning the first pass\n\n"
+                    "The user is asking about **current conditions**, which is not "
+                    "something I can answer from memory — it needs a live lookup.\n\n"
+                    "**Tools available**\n\n"
+                    "- `get_weather(location)` — returns temp, condition, precipitation "
+                    "probability and wind. This is the only one that fits.\n\n"
+                    "**Argument choice**\n\n"
+                    "No location was given explicitly, so I default to "
+                    '`"Dhaka, BD"` — country code included so the call is unambiguous '
+                    "(there is more than one Dhaka).\n\n"
+                    "I emit the call in *both* places on purpose:\n\n"
+                    "1. `ToolCallBlock` in `content` — drives what the UI renders.\n"
+                    "2. `tools_calls` on the message — drives execution and routing.\n\n"
+                    "> Next hop: `TOOL`, then back to `MAIN` to turn the raw numbers "
+                    "into an answer."
+                ),
             ),
             ToolCallBlock(
                 id=_FIXED_TOOL_CALL_ID,
