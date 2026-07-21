@@ -9,9 +9,11 @@ from agentflow.core.state import StreamChunk, StreamEvent
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.logger import logger
 from fastapi.responses import StreamingResponse
+from injectq import InjectQ
 from injectq.integrations import InjectAPI
 from pydantic import ValidationError
 
+from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
 from agentflow_cli.src.app.core.auth.permissions import (
     RequirePermission,
     ws_bearer_subprotocol,
@@ -24,6 +26,8 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphSchema,
     GraphSetupSchema,
     GraphStopSchema,
+    GraphToolsSchema,
+    ObservabilitySchema,
     WsGraphInputSchema,
 )
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
@@ -52,6 +56,26 @@ REALTIME_MAX_FRAME_BYTES = 1024 * 1024
 router = APIRouter(
     tags=["Graph"],
 )
+
+
+async def _bind_ws_container() -> None:
+    """Set the active InjectQ container for a WebSocket handshake.
+
+    ``setup_fastapi`` installs its container-activation via Starlette middleware,
+    which runs for HTTP scopes only — WebSocket handshakes bypass it, so every
+    ``InjectAPI`` dependency (here and inside ``RequirePermission``) would raise
+    "No InjectQ container in current request context". Declaring this dependency
+    *before* the ``InjectAPI`` ones makes FastAPI resolve it first, so the
+    ContextVar is set by the time the container-backed deps resolve.
+
+    Idempotent and cheap; harmless if the container is already active.
+    """
+    try:
+        from injectq.integrations.fastapi import _request_container
+
+        _request_container.set(InjectQ.get_instance())
+    except Exception:  # pragma: no cover - defensive: never block the handshake here
+        logger.exception("Failed to bind InjectQ container for WebSocket scope")
 
 
 @router.post(
@@ -139,6 +163,62 @@ async def graph_details(
     result: GraphSchema = await service.graph_details()
 
     logger.info("Graph invoke completed successfully")
+
+    return success_response(
+        result,
+        request,
+    )
+
+
+@router.get(
+    "/v1/graph/tools",
+    summary="List graph tools",
+    responses=generate_swagger_responses(GraphToolsSchema),
+    description=(
+        "List the tools exposed by every ToolNode in the graph, grouped by node. "
+        "Each tool is tagged with its source (local, mcp, or remote)."
+    ),
+    openapi_extra={},
+)
+async def graph_tools(
+    request: Request,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(RequirePermission("graph", "read")),
+):
+    """List the tools exposed by the graph's tool nodes."""
+    logger.info("Graph getting tools")
+
+    result: GraphToolsSchema = await service.get_tools()
+
+    logger.info("Graph tools listed successfully")
+
+    return success_response(
+        result,
+        request,
+    )
+
+
+@router.get(
+    "/v1/observability/{thread_id}",
+    summary="Get observability trace for a thread",
+    responses=generate_swagger_responses(ObservabilitySchema),
+    description=(
+        "Reconstruct a run trace (spans, events, token cost) for a thread from the "
+        "events its runs emitted. Returns the latest run by default, or ?run_id=..."
+    ),
+    openapi_extra={},
+)
+async def observability(
+    request: Request,
+    thread_id: str,
+    run_id: str | None = None,
+    service: GraphService = InjectAPI(GraphService),
+    user: dict[str, Any] = Depends(RequirePermission("graph", "read")),
+):
+    """Return the reconstructed observability trace for a thread."""
+    logger.info(f"Observability requested for thread {thread_id}")
+
+    result: ObservabilitySchema = await service.get_observability(thread_id, run_id)
 
     return success_response(
         result,
@@ -303,12 +383,47 @@ async def fix_graph(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+async def _ws_thread_authorized(
+    authz: AuthorizationBackend,
+    user: dict[str, Any],
+    thread_id: str | None,
+    action: str,
+) -> bool:
+    """Owner-check ``thread_id`` for a WebSocket run.
+
+    Returns ``True`` when the run may proceed. Ownership is only enforced when auth is
+    configured (``GraphConfig.auth_config``); an unauthenticated dev graph and fresh
+    (``"new"``/absent) threads always pass.
+    """
+    if not thread_id or thread_id == "new":
+        return True
+
+    from injectq import InjectQ
+
+    has_auth = False
+    try:
+        from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+
+        cfg = InjectQ.get_instance().get(GraphConfig)
+        if cfg and cfg.auth_config():
+            has_auth = True
+    except Exception as exc:
+        logger.debug("Could not resolve GraphConfig for WS auth check: %s", exc)
+
+    if not has_auth:
+        return True
+
+    return await authz.authorize(user, "graph", action, resource_id=str(thread_id))
+
+
 @router.websocket("/v1/graph/ws")
 async def websocket_graph(
     websocket: WebSocket,
+    _bind: None = Depends(_bind_ws_container),
     _guard: None = Depends(realtime_connection_guard),
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(RequirePermission("graph", "stream")),
+    authz: AuthorizationBackend = InjectAPI(AuthorizationBackend),
 ):
     """
     WebSocket endpoint for streaming graph execution.
@@ -343,11 +458,41 @@ async def websocket_graph(
     Close codes
     -----------
     1000  normal closure (client disconnected cleanly)
+    1008  rejected: this graph is a live (realtime) agent — use ``/v1/graph/live``
     1011  unexpected server error
     1013  rejected: rate limit or connection cap exceeded (try again later)
     """
     await websocket.accept(subprotocol=ws_bearer_subprotocol(websocket))
     logger.info("WebSocket graph connection accepted")
+
+    if hasattr(authz, "dependency"):
+        from injectq import InjectQ
+
+        try:
+            authz = InjectQ.get_instance().get(AuthorizationBackend)
+        except Exception:
+            from agentflow_cli.src.app.core.auth.authorization import DefaultAuthorizationBackend
+
+            authz = DefaultAuthorizationBackend()
+
+    # Wrong agent type for this endpoint: a live (realtime) graph cannot be driven over
+    # the turn-based stream socket. Reject up front with a clear error instead of failing
+    # mid-run when the graph refuses invoke/stream.
+    if service.is_live_agent:
+        logger.warning("Rejected /v1/graph/ws connection: graph is a live agent")
+        with contextlib.suppress(Exception):
+            await websocket.send_text(
+                StreamChunk(
+                    event=StreamEvent.ERROR,
+                    data={
+                        "reason": "This graph is a live (realtime) agent; connect to "
+                        "/v1/graph/live instead of /v1/graph/ws.",
+                    },
+                ).model_dump_json()
+            )
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1008)
+        return
 
     try:
         while True:
@@ -370,6 +515,19 @@ async def websocket_graph(
                 continue
 
             thread_id = (ws_input.config or {}).get("thread_id", "new")
+            if not await _ws_thread_authorized(authz, user, thread_id, "stream"):
+                logger.warning(
+                    f"WebSocket authorization failed for user {user.get('user_id')} "
+                    f"on thread {thread_id}"
+                )
+                await websocket.send_text(
+                    StreamChunk(
+                        event=StreamEvent.ERROR,
+                        data={"reason": f"Not authorized to stream thread {thread_id}"},
+                    ).model_dump_json()
+                )
+                continue
+
             logger.info(
                 "WebSocket graph run: invoke_type=%s, thread_id=%s",
                 ws_input.invoke_type,
@@ -406,11 +564,13 @@ def _realtime_event_json(event: Any) -> str:
 
 
 @router.websocket("/v1/graph/live")
-async def realtime_graph_ws(  # noqa: PLR0915
+async def realtime_graph_ws(  # noqa: PLR0912, PLR0915
     websocket: WebSocket,
+    _bind: None = Depends(_bind_ws_container),
     _guard: None = Depends(realtime_connection_guard),
     service: GraphService = InjectAPI(GraphService),
     user: dict[str, Any] = Depends(RequirePermission("graph", "stream")),
+    authz: AuthorizationBackend = InjectAPI(AuthorizationBackend),
 ):
     """Realtime (audio-to-audio) WebSocket bridge over ``CompiledGraph.arealtime``.
 
@@ -426,10 +586,41 @@ async def realtime_graph_ws(  # noqa: PLR0915
     Auth: ``RequirePermission("graph","stream")`` — bearer via the ``Authorization`` header,
     the ``agentflow-bearer`` Sec-WebSocket-Protocol (browser-safe), or the ``?token=`` query
     fallback. Handshakes are subject to the global rate limit and the
-    ``websocket.max_connections`` cap (rejected with close code 1013).
+    ``websocket.max_connections`` cap (rejected with close code 1013). A non-live
+    (turn-based) graph is rejected up front with close code 1008 — use ``/v1/graph/ws``.
     """
     await websocket.accept(subprotocol=ws_bearer_subprotocol(websocket))
     logger.info("Realtime WebSocket connection accepted")
+
+    if hasattr(authz, "dependency"):
+        from injectq import InjectQ
+
+        try:
+            authz = InjectQ.get_instance().get(AuthorizationBackend)
+        except Exception:
+            from agentflow_cli.src.app.core.auth.authorization import DefaultAuthorizationBackend
+
+            authz = DefaultAuthorizationBackend()
+
+    # Wrong agent type for this endpoint: the realtime bridge requires a graph rooted at a
+    # LiveAgent. Reject a turn-based graph up front with a normalized fatal error instead
+    # of accepting the init frame and failing later inside ``arealtime``.
+    if not service.is_live_agent:
+        logger.warning("Rejected /v1/graph/live connection: graph is not a live agent")
+        with contextlib.suppress(Exception):
+            await websocket.send_text(
+                _realtime_event_json(
+                    ErrorEvent(
+                        code="not_live",
+                        message="This graph is not a live (realtime) agent; use the "
+                        "turn-based /v1/graph/ws endpoint instead of /v1/graph/live.",
+                        fatal=True,
+                    )
+                )
+            )
+        with contextlib.suppress(Exception):
+            await websocket.close(code=1008)
+        return
 
     try:
         init = await websocket.receive_json()
@@ -441,6 +632,27 @@ async def realtime_graph_ws(  # noqa: PLR0915
         with contextlib.suppress(Exception):
             await websocket.close(code=1003)
         return
+
+    if isinstance(init, dict):
+        thread_id = init.get("thread_id")
+        if not await _ws_thread_authorized(authz, user, thread_id, "stream"):
+            logger.warning(
+                f"Realtime WebSocket authorization failed for user {user.get('user_id')} "
+                f"on thread {thread_id}"
+            )
+            with contextlib.suppress(Exception):
+                await websocket.send_text(
+                    _realtime_event_json(
+                        ErrorEvent(
+                            code="not_authorized",
+                            message=f"Not authorized to stream thread {thread_id}",
+                            fatal=True,
+                        )
+                    )
+                )
+            with contextlib.suppress(Exception):
+                await websocket.close(code=1008)
+            return
 
     if not isinstance(init, dict):
         logger.warning("Realtime init frame must be a JSON object, got %s", type(init).__name__)

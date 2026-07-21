@@ -38,7 +38,24 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         content_length = request.headers.get("content-length")
 
         if content_length:
-            content_length_bytes = int(content_length)
+            try:
+                content_length_bytes = int(content_length)
+            except (TypeError, ValueError):
+                # A malformed Content-Length is a client error, not a server 500.
+                request_id = getattr(request.state, "request_id", "unknown")
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={
+                        "error": {
+                            "code": "INVALID_CONTENT_LENGTH",
+                            "message": "Invalid Content-Length header.",
+                        },
+                        "metadata": {
+                            "request_id": request_id,
+                            "status": "error",
+                        },
+                    },
+                )
 
             if content_length_bytes > self.max_size:
                 logger.warning(

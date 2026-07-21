@@ -1,133 +1,81 @@
-# from collections.abc import AsyncIterator
-# from typing import Any
+"""Graph service/route tests.
 
-# from fastapi import BackgroundTasks, FastAPI
-# from fastapi.testclient import TestClient
-# from injectq.integrations import setup_fastapi
-# from injectq import
+The full invoke path needs a compiled graph; these cover the two things that do not:
+auth enforcement on the graph routes, and the B2 regression -- a client cannot override
+the authenticated ``user_id`` through the request-body ``config``.
+"""
 
-# from src.app.core.config.setup_middleware import setup_middleware
-# from src.app.routers.graph.router import router as graph_router
-# from src.app.routers.graph.schemas.graph_schemas import (
-#     GraphInfoSchema,
-#     GraphInputSchema,
-#     GraphInvokeOutputSchema,
-#     GraphSchema,
-#     GraphStreamChunkSchema,
-# )
-# from src.app.routers.graph.services.graph_service import GraphService
+from __future__ import annotations
+
+from typing import Any
+
+import anyio
+
+from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+
+from .conftest import _AuthOnConfig
 
 
-# HTTP_OK = 200
-# HTTP_UNPROCESSABLE = 422
+class _RecordingCheckpointer:
+    """Captures the config handed to ``aget_state`` and reports no state (short-circuit)."""
+
+    def __init__(self) -> None:
+        self.seen_config: dict[str, Any] | None = None
+
+    async def aget_state(self, config: dict[str, Any]):
+        self.seen_config = config
+        return None
 
 
-# class FakeGraphService(GraphService):
-#     def __init__(self):  # type: ignore[no-untyped-def]
-#         # Bypass parent __init__ expecting graph/generator/thread_service
-#         pass
-
-#     async def invoke_graph(  # type: ignore[override]
-#         self,
-#         graph_input: GraphInputSchema,
-#         user: dict[str, Any],
-#         background_tasks: BackgroundTasks,
-#     ) -> GraphInvokeOutputSchema:
-#         # Build a minimal message-like payload compatible with the schema
-#         msg = {"role": "user", "content": "ok", "message_id": "1"}
-#         return GraphInvokeOutputSchema(
-#             messages=[msg],  # type: ignore[arg-type]
-#             state={"k": 1},
-#             context=None,
-#             summary=None,
-#             meta={},
-#         )
-
-#     async def stream_graph(  # type: ignore[override]
-#         self,
-#         graph_input: GraphInputSchema,
-#         user: dict[str, Any],
-#         background_tasks: BackgroundTasks,
-#     ) -> AsyncIterator[GraphStreamChunkSchema]:
-#         yield GraphStreamChunkSchema(data={"n": 1}, metadata={})
-#         yield GraphStreamChunkSchema(data={"n": 2}, metadata={})
-
-#     async def graph_details(self) -> GraphSchema:  # type: ignore[override]
-#         info = GraphInfoSchema(
-#             node_count=1,
-#             edge_count=0,
-#             checkpointer=False,
-#             checkpointer_type=None,
-#             publisher=False,
-#             store=False,
-#             interrupt_before=None,
-#             interrupt_after=None,
-#         )
-#         return GraphSchema(info=info, nodes=[{"id": "n1", "name": "N1"}], edges=[])  # type: ignore[arg-type]
-
-#     async def get_state_schema(self) -> dict:  # type: ignore[override]
-#         return {"title": "State", "type": "object"}
+def _service(checkpointer) -> GraphService:
+    # graph and thread_name_generator are unused on the fix short-circuit path.
+    return GraphService(
+        graph=object(),  # type: ignore[arg-type]
+        checkpointer=checkpointer,  # type: ignore[arg-type]
+        config=_AuthOnConfig(),  # type: ignore[arg-type]
+    )
 
 
-# class TestModule(Module):
-#     @singleton
-#     @provider
-#     def provide_graph_service(self) -> GraphService:
-#         return FakeGraphService()
+def test_fix_graph_ignores_client_supplied_user_id():
+    """B2: request-body config must NOT override the authenticated identity."""
+    cp = _RecordingCheckpointer()
+    service = _service(cp)
+
+    anyio.run(
+        service.fix_graph,
+        "thread-A",
+        {"user_id": "alice"},  # authenticated user
+        {"user_id": "victim", "thread_id": "thread-A"},  # attacker-controlled config
+    )
+
+    assert cp.seen_config is not None
+    assert cp.seen_config["user_id"] == "alice"  # trusted identity won, not "victim"
 
 
-# def _make_app() -> TestClient:
-#     app = FastAPI()
-#     setup_middleware(app)
-#     injector = Injector([TestModule()])
-#     setup_fastapi(
-#         container=injector,
-#         app=app,
-#     )
-#     app.include_router(graph_router)
-#     return TestClient(app)
+def test_stop_graph_sets_trusted_user_id_over_client_config():
+    """B2 companion: stop_graph must also overlay the trusted user_id last."""
 
+    class _StopGraph:
+        def __init__(self) -> None:
+            self.seen_config: dict[str, Any] | None = None
 
-# def test_graph_invoke_success():
-#     c = _make_app()
-#     payload = {
-#         "messages": [{"role": "user", "content": "hi"}],
-#     }
-#     r = c.post("/v1/graph/invoke", json=payload)
-#     assert r.status_code == HTTP_OK
-#     body = r.json()["data"]
-#     assert "messages" in body and body["state"] == {"k": 1}
+        async def astop(self, config: dict[str, Any]):
+            self.seen_config = config
+            return {"stopped": True}
 
+    graph = _StopGraph()
+    service = GraphService(
+        graph=graph,  # type: ignore[arg-type]
+        checkpointer=_RecordingCheckpointer(),  # type: ignore[arg-type]
+        config=_AuthOnConfig(),  # type: ignore[arg-type]
+    )
 
-# def test_graph_invoke_422_for_missing_messages():
-#     c = _make_app()
-#     r = c.post("/v1/graph/invoke", json={})
-#     assert r.status_code == HTTP_UNPROCESSABLE
+    anyio.run(
+        service.stop_graph,
+        "thread-A",
+        {"user_id": "alice"},
+        {"user_id": "victim"},
+    )
 
-
-# def test_graph_details_success():
-#     c = _make_app()
-#     r = c.get("/v1/graph")
-#     assert r.status_code == HTTP_OK
-#     body = r.json()["data"]
-#     assert body["info"]["node_count"] == 1
-
-
-# def test_state_schema_success():
-#     c = _make_app()
-#     r = c.get("/v1/graph:StateSchema")
-#     assert r.status_code == HTTP_OK
-#     assert r.json()["data"]["title"] == "State"
-
-
-# def test_graph_stream_success():
-#     c = _make_app()
-#     payload = {
-#         "messages": [{"role": "user", "content": "hi"}],
-#     }
-#     # TestClient exposes the underlying httpx client; stream via c.stream(...)
-#     with c.stream("POST", "/v1/graph/stream", json=payload) as r:
-#         assert r.status_code == HTTP_OK
-#         chunks = list(r.iter_text())
-#     # Make sure at least two data lines present
-#     assert any("data:" in ch for ch in chunks)
+    assert graph.seen_config is not None
+    assert graph.seen_config["user_id"] == "alice"

@@ -1,9 +1,13 @@
 import json
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+
+logger = logging.getLogger("agentflow_api")
 
 
 def _parse_bool(value: object, *, field: str) -> bool:
@@ -76,13 +80,17 @@ class RateLimitConfig:
     enabled: bool
     requests: int
     window: int
-    by: str  # "ip" | "global"
+    by: str  # "ip" | "user" | "global"
     backend: str  # "memory" | "redis" | "custom"
     redis_url: str | None
     redis_prefix: str
     exclude_paths: tuple[str, ...]
     trusted_proxy_headers: bool  # honour X-Forwarded-For only when True
-    fail_open: bool  # on backend error: True=allow, False=deny
+    # Number of proxies you control in front of the app. Only this many entries,
+    # counted from the RIGHT of X-Forwarded-For, were appended by your own
+    # infrastructure; anything further left came from the caller and is forgeable.
+    trusted_proxy_hops: int = 1
+    fail_open: bool = True  # on backend error: True=allow, False=deny
 
     @classmethod
     def from_dict(cls, data: dict) -> "RateLimitConfig":
@@ -116,9 +124,15 @@ class RateLimitConfig:
         else:
             raise ValueError("rate_limit.redis must be an object or Redis URL string")
 
+        # How many proxies of YOUR OWN sit in front of the app and append to
+        # X-Forwarded-For. Only that many entries, counted from the right, were
+        # written by infrastructure you control; everything to the left of them came
+        # from the caller and is forgeable. See keying._client_ip.
+        trusted_proxy_hops = int(data.get("trusted_proxy_hops", 1))
+
         # Validation
-        if by not in ("ip", "global"):
-            raise ValueError(f"rate_limit.by must be 'ip' or 'global', got '{by}'")
+        if by not in ("ip", "global", "user"):
+            raise ValueError(f"rate_limit.by must be 'ip', 'user', or 'global', got '{by}'")
         if backend not in ("memory", "redis", "custom"):
             raise ValueError(
                 f"rate_limit.backend must be 'memory', 'redis', or 'custom', got '{backend}'"
@@ -127,6 +141,18 @@ class RateLimitConfig:
             raise ValueError("rate_limit.requests must be a positive integer")
         if window <= 0:
             raise ValueError("rate_limit.window must be a positive integer")
+        if trusted_proxy_hops < 1:
+            raise ValueError("rate_limit.trusted_proxy_hops must be >= 1")
+
+        # The memory backend counts per PROCESS. Under gunicorn with N workers the
+        # effective limit therefore becomes requests x N, and it resets whenever a
+        # worker restarts -- so it does not really limit anything in production.
+        if enabled and backend == "memory":
+            logger.warning(
+                "Rate limiting uses the in-memory backend. It counts per process, so "
+                "with N workers the real limit is requests x N and it resets on every "
+                "worker restart. Use the 'redis' backend for any multi-worker deployment."
+            )
 
         return cls(
             enabled=enabled,
@@ -138,6 +164,7 @@ class RateLimitConfig:
             redis_prefix=redis_prefix,
             exclude_paths=exclude_paths,
             trusted_proxy_headers=trusted_proxy_headers,
+            trusted_proxy_hops=trusted_proxy_hops,
             fail_open=fail_open,
         )
 
@@ -214,13 +241,36 @@ class GraphConfig:
         return self.data.get("thread_name_generator", None)
 
     @property
+    def observability(self) -> dict | None:
+        """The declarative ``observability`` block (Logfire / LangSmith).
+
+        Shape mirrors ``agentflow.runtime.publisher.setup_observability``::
+
+            {
+              "level": "standard",
+              "logfire":   {"enabled": true, "service_name": "my-agent", ...},
+              "langsmith": {"enabled": true, "project": "my-agent", "endpoint": null}
+            }
+
+        Secrets (``LOGFIRE_TOKEN``, ``LANGSMITH_API_KEY``) stay in the
+        environment and are never read from here.
+        """
+        return self.data.get("observability", None)
+
+    @property
     def authorization_path(self) -> str | None:
         """
-        Get the authorization backend path from configuration.
+        Get the authorization backend selector from configuration.
+
+        Accepts, in order of precedence:
+        - ``"module:attribute"`` -- a custom ``AuthorizationBackend`` to load.
+        - a built-in name: ``"ownership"`` (owner-only thread access) or
+          ``"allow_all"``/``"default"``/``"none"`` (any authenticated user).
+        - ``None`` (not configured) -- defaults by run mode: ``ownership`` in
+          production, ``allow_all`` in development.
 
         Returns:
-            str | None: Path to authorization backend module in format 'module:attribute',
-                       or None if not configured
+            str | None: The configured selector, or None to use the mode default.
         """
         return self.data.get("authorization", None)
 

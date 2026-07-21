@@ -13,6 +13,8 @@ from agentflow_cli import BaseAuth
 from agentflow_cli.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
+    OwnershipAuthorizationBackend,
+    RoleBasedAuthorizationBackend,
 )
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
@@ -288,15 +290,117 @@ def load_and_bind_auth(container: InjectQ, auth_config: dict) -> None:
     container.bind_instance(BaseAuth, auth_backend, allow_none=True)
 
 
-def load_and_bind_authorization(container: InjectQ, authorization_path: str | None) -> None:
-    if authorization_path:
-        authorization_backend = load_authorization(authorization_path)
-        container.bind_instance(AuthorizationBackend, authorization_backend)
-    else:
-        # Use default authorization backend if not configured
-        default_authorization = DefaultAuthorizationBackend()
-        container.bind_instance(AuthorizationBackend, default_authorization)
-        logger.info("Using DefaultAuthorizationBackend (allows all authenticated users)")
+# Built-in authorization backends selectable by name in ``agentflow.json``.
+_BUILTIN_AUTHORIZATION = {
+    "ownership": OwnershipAuthorizationBackend,  # object-level: owner-only thread access
+    "allow_all": DefaultAuthorizationBackend,  # authenticated == authorized
+    "default": DefaultAuthorizationBackend,  # alias for allow_all
+    "none": DefaultAuthorizationBackend,  # alias for allow_all
+}
+
+
+def _build_ownership_redis(redis_url: str | None) -> object | None:
+    """Build an async Redis client for the ownership L2 cache, or None.
+
+    Returns None (L1-only) when no URL is configured or the ``redis`` package is absent;
+    the resolver degrades gracefully either way.
+    """
+    if not redis_url:
+        return None
+    try:
+        from redis.asyncio import Redis as AsyncRedis  # type: ignore[import]
+    except ImportError:
+        logger.warning(
+            "REDIS configured but the 'redis' package is not installed; ownership cache "
+            "runs in-process only (L1). Install the redis extra to share it across workers."
+        )
+        return None
+    try:
+        client = AsyncRedis.from_url(redis_url, decode_responses=False)
+        logger.info("Ownership authorization L2 cache enabled (shared Redis).")
+        return client
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to build ownership Redis client: %s; using L1 cache only.", exc)
+        return None
+
+
+def _resolve_authorization_backend(
+    authorization: str | dict | None, redis_url: str | None = None
+) -> AuthorizationBackend:
+    """Pick the authorization backend from config, defaulting by run mode.
+
+    Resolution order (developer choice always wins):
+
+    1. A dict ``{"backend": "rbac", "roles": {...}, ...}`` -> role-based access control.
+    2. ``"module:attr"`` -> the developer's custom :class:`AuthorizationBackend`.
+    3. A built-in name (``"ownership"``, ``"allow_all"``/``"default"``/``"none"``) ->
+       that backend, regardless of mode.
+    4. Not configured (``null``) -> secure-by-default in production
+       (:class:`OwnershipAuthorizationBackend`), permissive in development
+       (:class:`DefaultAuthorizationBackend`). Either can be overridden via (1)/(2)/(3).
+
+    ``redis_url`` (when set) backs the ownership cache's shared L2 tier.
+    """
+    # 1. Config-driven RBAC: {"backend": "rbac", "roles": {...}, "default_scopes": [...]}
+    if isinstance(authorization, dict):
+        backend_name = (authorization.get("backend") or authorization.get("type") or "").lower()
+        if backend_name in ("rbac", "role_based", "roles"):
+            logger.info("Using RoleBasedAuthorizationBackend (config-driven roles).")
+            return RoleBasedAuthorizationBackend(
+                role_scopes=authorization.get("roles") or authorization.get("role_scopes") or {},
+                default_scopes=authorization.get("default_scopes") or (),
+                isolation=authorization.get("isolation", "owner"),
+                redis=_build_ownership_redis(redis_url),
+            )
+        raise ValueError(
+            f"Unknown authorization backend config: {authorization!r}. For RBAC use "
+            '{"backend": "rbac", "roles": {...}}.'
+        )
+
+    if authorization and ":" in authorization:
+        backend = load_authorization(authorization)
+        logger.info("Using custom AuthorizationBackend from '%s'.", authorization)
+        return backend  # type: ignore[return-value]
+
+    if authorization:
+        key = authorization.strip().lower()
+        builtin = _BUILTIN_AUTHORIZATION.get(key)
+        if builtin is None:
+            raise ValueError(
+                f"Unknown authorization backend '{authorization}'. Use a 'module:attr' "
+                f"path or one of: {', '.join(sorted(_BUILTIN_AUTHORIZATION))}."
+            )
+        logger.info("Using built-in '%s' authorization backend.", key)
+        if builtin is OwnershipAuthorizationBackend:
+            return OwnershipAuthorizationBackend(redis=_build_ownership_redis(redis_url))
+        return builtin()
+
+    # Not configured: default by mode.
+    from agentflow_cli.src.app.core.config.settings import get_settings
+
+    if get_settings().MODE == "production":
+        logger.info(
+            "No authorization configured; defaulting to OwnershipAuthorizationBackend "
+            "(owner-only thread access) because MODE=production. Set "
+            '"authorization": "allow_all" to opt out.'
+        )
+        return OwnershipAuthorizationBackend(redis=_build_ownership_redis(redis_url))
+
+    logger.info(
+        "No authorization configured; defaulting to DefaultAuthorizationBackend "
+        "(allows all authenticated users) in development. Set "
+        '"authorization": "ownership" to enforce owner-only access here too.'
+    )
+    return DefaultAuthorizationBackend()
+
+
+def load_and_bind_authorization(
+    container: InjectQ,
+    authorization_path: str | None,
+    redis_url: str | None = None,
+) -> None:
+    backend = _resolve_authorization_backend(authorization_path, redis_url)
+    container.bind_instance(AuthorizationBackend, backend)
 
 
 async def attach_all_modules(
@@ -311,15 +415,42 @@ async def attach_all_modules(
     # checkpointer = load_checkpointer(config.checkpointer_path)
     # container.bind_instance(BaseCheckpointer, checkpointer, allow_none=True)
 
-    # # Bind store instance if configured
-    # store = load_store(config.store_path)
-    # container.bind_instance(BaseStore, store, allow_none=True)
+    # Bind the store instance (if configured) so the /v1/store endpoints — which
+    # inject BaseStore via StoreService — can serve it. Without this the store
+    # router reports "Store is not configured" even when agentflow.json sets one.
+    store = load_store(config.store_path)
+    container.bind_instance(BaseStore, store, allow_none=True)
+
+    # Bind the in-memory telemetry store so the graph service can record run
+    # events and the /v1/observability endpoints can reconstruct traces.
+    #
+    # This is a dev-only convenience: it lets the playground show a trace without
+    # any external observability backend. It is NOT durable and NOT meant for
+    # production (use OTEL / a publisher there instead). So we only bind it
+    # outside production; in production the store stays unbound and the
+    # /v1/observability endpoints return a clean, empty "disabled" response.
+    from agentflow_cli.src.app.core.config.settings import get_settings
+    from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
+
+    if get_settings().MODE != "production":
+        container.bind_instance(TelemetryStore, TelemetryStore())
+        logger.info("Local in-memory telemetry store bound (dev mode)")
+    else:
+        logger.info("Production mode: local telemetry store disabled (use OTEL/publisher)")
 
     # load auth backend
     auth_config = config.auth_config()
     if auth_config:
         load_and_bind_auth(container, auth_config)
     else:
+        # Auth disabled is a legitimate choice (single-user / trusted network), but it
+        # must not be silent -- an operator who simply forgot to set `auth` should see
+        # it at startup. This warns; it does not force auth on.
+        logger.warning(
+            "⚠️  Authentication is DISABLED (no `auth` configured). Every request runs "
+            "as `anonymous` with no access control. This is fine for single-user or "
+            "trusted-network deployments; set `auth` in agentflow.json to enable it."
+        )
         # bind None
         container.bind_instance(BaseAuth, None, allow_none=True)
 
@@ -332,9 +463,13 @@ async def attach_all_modules(
         # bind None if not configured
         container.bind_instance(ThreadNameGenerator, None, allow_none=True)
 
-    # load authorization backend
+    # load authorization backend. The ownership cache's shared L2 tier reuses the
+    # configured Redis URL (config `redis`, else settings.REDIS_URL); absent -> L1 only.
+    from agentflow_cli.src.app.core.config.settings import get_settings
+
     authorization_path = config.authorization_path
-    load_and_bind_authorization(container, authorization_path)
+    ownership_redis_url = config.redis_url or get_settings().REDIS_URL
+    load_and_bind_authorization(container, authorization_path, ownership_redis_url)
 
     # --- Media service wiring ---
     from agentflow_cli.src.app.core.config.media_settings import (

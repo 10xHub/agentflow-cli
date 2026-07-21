@@ -334,6 +334,7 @@ async def test_attach_all_modules():
     config.auth_config.return_value = {"method": "none", "path": "path.py:auth"}
     config.thread_name_generator_path = "mod:generator"
     config.authorization_path = "mod:authorization"
+    config.store_path = None
 
     container = MagicMock(spec=InjectQ)
     

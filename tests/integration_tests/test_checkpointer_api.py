@@ -1,149 +1,79 @@
-# from typing import Any
+"""Live checkpointer API tests.
 
-# from fastapi import FastAPI
-# from fastapi.testclient import TestClient
-# from fastapi_injector import attach_injector
-# from injector import Injector, Module, provider, singleton
-# from agentflowutils import Message
+Drives the real ``CheckpointerService`` over a real ``InMemoryCheckpointer`` (no mocked
+service), so these exercise the actual request -> service -> checkpointer path and the
+server-side pagination cap.
+"""
 
-# from src.app.core.config.setup_middleware import setup_middleware
-# from src.app.routers.checkpointer.router import router as checkpointer_router
-# from src.app.routers.checkpointer.schemas.checkpointer_schemas import (
-#     MessagesListResponseSchema,
-#     ResponseSchema,
-#     StateResponseSchema,
-#     ThreadResponseSchema,
-#     ThreadsListResponseSchema,
-# )
-# from src.app.routers.checkpointer.services.checkpointer_service import CheckpointerService
+from __future__ import annotations
+
+import pytest
+from agentflow.core.state import AgentState
+from agentflow.storage.checkpointer import InMemoryCheckpointer
+
+from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer_router
+
+from .conftest import build_app, make_client, user_headers
 
 
-# HTTP_OK = 200
-# HTTP_UNPROCESSABLE = 422
+HTTP_OK = 200
+HTTP_UNPROCESSABLE = 422
 
 
-# class FakeCheckpointerService(CheckpointerService):
-#     def __init__(self):  # type: ignore[no-untyped-def]
-#         pass
-
-#     async def get_state(self, config: dict[str, Any], user: dict) -> StateResponseSchema:  # type: ignore[override]
-#         return StateResponseSchema(state={"a": 1})
-
-#     async def put_state(  # type: ignore[override]
-#         self, config: dict[str, Any], user: dict, state: dict[str, Any]
-#     ) -> StateResponseSchema:
-#         return StateResponseSchema(state=state)
-
-#     async def clear_state(self, config: dict[str, Any], user: dict) -> ResponseSchema:  # type: ignore[override]
-#         return ResponseSchema(success=True, message="State cleared successfully", data=None)
-
-#     async def put_messages(  # type: ignore[override]
-#         self, config: dict[str, Any], user: dict, messages: list[Message], metadata: dict | None
-#     ) -> ResponseSchema:
-#         return ResponseSchema(success=True, message="ok", data=len(messages))
-
-#     async def get_message(self, config: dict[str, Any], user: dict, message_id: Any) -> Message:  # type: ignore[override]
-#         return Message.from_text(role="user", data="hi", message_id="1")  # type: ignore[arg-type]
-
-#     async def get_messages(
-#         self,
-#         config: dict[str, Any],
-#         user: dict,
-#         search: str | None = None,
-#         offset: int | None = None,
-#         limit: int | None = None,
-#     ) -> MessagesListResponseSchema:  # type: ignore[override]
-#         return MessagesListResponseSchema(
-#             messages=[Message.from_text(role="user", data="hi", message_id="1")]
-#         )  # type: ignore[arg-type]
-
-#     async def delete_message(  # type: ignore[override]
-#         self, config: dict[str, Any], user: dict, message_id: Any
-#     ) -> ResponseSchema:
-#         return ResponseSchema(success=True, message="deleted", data=str(message_id))
-
-#     async def get_thread(self, config: dict[str, Any], user: dict) -> ThreadResponseSchema:  # type: ignore[override]
-#         return ThreadResponseSchema(thread={"id": config.get("thread_id")})
-
-#     async def list_threads(  # type: ignore[override]
-#         self,
-#         user: dict,
-#         search: str | None = None,
-#         offset: int | None = None,
-#         limit: int | None = None,
-#     ) -> ThreadsListResponseSchema:
-#         return ThreadsListResponseSchema(threads=[{"id": 1}])
-
-#     async def delete_thread(  # type: ignore[override]
-#         self, config: dict[str, Any], user: dict, thread_id: Any
-#     ) -> ResponseSchema:
-#         return ResponseSchema(success=True, message="deleted", data=str(thread_id))
+@pytest.fixture
+def seeded():
+    """An app whose checkpointer already holds a thread for user 'alice'."""
+    cp = InMemoryCheckpointer()
+    app = build_app(routers=[checkpointer_router], checkpointer=cp)
+    return app, cp
 
 
-# class TestModule(Module):
-#     @singleton
-#     @provider
-#     def provide_checkpointer_service(self) -> CheckpointerService:
-#         return FakeCheckpointerService()
+async def _seed_state(cp: InMemoryCheckpointer, thread_id: str, user_id: str) -> None:
+    await cp.aput_state({"thread_id": thread_id, "user_id": user_id}, AgentState())
 
 
-# def _client() -> TestClient:
-#     app = FastAPI()
-#     setup_middleware(app)
-#     injector = Injector([TestModule()])
-#     attach_injector(app, injector=injector)
-#     app.include_router(checkpointer_router)
-#     return TestClient(app)
+def test_get_state_for_existing_thread(seeded):
+    import anyio
+
+    app, cp = seeded
+    anyio.run(_seed_state, cp, "t1", "alice")
+    client = make_client(app)
+
+    r = client.get("/v1/threads/t1/state", headers=user_headers("alice"))
+    assert r.status_code == HTTP_OK
 
 
-# def test_get_state_success():
-#     c = _client()
-#     r = c.get("/v1/threads/1/state")
-#     assert r.status_code == HTTP_OK
-#     assert r.json()["data"]["state"] == {"a": 1}
+def test_list_messages_rejects_nonpositive_limit(seeded):
+    app, _ = seeded
+    client = make_client(app)
+
+    r = client.get("/v1/threads/t1/messages?limit=0", headers=user_headers("alice"))
+    assert r.status_code == HTTP_UNPROCESSABLE
+
+    r_neg = client.get("/v1/threads/t1/messages?offset=-1", headers=user_headers("alice"))
+    assert r_neg.status_code == HTTP_UNPROCESSABLE
 
 
-# def test_put_state_success_and_422():
-#     c = _client()
-#     # success
-#     r = c.put("/v1/threads/1/state", json={"state": {"b": 2}})
-#     assert r.status_code == HTTP_OK
-#     assert r.json()["data"]["state"] == {"b": 2}
-#     # 422 when missing required field
-#     r2 = c.put("/v1/threads/1/state", json={})
-#     assert r2.status_code == HTTP_UNPROCESSABLE
+def test_list_messages_accepts_huge_limit_without_error(seeded):
+    """A huge limit must be clamped server-side, not forwarded verbatim (H3)."""
+    app, _ = seeded
+    client = make_client(app)
+
+    r = client.get("/v1/threads/t1/messages?limit=100000000", headers=user_headers("alice"))
+    assert r.status_code == HTTP_OK
 
 
-# def test_clear_state_success():
-#     c = _client()
-#     r = c.delete("/v1/threads/1/state")
-#     assert r.status_code == HTTP_OK
-#     assert r.json()["data"]["message"] == "State cleared successfully"
+def test_list_threads_rejects_nonpositive_limit(seeded):
+    app, _ = seeded
+    client = make_client(app)
+
+    r = client.get("/v1/threads?limit=-5", headers=user_headers("alice"))
+    assert r.status_code == HTTP_UNPROCESSABLE
 
 
-# def test_put_messages_and_list_and_get_and_delete():
-#     c = _client()
-#     r = c.post(
-#         "/v1/threads/1/messages",
-#         json={"messages": [], "metadata": {}},
-#     )
-#     assert r.status_code == HTTP_OK
-#     # 422 when missing required messages field
-#     r_bad = c.post("/v1/threads/1/messages", json={"metadata": {}})
-#     assert r_bad.status_code == HTTP_UNPROCESSABLE
-#     r = c.get("/v1/threads/1/messages")
-#     assert r.status_code == HTTP_OK
-#     r = c.get("/v1/threads/1/messages/1")
-#     assert r.status_code == HTTP_OK
-#     r = c.request("DELETE", "/v1/threads/1/messages/1", json={"config": {}})
-#     assert r.status_code == HTTP_OK
+def test_invalid_thread_id_is_422(seeded):
+    app, _ = seeded
+    client = make_client(app)
 
-
-# def test_threads_get_list_delete():
-#     c = _client()
-#     r = c.get("/v1/threads/1")
-#     assert r.status_code == HTTP_OK
-#     r = c.get("/v1/threads")
-#     assert r.status_code == HTTP_OK
-#     r = c.request("DELETE", "/v1/threads/1", json={"config": {}})
-#     assert r.status_code == HTTP_OK
+    r = client.get("/v1/threads/%20/state", headers=user_headers("alice"))
+    assert r.status_code == HTTP_UNPROCESSABLE

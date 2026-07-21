@@ -72,6 +72,11 @@ class InitCommand(BaseCommand):
             self._print_summary(context)
 
             base_path = Path(path)
+            # Capture this BEFORE any writes: a config file present now is the
+            # developer's own (a prior init or a hand edit), and must not be
+            # clobbered unless they passed --force.
+            config_path = base_path / "agentflow.json"
+            config_pre_existed = config_path.exists()
             base_path.mkdir(parents=True, exist_ok=True)
 
             is_prod = context["setup_type"] == "production"
@@ -82,10 +87,15 @@ class InitCommand(BaseCommand):
                 template_dir, base_path, context, force=force, is_prod=is_prod
             )
 
-            # Regenerate agentflow.json from the built config (overrides template copy)
-            config_path = base_path / "agentflow.json"
+            # Regenerate agentflow.json from the built config. Force is safe only to
+            # override the copy this run just made; honor --force for a file that was
+            # already there.
             config = self._build_config(context, is_prod)
-            self._write_file(config_path, json.dumps(config, indent=2) + "\n", force=True)
+            self._write_file(
+                config_path,
+                json.dumps(config, indent=2) + "\n",
+                force=force or not config_pre_existed,
+            )
             if config_path not in created:
                 self._print_file_line(config_path, base_path)
 
@@ -308,6 +318,12 @@ class InitCommand(BaseCommand):
             config["auth"] = {"method": "jwt"}
         elif auth == "custom":
             config["auth"] = {"method": "custom", "path": "auth.agent_auth:AgentAuth"}
+
+        if auth in ("jwt", "custom"):
+            # Secure by default in production: a thread is accessible only to its owner.
+            # Change to "allow_all" to let any authenticated user access any thread, or
+            # point at a custom AuthorizationBackend ("module:attr").
+            config["authorization"] = "ownership"
 
         config["thread_name_generator"] = "graph.thread_name_generator:MyNameGenerator"
         config["injectq"] = "graph.agent:container"

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from .checkpointer.router import router as checkpointer_router
+from .evals import router as evals_router
 from .graph import router as graph_router
 from .media.router import router as media_router
 from .ping.router import router as ping_router
@@ -21,5 +22,6 @@ def init_routes(app: FastAPI):
     app.include_router(graph_router)
     app.include_router(checkpointer_router)
     app.include_router(store_router)
+    app.include_router(evals_router)
     app.include_router(ping_router)
     app.include_router(media_router)

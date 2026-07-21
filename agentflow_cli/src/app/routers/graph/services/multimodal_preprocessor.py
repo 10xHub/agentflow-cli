@@ -37,6 +37,7 @@ async def _get_cached_extraction(media_service: MediaService, file_id: str) -> s
 async def preprocess_multimodal_messages(
     messages: list[Message],
     media_service: MediaService | None,
+    user_id: str | None = None,
 ) -> list[Message]:
     """Resolve file_id references in messages before graph execution.
 
@@ -64,6 +65,8 @@ async def preprocess_multimodal_messages(
                 and block.media.kind == "file_id"
                 and block.media.file_id
             ):
+                if user_id:
+                    await media_service.ensure_can_access(block.media.file_id, user_id)
                 cached = await _get_cached_extraction(media_service, block.media.file_id)
                 if cached:
                     new_content.append(TextBlock(text=cached))
@@ -72,6 +75,8 @@ async def preprocess_multimodal_messages(
 
             if hasattr(block, "media") and block.media.kind == "file_id" and block.media.file_id:
                 fid = block.media.file_id
+                if user_id:
+                    await media_service.ensure_can_access(fid, user_id)
                 # Convert file_id → agentflow://media/ URL reference
                 if not (block.media.url and block.media.url.startswith("agentflow://media/")):
                     block.media.kind = "url"

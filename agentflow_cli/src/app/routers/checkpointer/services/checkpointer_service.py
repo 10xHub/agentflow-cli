@@ -165,6 +165,35 @@ class CheckpointerService:
         cfg = self._config(config, user)
         logger.debug(f"User info: {sanitize_for_logging(user)} and thread ID: {thread_id}")
         res = await self.checkpointer.aclean_thread(cfg)
+
+        # Clean telemetry traces if TelemetryStore is bound in InjectQ
+        try:
+            from injectq import InjectQ
+
+            from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
+
+            telemetry_store = InjectQ.get_instance().try_get(TelemetryStore)
+            if telemetry_store:
+                telemetry_store.delete_thread(str(thread_id))
+        except Exception as exc:
+            logger.debug("Telemetry store cleanup failed for thread %s: %s", thread_id, exc)
+
+        # Invalidate any cached ownership for this thread. Ownership is otherwise
+        # immutable, so deletion is the only event that must evict the cache.
+        try:
+            from injectq import InjectQ
+
+            from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+
+            authz = InjectQ.get_instance().try_get(AuthorizationBackend)
+            evict = getattr(authz, "evict", None)
+            if callable(evict):
+                pending = evict(str(thread_id))
+                if pending is not None:
+                    await pending
+        except Exception as exc:
+            logger.debug("Ownership cache eviction failed for thread %s: %s", thread_id, exc)
+
         return ResponseSchema(success=True, message="Thread deleted successfully", data=res)
 
     # -------------------------------------------------

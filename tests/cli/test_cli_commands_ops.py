@@ -196,6 +196,8 @@ def test_build_command_basic_no_requirements(tmp_path, monkeypatch, silent_outpu
     content = (tmp_path / "Dockerfile").read_text(encoding="utf-8")
     assert "FROM" in content
     assert "CMD" in content
+    dockerignore = (tmp_path / ".dockerignore").read_text(encoding="utf-8")
+    assert ".env" in dockerignore
 
 
 def test_build_command_with_compose(tmp_path, monkeypatch, silent_output):

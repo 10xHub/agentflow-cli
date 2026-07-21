@@ -45,7 +45,9 @@ class StoreService:
 
     def _config(self, config: dict[str, Any] | None, user: dict[str, Any]) -> dict[str, Any]:
         cfg: dict[str, Any] = dict(config or {})
-        cfg.setdefault("user", user)
+        # Overwrite (never setdefault): the trusted user object carries the authz policy;
+        # a client-supplied "user" must not be able to weaken it.
+        cfg["user"] = user
         cfg["user_id"] = user.get("user_id", "anonymous")
         return cfg
 

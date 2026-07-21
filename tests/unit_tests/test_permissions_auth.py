@@ -54,6 +54,10 @@ def mock_authz():
     """Create a mock AuthorizationBackend."""
     authz = MagicMock()
     authz.authorize = AsyncMock(return_value=True)
+    # Real backends return None (unrestricted) / a str; keep the MagicMock from
+    # auto-creating Mock returns that would break the scope check and the authz stamp.
+    authz.scopes_for = MagicMock(return_value=None)
+    authz.isolation_scope = MagicMock(return_value="none")
     return authz
 
 
@@ -146,7 +150,8 @@ class TestRequirePermissionCall:
             mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
         )
 
-        assert result == {"user_id": "test-user"}
+        assert result["user_id"] == "test-user"
+        assert "authz" in result  # trusted isolation/scopes block stamped by RequirePermission
         mock_auth_backend.authenticate.assert_called_once()
         mock_authz.authorize.assert_called_once()
 
@@ -168,7 +173,11 @@ class TestRequirePermissionCall:
                 mock_response,
                 mock_config,
                 None,
-                MagicMock(authorize=AsyncMock(return_value=True)),
+                MagicMock(
+                    authorize=AsyncMock(return_value=True),
+                    scopes_for=MagicMock(return_value=None),
+                    isolation_scope=MagicMock(return_value="none"),
+                ),
             )
 
         assert result == {}
@@ -361,13 +370,16 @@ class TestRequirePermissionIntegration:
             mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
         )
 
-        assert result == {"user_id": "user-123", "role": "admin"}
-        mock_authz.authorize.assert_called_once_with(
-            {"user_id": "user-123", "role": "admin"},
-            "checkpointer",
-            "read",
-            resource_id="test-thread",
-        )
+        assert result["user_id"] == "user-123"
+        assert result["role"] == "admin"
+        assert "authz" in result
+        # authorize() is called once for checkpointer:read on the resolved thread. (The
+        # user dict is mutated afterwards with the authz block, so assert on the fields
+        # that matter rather than an exact-dict match.)
+        assert mock_authz.authorize.call_count == 1
+        _args, _kwargs = mock_authz.authorize.call_args
+        assert _args[1:] == ("checkpointer", "read")
+        assert _kwargs == {"resource_id": "test-thread"}
 
     @pytest.mark.asyncio
     async def test_full_flow_auth_not_configured_skips_checks(

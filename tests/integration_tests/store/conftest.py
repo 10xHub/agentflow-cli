@@ -8,6 +8,10 @@ from agentflow.storage.store import BaseStore, MemorySearchResult, MemoryType
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from agentflow_cli.src.app.core.auth.authorization import (
+    AuthorizationBackend,
+    DefaultAuthorizationBackend,
+)
 from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from injectq import InjectQ
@@ -48,6 +52,9 @@ def app(mock_store, mock_auth_user):
             return None
 
     container.bind_instance(GraphConfig, _NoAuthConfig())
+    # RequirePermission injects AuthorizationBackend as a parameter (resolved before it
+    # runs), so it must be bound even when auth_config() short-circuits authz.
+    container.bind_instance(AuthorizationBackend, DefaultAuthorizationBackend())
 
     # Create a mock BaseAuth instance
     mock_auth = MagicMock(spec=BaseAuth)
@@ -112,6 +119,9 @@ def unauth_app(mock_store):
             return None
 
     container.bind_instance(GraphConfig, _NoAuthConfig())
+    # RequirePermission injects AuthorizationBackend as a parameter (resolved before it
+    # runs), so it must be bound even when auth_config() short-circuits authz.
+    container.bind_instance(AuthorizationBackend, DefaultAuthorizationBackend())
 
     # Create a mock BaseAuth instance
     mock_auth = MagicMock(spec=BaseAuth)

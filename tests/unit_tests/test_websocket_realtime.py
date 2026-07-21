@@ -38,6 +38,7 @@ def _make_websocket(receive_side_effects: list, init: dict):
 
 def _make_service(events: list):
     service = MagicMock()
+    service.is_live_agent = True  # live graph: allowed on /v1/graph/live
     captured = {}
 
     async def _gen(input_queue, init, user):
@@ -166,6 +167,26 @@ class TestRealtimeWebSocket:
         assert "init" not in service._captured
 
     @pytest.mark.asyncio
+    async def test_non_live_agent_rejected_with_1008(self):
+        """A turn-based graph must be sent to /v1/graph/ws, not /v1/graph/live."""
+        ws = _make_websocket([WebSocketDisconnect()], init={"model": "gemini-2.5-flash-live"})
+        service = _make_service([])
+        service.is_live_agent = False
+
+        await realtime_graph_ws(websocket=ws, service=service, user={"user_id": "u1"})
+
+        # Rejected before the init frame is read; closed 1008 with a fatal error event.
+        close_codes = [c.kwargs.get("code") for c in ws.close.call_args_list]
+        assert 1008 in close_codes
+        ws.receive_json.assert_not_called()
+        sent = [json.loads(c.args[0]) for c in ws.send_text.call_args_list]
+        assert any(
+            e.get("type") == "error" and e.get("code") == "not_live" and e.get("fatal") is True
+            for e in sent
+        )
+        assert "/v1/graph/ws" in sent[0]["message"]
+
+    @pytest.mark.asyncio
     async def test_init_frame_passed_to_service(self):
         init = {"model": "gemini-2.5-flash-live", "thread_id": "t-99", "voice": "Puck"}
         ws = _make_websocket([WebSocketDisconnect()], init=init)
@@ -228,6 +249,33 @@ class TestRealtimeWebSocket:
         errors = [m for m in sent if m.get("type") == "error"]
         assert errors and errors[0]["fatal"] is True
         assert errors[0]["code"] == "invalid_config"
+
+
+class TestIsLiveAgent:
+    """GraphService.is_live_agent resolves live detection across core versions."""
+
+    def _service(self, graph):
+        from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+
+        return GraphService(graph=graph, checkpointer=AsyncMock(), config=MagicMock())
+
+    def test_prefers_public_is_realtime(self):
+        graph = MagicMock()
+        graph.is_realtime = MagicMock(return_value=True)
+        assert self._service(graph).is_live_agent is True
+        graph.is_realtime.return_value = False
+        assert self._service(graph).is_live_agent is False
+
+    def test_falls_back_to_find_live_nodes(self):
+        graph = MagicMock(spec=["_find_live_nodes"])
+        graph._find_live_nodes = MagicMock(return_value=[("audio", object())])
+        assert self._service(graph).is_live_agent is True
+        graph._find_live_nodes.return_value = []
+        assert self._service(graph).is_live_agent is False
+
+    def test_defaults_false_when_no_detection_api(self):
+        graph = MagicMock(spec=[])
+        assert self._service(graph).is_live_agent is False
 
 
 class TestRealtimeGraphService:

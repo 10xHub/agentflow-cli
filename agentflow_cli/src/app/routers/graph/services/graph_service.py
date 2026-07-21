@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import AsyncIterable
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -20,11 +21,59 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInvokeOutputSchema,
     GraphSchema,
     GraphSetupSchema,
+    GraphToolsSchema,
+    ObservabilitySchema,
+    ObsEventSchema,
+    ObsRunSchema,
+    ObsSpanSchema,
+    ObsTokenUsageSchema,
+    ToolNodeSchema,
+    ToolSchema,
 )
 from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
     preprocess_multimodal_messages,
 )
-from agentflow_cli.src.app.utils import DummyThreadNameGenerator, ThreadNameGenerator
+from agentflow_cli.src.app.utils import DefaultThreadNameGenerator, ThreadNameGenerator
+from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
+
+
+def _reraise_framework_errors(exc: Exception) -> None:
+    """Re-raise typed errors that have dedicated handlers instead of masking them.
+
+    ``HTTPException`` (already carrying the right status) and the framework's typed
+    exceptions have registered handlers in ``handle_errors.py`` that map them to the
+    correct 4xx/5xx. Swallowing them into a generic 500 turns client-caused failures
+    (recursion-limit exhaustion, bad tool args) into server errors.
+
+    The agentflow exceptions are imported lazily here: a top-level import of the
+    ``agentflow.core.exceptions`` package triggers a circular import through the core
+    media modules during test collection.
+    """
+    if isinstance(exc, HTTPException):
+        raise exc
+    from agentflow.core.exceptions import (
+        GraphError,
+        GraphRecursionError,
+        MetricsError,
+        NodeError,
+        SchemaVersionError,
+        SerializationError,
+        StorageError,
+        TransientStorageError,
+    )
+
+    typed = (
+        GraphError,
+        GraphRecursionError,
+        NodeError,
+        StorageError,
+        TransientStorageError,
+        SchemaVersionError,
+        SerializationError,
+        MetricsError,
+    )
+    if isinstance(exc, typed):
+        raise exc
 
 
 @singleton
@@ -56,8 +105,31 @@ class GraphService:
         self.checkpointer = checkpointer
         self.thread_name_generator = thread_name_generator
 
+        # Telemetry store is optional (bound in the loader). Resolve lazily so unit
+        # tests that construct GraphService directly don't require the binding.
+        self._telemetry: TelemetryStore | None = None
+
         # Lazy import to avoid circular dependency
         self._media_service = None
+
+    @property
+    def is_live_agent(self) -> bool:
+        """Whether the configured graph is a realtime (live) agent.
+
+        A live graph must be driven over the ``/v1/graph/live`` realtime WebSocket; a
+        non-live (turn-based) graph must use ``/v1/graph/ws``. The WebSocket handlers use
+        this to reject the wrong agent type up front.
+
+        Prefers the public ``CompiledGraph.is_realtime()`` (newer core releases) and falls
+        back to the internal ``_find_live_nodes()`` probe on releases that predate it.
+        """
+        is_realtime = getattr(self._graph, "is_realtime", None)
+        if callable(is_realtime):
+            return bool(is_realtime())
+        find_live_nodes = getattr(self._graph, "_find_live_nodes", None)
+        if callable(find_live_nodes):
+            return bool(find_live_nodes())
+        return False
 
     @property
     def media_service(self):
@@ -81,8 +153,8 @@ class GraphService:
         Save the generated thread name to the database.
         """
         if not self.thread_name_generator:
-            thread_name = await DummyThreadNameGenerator().generate_name([])
-            logger.debug("No thread name generator configured, using dummy thread name generator.")
+            thread_name = await DefaultThreadNameGenerator().generate_name([])
+            logger.debug("No thread name generator configured, using default generator.")
             return thread_name
 
         thread_name = await self.thread_name_generator.generate_name(messages)
@@ -133,6 +205,73 @@ class GraphService:
 
         return context, context_summary
 
+    @property
+    def telemetry(self) -> TelemetryStore | None:
+        """The bound TelemetryStore, if any (resolved lazily, cached)."""
+        if getattr(self, "_telemetry", None) is None:
+            try:
+                self._telemetry = InjectQ.get_instance().try_get(TelemetryStore)
+            except Exception:
+                self._telemetry = None
+        return self._telemetry
+
+    @staticmethod
+    def _telemetry_record(chunk: Any) -> dict[str, Any]:
+        """Flatten a StreamChunk into a compact record for the telemetry store."""
+        md = getattr(chunk, "metadata", None) or {}
+        node = md.get("node") or md.get("current_node") or getattr(chunk, "node_name", "") or ""
+
+        usages = None
+        message = getattr(chunk, "message", None)
+        if message is not None:
+            u = getattr(message, "usages", None)
+            if u is not None:
+                try:
+                    usages = u.model_dump() if hasattr(u, "model_dump") else dict(u)
+                except Exception:
+                    usages = None
+
+        # Tool call / tool result hints for span reconstruction.
+        content_kinds: list[str] = []
+        tool_names: list[str] = []
+        if message is not None:
+            content = getattr(message, "content", None)
+            if isinstance(content, list):
+                for block in content:
+                    btype = getattr(block, "type", None) or (
+                        block.get("type") if isinstance(block, dict) else None
+                    )
+                    if btype:
+                        content_kinds.append(btype)
+                    if btype in ("tool_call", "tool_result"):
+                        bname = getattr(block, "name", None) or (
+                            block.get("name") if isinstance(block, dict) else None
+                        )
+                        if bname:
+                            tool_names.append(bname)
+
+        event = getattr(chunk, "event", None)
+        return {
+            "event": str(event.value) if hasattr(event, "value") else str(event or ""),
+            "node": node,
+            "timestamp": getattr(chunk, "timestamp", None),
+            "is_delta": bool(getattr(message, "delta", False)) if message else False,
+            "role": getattr(message, "role", None) if message else None,
+            "usages": usages,
+            "content_kinds": content_kinds,
+            "tool_names": tool_names,
+            "is_error": bool(getattr(chunk, "is_error", False)),
+        }
+
+    def _record_chunk(self, thread_id: str, run_id: str, chunk: Any) -> None:
+        store = self.telemetry
+        if not store:
+            return
+        try:
+            store.record(thread_id, run_id, self._telemetry_record(chunk))
+        except Exception as e:  # - telemetry must never break a run
+            logger.debug("Telemetry record failed: %s", e)
+
     async def stop_graph(
         self,
         thread_id: str,
@@ -157,15 +296,15 @@ class GraphService:
             logger.info(f"Stopping graph execution for thread: {thread_id}")
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
-            # Prepare config with thread_id and user info
-            stop_config = {
-                "thread_id": thread_id,
-                "user": user,
-            }
-
-            # Merge additional config if provided
-            if config:
-                stop_config.update(config)
+            # Start with client config if provided, then overlay trusted attributes
+            stop_config = dict(config) if config else {}
+            stop_config.update(
+                {
+                    "thread_id": thread_id,
+                    "user": user,
+                    "user_id": user.get("user_id", "anonymous"),
+                }
+            )
 
             # Call the graph's astop method
             result = await self._graph.astop(stop_config)
@@ -177,6 +316,7 @@ class GraphService:
             logger.warning(f"Graph stop input validation failed for thread {thread_id}: {e}")
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
+            _reraise_framework_errors(e)
             logger.error(f"Graph stop failed for thread {thread_id}: {e}")
             raise HTTPException(
                 status_code=500, detail=f"Graph stop failed for thread {thread_id}: {e!s}"
@@ -185,9 +325,10 @@ class GraphService:
     async def _prepare_input(
         self,
         graph_input: GraphInputSchema,
+        user_id: str | None = None,
     ):
         is_new_thread = False
-        config = graph_input.config or {}
+        config = dict(graph_input.config or {})
         if config.get("thread_id") and str(config["thread_id"]).strip():
             thread_id = str(config["thread_id"]).strip()
         else:
@@ -205,6 +346,7 @@ class GraphService:
         preprocessed = await preprocess_multimodal_messages(
             graph_input.messages,
             self.media_service,
+            user_id,
         )
         input_data: dict = {
             "messages": preprocessed,
@@ -242,7 +384,7 @@ class GraphService:
             logger.debug(f"Invoking graph with input: {graph_input.messages}")
 
             # Prepare the input
-            input_data, config, meta = await self._prepare_input(graph_input)
+            input_data, config, meta = await self._prepare_input(graph_input, user.get("user_id"))
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
@@ -253,6 +395,15 @@ class GraphService:
             is_new_thread = await self._save_thread(config, config["thread_id"])
             if is_new_thread and type(is_new_thread) is bool:
                 meta["is_new_thread"] = True
+
+            # Telemetry run (invoke has no chunk stream; we record from the final
+            # messages so cost/usage still shows on the observability page).
+            inv_thread_id = str(config["thread_id"])
+            inv_run_id = str(config.get("run_id") or uuid4())
+            config.setdefault("run_id", inv_run_id)
+            inv_started = datetime.now().timestamp()
+            if self.telemetry:
+                self.telemetry.start_run(inv_thread_id, inv_run_id, inv_started)
 
             # Execute the graph
             result = await self._graph.ainvoke(
@@ -265,6 +416,23 @@ class GraphService:
 
             # Extract messages and state from result
             messages: list[Message] = result.get("messages", [])
+
+            # Record final messages into telemetry, then close the run.
+            if self.telemetry:
+                for msg in messages:
+                    self._record_chunk(
+                        inv_thread_id,
+                        inv_run_id,
+                        StreamChunk(
+                            event=StreamEvent.MESSAGE,
+                            message=msg,
+                            metadata={"node": getattr(msg, "node", "") or ""},
+                            timestamp=datetime.now().timestamp(),
+                        ),
+                    )
+                self.telemetry.finish_run(
+                    inv_thread_id, inv_run_id, datetime.now().timestamp(), "done"
+                )
             raw_state: AgentState | None = result.get("state", None)
 
             # Extract context information using helper method
@@ -292,6 +460,9 @@ class GraphService:
             logger.warning(f"Graph input validation failed: {e}")
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
+            # Let typed/HTTP errors reach their registered handlers instead of
+            # collapsing every failure into a generic 500.
+            _reraise_framework_errors(e)
             logger.error(f"Graph execution failed: {e}")
             raise HTTPException(status_code=500, detail=f"Graph execution failed: {e!s}")
 
@@ -313,11 +484,13 @@ class GraphService:
         # Initialize meta here so it is available in the except blocks even if
         # _prepare_input raises before assigning it.
         meta: dict[str, Any] = {}
+        thread_id: str | None = None
+        run_id: str | None = None
         try:
             logger.debug(f"Streaming graph with input: {graph_input.messages}")
 
             # Prepare the config
-            input_data, config, meta = await self._prepare_input(graph_input)
+            input_data, config, meta = await self._prepare_input(graph_input, user.get("user_id"))
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
@@ -331,6 +504,15 @@ class GraphService:
 
             messages_str = []
 
+            # Begin a telemetry run so the observability endpoint can rebuild the trace.
+            thread_id = str(config["thread_id"])
+            run_id = str(config.get("run_id") or uuid4())
+            config.setdefault("run_id", run_id)
+            started_at = datetime.now().timestamp()
+            if self.telemetry:
+                self.telemetry.start_run(thread_id, run_id, started_at)
+            run_status = "done"
+
             # Stream the graph execution
             async for chunk in self._graph.astream(
                 input_data,
@@ -340,6 +522,12 @@ class GraphService:
                 mt = chunk.metadata or {}
                 mt.update(meta)
                 chunk.metadata = mt
+                self._record_chunk(thread_id, run_id, chunk)
+                if getattr(chunk, "is_error", False) or getattr(chunk, "event", None) in (
+                    "error",
+                    StreamEvent.ERROR,
+                ):
+                    run_status = "error"
                 yield chunk.model_dump_json(serialize_as_any=True) + "\n"
                 if (
                     self.config.thread_name_generator_path
@@ -351,6 +539,9 @@ class GraphService:
                     messages_str.append(chunk.message.text())
 
             logger.info("Graph streaming completed successfully")
+
+            if self.telemetry:
+                self.telemetry.finish_run(thread_id, run_id, datetime.now().timestamp(), run_status)
 
             if meta["is_new_thread"] and self.config.thread_name_generator_path:
                 thread_name = await self._save_thread_name(
@@ -376,10 +567,30 @@ class GraphService:
             # already started.")  Instead, we yield a structured error chunk so
             # the client can detect and display the failure.
             logger.error(f"Graph streaming failed: {e}")
+            try:
+                if self.telemetry and thread_id and run_id:
+                    self.telemetry.finish_run(
+                        thread_id, run_id, datetime.now().timestamp(), "error"
+                    )
+            except Exception as telemetry_exc:
+                logger.debug("Telemetry finish_run failed on stream error: %s", telemetry_exc)
+            # The global error handlers never see this exception (it is caught inside
+            # the generator), so sanitize here too. Otherwise a driver/DB exception
+            # embedding a connection string or internal path would stream verbatim in
+            # production, bypassing MODE=production redaction.
+            # Imported lazily: a top-level import of handle_errors creates a circular
+            # import through the shared utils/exceptions modules.
+            from agentflow_cli.src.app.core.config.settings import get_settings
+            from agentflow_cli.src.app.core.exceptions.handle_errors import (
+                _sanitize_error_message,
+            )
+
+            is_production = get_settings().MODE == "production"
+            reason = _sanitize_error_message(str(e), "GRAPH_STREAM_ERROR", is_production)
             yield (
                 StreamChunk(
                     event=StreamEvent.ERROR,
-                    data={"reason": str(e)},
+                    data={"reason": reason},
                     metadata=meta,
                 ).model_dump_json(serialize_as_any=True)
                 + "\n"
@@ -445,6 +656,11 @@ class GraphService:
         try:
             logger.info("Getting graph details")
             res = self._graph.generate_graph()
+            # Surface live/realtime capability so clients can route to /v1/graph/live
+            # and gate their UI. Not part of core's generate_graph() output.
+            info = res.get("info")
+            if isinstance(info, dict):
+                info["is_realtime"] = self.is_live_agent
             return GraphSchema(**res)
         except ValueError as e:
             logger.warning(f"Graph details validation failed: {e}")
@@ -452,6 +668,273 @@ class GraphService:
         except Exception as e:
             logger.error(f"Failed to get graph details: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to get graph details: {e!s}")
+
+    async def get_tools(self) -> GraphToolsSchema:
+        """Collect the tools exposed by every ToolNode in the graph.
+
+        Walks the compiled graph's nodes, and for each ``ToolNode`` calls
+        ``all_tools()`` (which resolves local functions, MCP tools from any
+        connected server, and remote/client-registered tools). Each tool is
+        tagged with its ``source`` so the UI can group them.
+
+        A failing MCP server on one node does not break the endpoint: that node's
+        tools are collected best-effort and the error is logged.
+        """
+        # Local import to avoid a hard dependency at module import time.
+        from agentflow.core.graph import ToolNode
+
+        state_graph = getattr(self._graph, "_state_graph", None)
+        nodes = getattr(state_graph, "nodes", {}) if state_graph else {}
+
+        node_schemas: list[ToolNodeSchema] = []
+        total_tools = 0
+
+        for node_name, node in nodes.items():
+            tool_node = getattr(node, "func", None)
+            if not isinstance(tool_node, ToolNode):
+                continue
+
+            try:
+                raw_tools = await tool_node.all_tools()
+            except Exception as e:  # - one bad MCP server shouldn't 500 the page
+                logger.warning("Failed to list tools for node '%s': %s", node_name, e)
+                raw_tools = []
+
+            # After all_tools(), these hold the names by origin.
+            local_names = set(getattr(tool_node, "_funcs", {}).keys())
+            mcp_names = set(getattr(tool_node, "mcp_tools", []) or [])
+            remote_names = set(getattr(tool_node, "remote_tool_names", []) or [])
+
+            tools: list[ToolSchema] = []
+            for entry in raw_tools:
+                fn = entry.get("function", {}) if isinstance(entry, dict) else {}
+                name = fn.get("name", "")
+                if name in mcp_names:
+                    source = "mcp"
+                elif name in remote_names:
+                    source = "remote"
+                elif name in local_names:
+                    source = "local"
+                else:
+                    # Unknown origin — default to local (a plain function schema).
+                    source = "local"
+
+                tools.append(
+                    ToolSchema(
+                        name=name,
+                        description=fn.get("description", "") or "",
+                        source=source,
+                        parameters=fn.get("parameters", {}) or {},
+                    )
+                )
+
+            total_tools += len(tools)
+            node_schemas.append(
+                ToolNodeSchema(
+                    node_name=node_name,
+                    tool_count=len(tools),
+                    tools=tools,
+                )
+            )
+
+        return GraphToolsSchema(
+            node_count=len(node_schemas),
+            tool_count=total_tools,
+            nodes=node_schemas,
+        )
+
+    async def get_observability(
+        self,
+        thread_id: str,
+        run_id: str | None = None,
+    ) -> "ObservabilitySchema":
+        """Reconstruct an observability trace for a thread from captured run events.
+
+        Rebuilds spans (root → node → llm/tool), an event list, and aggregated
+        token usage from the telemetry records a run emitted. Returns the latest
+        run by default, or the requested ``run_id``.
+        """
+        store = self.telemetry
+        if not store:
+            return ObservabilitySchema(thread_id=str(thread_id), run_count=0)
+
+        runs = store.get_runs(thread_id)
+        run_ids = [r.run_id for r in runs]
+
+        trace = None
+        if run_id:
+            trace = store.get_run(thread_id, run_id)
+        elif runs:
+            trace = runs[-1]
+
+        if trace is None:
+            return ObservabilitySchema(
+                thread_id=str(thread_id),
+                run_count=len(runs),
+                run_ids=run_ids,
+                run=None,
+            )
+
+        run_schema = self._reconstruct_run(trace)
+        return ObservabilitySchema(
+            thread_id=str(thread_id),
+            run_count=len(runs),
+            run_ids=run_ids,
+            run=run_schema,
+        )
+
+    def _reconstruct_run(self, trace: Any) -> "ObsRunSchema":
+        """Turn a captured RunTrace into spans + events + usage."""
+        records = list(trace.records)
+        started = trace.started_at
+        # Fall back to the first record's timestamp if start wasn't stamped.
+        first_ts = next((r.get("timestamp") for r in records if r.get("timestamp")), started)
+        base = started or first_ts or 0.0
+        last_ts = max([r.get("timestamp") or base for r in records] + [trace.finished_at or base])
+        total_ms = max(0.0, (last_ts - base) * 1000.0)
+
+        def off_ms(ts: float | None) -> float:
+            return max(0.0, ((ts or base) - base) * 1000.0)
+
+        usage = ObsTokenUsageSchema()
+        events: list[ObsEventSchema] = []
+        spans: list[ObsSpanSchema] = []
+
+        # Root span spans the whole run.
+        spans.append(
+            ObsSpanSchema(
+                id="root",
+                name="graph",
+                kind="root",
+                parent=None,
+                start_ms=0.0,
+                duration_ms=total_ms,
+            )
+        )
+
+        # Walk records to build node spans (by node transitions) + llm/tool spans.
+        node_spans: dict[str, ObsSpanSchema] = {}
+        node_order: list[str] = []
+        llm_calls = 0
+        tool_calls = 0
+        span_seq = 0
+
+        def new_span_id() -> str:
+            nonlocal span_seq
+            span_seq += 1
+            return f"s{span_seq}"
+
+        for idx, rec in enumerate(records):
+            node = rec.get("node") or "—"
+            ts = rec.get("timestamp")
+            ev_type = rec.get("event") or "message"
+
+            # Node span: open on first sight of a node, extend its end as records arrive.
+            if node and node != "—":
+                span = node_spans.get(node)
+                if span is None:
+                    span = ObsSpanSchema(
+                        id=new_span_id(),
+                        name=f"node: {node}",
+                        kind="node",
+                        parent="root",
+                        start_ms=off_ms(ts),
+                        duration_ms=0.0,
+                    )
+                    node_spans[node] = span
+                    node_order.append(node)
+                    spans.append(span)
+                else:
+                    span.duration_ms = max(span.duration_ms, off_ms(ts) - span.start_ms)
+
+            # LLM span: a non-delta assistant message with usages under this node.
+            u = rec.get("usages")
+            if u:
+                usage.prompt_tokens += int(u.get("prompt_tokens", 0) or 0)
+                usage.completion_tokens += int(u.get("completion_tokens", 0) or 0)
+                usage.reasoning_tokens += int(u.get("reasoning_tokens", 0) or 0)
+                usage.total_tokens += int(
+                    u.get("total_tokens", 0)
+                    or (u.get("prompt_tokens", 0) or 0) + (u.get("completion_tokens", 0) or 0)
+                )
+                llm_calls += 1
+                parent = node_spans.get(node)
+                spans.append(
+                    ObsSpanSchema(
+                        id=new_span_id(),
+                        name="llm.generate",
+                        kind="llm",
+                        parent=parent.id if parent else "root",
+                        start_ms=off_ms(ts),
+                        duration_ms=0.0,
+                        model=(rec.get("model") or None),
+                        input_tokens=int(u.get("prompt_tokens", 0) or 0),
+                        output_tokens=int(u.get("completion_tokens", 0) or 0),
+                    )
+                )
+
+            # Tool spans: from tool_call / tool_result content blocks.
+            for tname in rec.get("tool_names", []) or []:
+                if "tool_call" in (rec.get("content_kinds") or []):
+                    tool_calls += 1
+                    parent = node_spans.get(node)
+                    spans.append(
+                        ObsSpanSchema(
+                            id=new_span_id(),
+                            name=f"tool: {tname}",
+                            kind="tool",
+                            parent=parent.id if parent else "root",
+                            start_ms=off_ms(ts),
+                            duration_ms=0.0,
+                        )
+                    )
+
+            # Event row.
+            events.append(
+                ObsEventSchema(
+                    id=f"e{idx}",
+                    type=ev_type,
+                    node=node if node != "—" else "",
+                    offset_ms=off_ms(ts),
+                    summary=self._event_summary(rec),
+                )
+            )
+
+        # Newest-first events for the pane.
+        events.reverse()
+
+        return ObsRunSchema(
+            run_id=trace.run_id,
+            thread_id=trace.thread_id,
+            status=trace.status,
+            started_at=trace.started_at,
+            finished_at=trace.finished_at,
+            duration_ms=total_ms,
+            spans=spans,
+            events=events,
+            usage=usage,
+            llm_calls=llm_calls,
+            tool_calls=tool_calls,
+            iterations=len(node_order),
+        )
+
+    @staticmethod
+    def _event_summary(rec: dict[str, Any]) -> str:
+        kinds = rec.get("content_kinds") or []
+        tools = rec.get("tool_names") or []
+        if rec.get("is_error"):
+            return "error"
+        if tools and ("tool_call" in kinds or "tool_result" in kinds):
+            label = "tool_call" if "tool_call" in kinds else "tool_result"
+            return f"{label} {', '.join(tools)}"
+        if rec.get("usages"):
+            u = rec["usages"]
+            return f"llm.generate · {u.get('total_tokens', 0)} tokens"
+        if rec.get("is_delta"):
+            return "delta"
+        if kinds:
+            return f"{rec.get('role') or 'message'}: {', '.join(kinds)}"
+        return rec.get("event") or "chunk"
 
     async def get_state_schema(self) -> dict:
         try:
@@ -516,10 +999,11 @@ class GraphService:
             logger.info(f"Starting fix graph operation for thread: {thread_id}")
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
-            fix_config = {"thread_id": thread_id, "user": user}
-            fix_config["user_id"] = user.get("user_id", "anonymous")
-            if config:
-                fix_config.update(config)
+            # Start with client config if provided, then overlay trusted attributes
+            fix_config = dict(config) if config else {}
+            fix_config.update(
+                {"thread_id": thread_id, "user": user, "user_id": user.get("user_id", "anonymous")}
+            )
 
             logger.debug("Fetching current state from checkpointer")
             state: AgentState | None = await self.checkpointer.aget_state(fix_config)
@@ -562,10 +1046,34 @@ class GraphService:
             logger.warning(f"Fix graph input validation failed: {e}")
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
+            _reraise_framework_errors(e)
             logger.error(f"Fix graph operation failed: {e}")
             raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")
 
     async def setup(self, data: GraphSetupSchema) -> dict:
+        from agentflow_cli.src.app.core.config.settings import get_settings
+
+        settings = get_settings()
+        has_auth = False
+        if self.config:
+            backend = self.config.auth_config()
+            from unittest.mock import Mock
+
+            if (
+                backend
+                and not isinstance(backend, Mock)
+                and (
+                    (isinstance(backend, dict) and backend.get("method") != "none")
+                    or (isinstance(backend, str) and backend != "none")
+                )
+            ):
+                has_auth = True
+        if settings.MODE == "production" or has_auth:
+            raise HTTPException(
+                status_code=403,
+                detail="Dynamic tool setup is disabled in production/multi-tenant mode.",
+            )
+
         # lets create tools
         remote_tools = defaultdict(list)
         for tool in data.tools:

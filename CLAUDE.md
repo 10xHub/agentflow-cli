@@ -5,9 +5,9 @@ core framework see `agentflow/CLAUDE.md`; for the TS client, docs, or playground
 for the monorepo overview see the workspace-root `CLAUDE.md`.
 
 - Package name (PyPI): `10xscale-agentflow-cli`
-- Version: `0.3.2.9` (`pyproject.toml`). `CLI_VERSION` and `agentflow_cli.__version__` are
+- Version: `0.4.0` (`pyproject.toml`). `CLI_VERSION` and `agentflow_cli.__version__` are
   single-sourced from the installed distribution metadata (falling back to `pyproject.toml`), so
-  `agentflow version` reports `0.3.2.9` consistently. The previous `1.0.0` hardcode is gone.
+  `agentflow version` reports `0.4.0` consistently. The previous `1.0.0` hardcode is gone.
 - Requires: Python >= 3.12 · Status: `4 - Beta`
 - Console entry point: `agentflow = agentflow_cli.cli.main:main`
 - Depends on the core framework: `10xscale-agentflow>=0.7.0`.
@@ -76,8 +76,25 @@ and for redis backend a `redis` sub-object `{ "url", "prefix" }` (or shorthand U
   load if missing). JWT logic lives in `core/auth/jwt_auth.py`.
 - `"auth": {"method": "custom", "path": "module:attr"}` loads your `BaseAuth` subclass
   (`from agentflow_cli import BaseAuth`).
-- Authorization (RBAC, per-tool) is separate: `core/auth/authorization.py`
-  (`AuthorizationBackend` / `DefaultAuthorizationBackend`), wired via the `authorization` key.
+- Authorization (RBAC / object-level) is separate: `core/auth/authorization.py`
+  (`AuthorizationBackend` / `DefaultAuthorizationBackend` / `OwnershipAuthorizationBackend`),
+  wired via the `authorization` key. That key accepts `"module:attr"` (custom), a built-in
+  name (`"ownership"` = owner-only thread access; `"allow_all"`/`"default"`/`"none"`), or
+  `null`. When unset it defaults **by mode**: `ownership` in production (secure by default),
+  `allow_all` in development. Selection lives in `loader._resolve_authorization_backend`;
+  `RequirePermission` passes `resource_id` (thread_id from path or body) to `authorize`.
+- **Ownership is object-level and enforced on every thread-touching step** (invoke/stream/
+  stop/fix + all checkpointer read/write/delete): a thread is accessible only to its owner;
+  a foreign `invoke`/`stream` is rejected up front (403), never reaching the graph.
+- **Scalable, not a DB call per request.** Ownership is immutable, so it is cached by
+  `core/auth/ownership_resolver.py::ThreadOwnershipResolver`: in-process LRU (L1) + optional
+  shared Redis (L2, reuses `config.redis`/`settings.REDIS_URL`). The backing lookup is
+  `BaseCheckpointer.aget_thread_owner` (implemented in pg/in-memory/sqlite; base raises
+  `NotImplementedError`). Cache is evicted on thread delete (`CheckpointerService.delete_thread`);
+  the L2 client is closed in the lifespan shutdown.
+- **Secure by construction:** `core/auth/route_guard.py::assert_all_routes_protected` runs at
+  boot (`main.py` after `init_routes`) and refuses to start if any non-public route lacks a
+  `RequirePermission` guard (`/ping` is the only public path).
 
 ## HTTP + WebSocket surface (all under `/v1` except ping)
 
@@ -134,7 +151,7 @@ ruff check . && ruff format .
 
 - **Version is now single-sourced.** `CLI_VERSION` (and `agentflow_cli.__version__`, which aliases
   it) resolve from installed distribution metadata, falling back to `pyproject.toml`. `agentflow
-  version` reports `0.3.2.9` for both the CLI and package lines. (The old hardcoded `1.0.0` drift is
+  version` reports `0.4.0` for both the CLI and package lines. (The old hardcoded `1.0.0` drift is
   resolved.)
 - **README shows `agentflow init --prod`** — that flag does not exist. `init` is interactive and
   only accepts `--path` / `--force`.

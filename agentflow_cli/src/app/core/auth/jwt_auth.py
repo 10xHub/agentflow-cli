@@ -73,6 +73,7 @@ class JwtAuth(BaseAuth):
                 token,
                 jwt_secret_key,
                 algorithms=[jwt_algorithm],
+                options={"require": ["exp"]},
             )
         except jwt.ExpiredSignatureError:
             raise UserAccountError(

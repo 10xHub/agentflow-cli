@@ -71,33 +71,9 @@ async def search_memories(
     return success_response(result, request)
 
 
-@router.post(
-    "/v1/store/memories/{memory_id}",
-    status_code=status.HTTP_200_OK,
-    responses=generate_swagger_responses(MemoryItemResponseSchema),
-    summary="Get a memory",
-    description="Retrieve a memory by its identifier from the configured store backend.",
-)
-async def get_memory(
-    request: Request,
-    memory_id: str,
-    payload: GetMemorySchema | None = Body(
-        default=None,
-        description="Optional configuration and options for retrieving the memory.",
-    ),
-    service: StoreService = InjectAPI(StoreService),
-    user: dict[str, Any] = Depends(RequirePermission("store", "read")),
-):
-    """Get a memory by ID."""
-    if not memory_id or not memory_id.strip():
-        raise HTTPException(status_code=422, detail="memory_id is required and cannot be empty")
-
-    cfg = payload.config if payload else {}
-    opts = payload.options if payload else None
-    result = await service.get_memory(memory_id, cfg, user, options=opts)
-    return success_response(result, request)
-
-
+# NOTE: static sub-paths (/list, /forget) MUST be registered before the
+# /{memory_id} catch-all below — FastAPI matches top-down, so otherwise
+# `POST /v1/store/memories/list` binds to `{memory_id="list"}` and never lists.
 @router.post(
     "/v1/store/memories/list",
     status_code=status.HTTP_200_OK,
@@ -193,3 +169,32 @@ async def forget_memory(
 
     result = await service.forget_memory(payload, user)
     return success_response(result, request, message="Memories removed successfully")
+
+
+# Registered last so the static /list and /forget paths above take precedence
+# over this {memory_id} catch-all.
+@router.post(
+    "/v1/store/memories/{memory_id}",
+    status_code=status.HTTP_200_OK,
+    responses=generate_swagger_responses(MemoryItemResponseSchema),
+    summary="Get a memory",
+    description="Retrieve a memory by its identifier from the configured store backend.",
+)
+async def get_memory(
+    request: Request,
+    memory_id: str,
+    payload: GetMemorySchema | None = Body(
+        default=None,
+        description="Optional configuration and options for retrieving the memory.",
+    ),
+    service: StoreService = InjectAPI(StoreService),
+    user: dict[str, Any] = Depends(RequirePermission("store", "read")),
+):
+    """Get a memory by ID."""
+    if not memory_id or not memory_id.strip():
+        raise HTTPException(status_code=422, detail="memory_id is required and cannot be empty")
+
+    cfg = payload.config if payload else {}
+    opts = payload.options if payload else None
+    result = await service.get_memory(memory_id, cfg, user, options=opts)
+    return success_response(result, request)

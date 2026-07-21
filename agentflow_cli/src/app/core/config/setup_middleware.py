@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from injectq import InjectQ
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
@@ -21,6 +22,79 @@ from .settings import get_settings, logger
 
 # Paths that should be excluded from GZip compression (streaming endpoints)
 GZIP_EXCLUDED_PATHS = frozenset({"/v1/graph/stream"})
+
+# StaleStateError is raised by checkpointers that do optimistic concurrency
+# control on state writes. It was added in a later core release, and this package
+# supports 10xscale-agentflow>=0.7.0, so treat it as optional: when the installed
+# core does not expose it, we simply do not register the 409 handler.
+try:
+    from agentflow.core.exceptions import StaleStateError
+except ImportError:  # pragma: no cover - depends on installed core version
+    StaleStateError = None  # type: ignore[assignment]
+
+
+class InsecureCorsConfigError(RuntimeError):
+    """Raised when production is configured with wildcard CORS + credentials."""
+
+
+def _resolve_cors_policy(settings) -> tuple[list[str], bool]:
+    """Decide the CORS origins/credentials policy, failing closed in production.
+
+    ``ORIGINS="*"`` on its own is a legitimate choice for a public, token-less
+    API, and a permissive default is normal in development. The dangerous case is
+    wildcard origins *combined with credentials*: Starlette reflects the caller's
+    Origin header back alongside ``Access-Control-Allow-Credentials: true``, which
+    turns every origin into a trusted, credentialed one. Warning about it (the old
+    behaviour) still served it.
+
+    In production that combination is refused outright, with two ways forward:
+    set explicit ``ORIGINS``, or set ``CORS_ALLOW_CREDENTIALS=false``.
+    """
+    origins = [o.strip() for o in settings.ORIGINS.split(",") if o.strip()]
+    allow_credentials = bool(getattr(settings, "CORS_ALLOW_CREDENTIALS", True))
+    is_wildcard = "*" in origins
+    is_production = str(getattr(settings, "MODE", "development")).lower() == "production"
+
+    if is_wildcard and allow_credentials:
+        if is_production:
+            raise InsecureCorsConfigError(
+                "Refusing to start: CORS is configured with ORIGINS='*' and "
+                "credentials enabled while MODE=production. This reflects any "
+                "caller's Origin back with Access-Control-Allow-Credentials: true, "
+                "making every origin a trusted one. Fix by either:\n"
+                "  1. setting ORIGINS to an explicit comma-separated list, or\n"
+                "  2. setting CORS_ALLOW_CREDENTIALS=false for a public, "
+                "non-credentialed API."
+            )
+        logger.warning(
+            "CORS is wildcard ('*') with credentials enabled. This is accepted in "
+            "development but will refuse to start when MODE=production."
+        )
+
+    return origins, allow_credentials
+
+
+async def _stale_state_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Return 409 Conflict when a run loses the checkpointer's version check.
+
+    A ``StaleStateError`` means another execution committed a newer state for the
+    same thread while this one was running, so persisting would silently discard
+    that work. This is a genuine conflict, not a server fault: surface it as 409
+    so the client can reload the thread and retry instead of seeing a 500.
+    """
+    logger.warning("State conflict on concurrent run: %s", exc)
+    context = getattr(exc, "context", {}) or {}
+    return JSONResponse(
+        status_code=409,
+        content={
+            "error": "state_conflict",
+            "detail": (
+                "This thread was updated by another run while yours was in flight. "
+                "Reload the thread and retry."
+            ),
+            "thread_id": context.get("thread_id"),
+        },
+    )
 
 
 class SelectiveGZipMiddleware:
@@ -143,6 +217,80 @@ def _attach_otel_publisher(container: InjectQ, settings) -> None:
         )
 
 
+def _setup_observability(container: InjectQ | None, graph_config: GraphConfig | None) -> None:
+    """Wire Logfire/LangSmith from the ``observability`` block of ``agentflow.json``.
+
+    Configures the tracer provider(s)/exporters and binds an ``OtelPublisher``
+    into the DI container. This runs at app-construction time, before the graph
+    is loaded and compiled — the only reliable attach point, because InjectQ
+    freezes the ``BasePublisher`` binding at ``container.compile()`` (which runs
+    inside ``StateGraph.compile()``). The core ``StateGraph.compile()`` guard
+    preserves a publisher already present in the container instead of clobbering
+    it with ``None``.
+
+    Secrets stay in the environment (``LOGFIRE_TOKEN``, ``LANGSMITH_API_KEY``);
+    only non-secret settings live in ``agentflow.json``.
+    """
+    if container is None or graph_config is None:
+        return
+
+    obs_cfg = graph_config.observability
+    if not obs_cfg:
+        return
+
+    logfire_on = bool((obs_cfg.get("logfire") or {}).get("enabled", False))
+    langsmith_on = bool((obs_cfg.get("langsmith") or {}).get("enabled", False))
+    if not logfire_on and not langsmith_on:
+        return
+
+    try:
+        from agentflow.runtime.publisher.base_publisher import BasePublisher
+        from agentflow.runtime.publisher.composite_publisher import CompositePublisher
+        from agentflow.runtime.publisher.exporters import setup_observability
+        from agentflow.runtime.publisher.otel_publisher import ObservabilityLevel, OtelPublisher
+    except ImportError:
+        logger.warning(
+            "observability is configured but required packages are not installed. "
+            "Install with: pip install '10xscale-agentflow[observability]'"
+        )
+        return
+
+    # Configure the provider(s)/exporter(s) only. graph=None means no publisher
+    # is attached here; we bind it into the container ourselves below so it is
+    # in place before the graph compiles.
+    try:
+        setup_observability(None, obs_cfg)
+    except (ImportError, ValueError) as exc:
+        logger.warning("Observability setup skipped: %s", exc)
+        return
+
+    try:
+        level = ObservabilityLevel(str(obs_cfg.get("level", "standard")).lower())
+    except ValueError:
+        logger.warning(
+            "Invalid observability level=%r, falling back to 'standard'.",
+            obs_cfg.get("level"),
+        )
+        level = ObservabilityLevel.STANDARD
+
+    otel_publisher = OtelPublisher(level=level)
+    existing = container.try_get(BasePublisher)
+
+    if existing is None:
+        container.bind_instance(BasePublisher, otel_publisher)
+    elif isinstance(existing, CompositePublisher):
+        existing.add_publisher(otel_publisher)
+    else:
+        container.bind_instance(BasePublisher, CompositePublisher([existing, otel_publisher]))
+
+    logger.info(
+        "Observability enabled (logfire=%s, langsmith=%s, level=%s)",
+        logfire_on,
+        langsmith_on,
+        level,
+    )
+
+
 def _setup_otel(app: FastAPI, settings) -> None:
     """Configure OpenTelemetry tracing and instrument the FastAPI app.
 
@@ -213,15 +361,24 @@ def setup_middleware(
     """
     settings = get_settings()
 
+    # A concurrent run on the same thread is a conflict (409), not a 500.
+    if StaleStateError is not None:
+        app.add_exception_handler(StaleStateError, _stale_state_handler)
+
     if settings.OTEL_ENABLED:
         _setup_otel(app, settings)
         if container is not None:
             _attach_otel_publisher(container, settings)
+
+    # Declarative Logfire/LangSmith wiring from agentflow.json (before compile).
+    _setup_observability(container, graph_config)
+
     # init cors
+    origins, allow_credentials = _resolve_cors_policy(settings)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ORIGINS.split(","),
-        allow_credentials=True,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

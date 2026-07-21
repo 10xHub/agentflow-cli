@@ -266,10 +266,18 @@ def build(
         "--docker-compose/--no-docker-compose",
         help="Also generate docker-compose.yml and omit CMD in Dockerfile",
     ),
+    k8s: bool = typer.Option(
+        False,
+        "--k8s/--no-k8s",
+        help=(
+            "Also generate k8s.yaml (Deployment + Service) with a termination grace "
+            "period long enough that a rolling deploy does not kill in-flight agent runs"
+        ),
+    ),
     service_name: str = typer.Option(
         "agentflow-cli",
         "--service-name",
-        help="Service name to use in docker-compose.yml (if generated)",
+        help="Service name to use in docker-compose.yml / k8s.yaml (if generated)",
     ),
     verbose: bool = typer.Option(
         False,
@@ -296,6 +304,7 @@ def build(
             python_version=python_version,
             port=port,
             docker_compose=docker_compose,
+            k8s=k8s,
             service_name=service_name,
         )
         sys.exit(exit_code)

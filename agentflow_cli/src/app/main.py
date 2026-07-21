@@ -2,6 +2,7 @@ import logging
 import os
 
 from agentflow.core.graph import CompiledGraph
+from agentflow.utils.background_task_manager import BackgroundTaskManager
 from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import ORJSONResponse
@@ -17,12 +18,19 @@ from agentflow_cli.src.app.core import (
     init_logger,
     setup_middleware,
 )
+from agentflow_cli.src.app.core.auth.route_guard import assert_all_routes_protected
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.loader import attach_all_modules, load_container
 from agentflow_cli.src.app.routers import init_routes
 
 
 logger = logging.getLogger("agentflow_api")
+
+# How long shutdown waits for in-flight background work (event publishing,
+# checkpoint writes) before giving up. Bounded on purpose: a wedged sink must not
+# hold the pod open until the kubelet SIGKILLs it, which would lose more than
+# draining for a fixed window and then moving on.
+SHUTDOWN_DRAIN_TIMEOUT_SECONDS = 30.0
 
 settings = get_settings()
 # redis_client = Redis(
@@ -79,9 +87,16 @@ async def lifespan(app: FastAPI):
     # injector.binder.bind(BaseStore, store)
 
     yield
-    # Clean up
-    # await close_caches()
-    # close all the connections
+
+    # Shutdown. Order matters: drain in-flight work BEFORE tearing down the
+    # resources that work depends on.
+    #
+    # Previously this went straight to `graph.aclose()`, which released the graph's
+    # resources while background work (publisher emits, checkpoint writes) could
+    # still be in flight -- so a rolling deploy could drop the tail end of a run's
+    # events and its final checkpoint.
+    await _drain_background_tasks()
+
     if graph:
         # release all the resources
         await graph.aclose()
@@ -90,6 +105,43 @@ async def lifespan(app: FastAPI):
     backend = getattr(app.state, "rate_limit_backend", None)
     if backend is not None:
         await backend.close()
+
+    # Close the authorization backend's L2 Redis client, if it created one.
+    try:
+        from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+
+        authz = container.try_get(AuthorizationBackend)
+        if authz is not None and hasattr(authz, "aclose"):
+            await authz.aclose()
+    except Exception as exc:
+        logger.debug("Authorization backend close failed: %s", exc)
+
+
+async def _drain_background_tasks(timeout: float = SHUTDOWN_DRAIN_TIMEOUT_SECONDS) -> None:
+    """Wait for in-flight background tasks (event publishing, checkpoint writes).
+
+    Bounded: if the sink is wedged we still shut down, rather than hanging the pod
+    until the kubelet SIGKILLs it -- which would lose strictly more than draining
+    for a bounded window and then giving up.
+    """
+    try:
+        task_manager = InjectQ.get_instance().try_get(BackgroundTaskManager)
+    except Exception:  # container not configured; nothing to drain
+        return
+
+    if task_manager is None:
+        return
+
+    pending = getattr(task_manager, "pending_count", 0)
+    if not pending:
+        return
+
+    logger.info("Draining %d in-flight background tasks before shutdown", pending)
+    try:
+        await task_manager.wait_for_all(timeout=timeout)
+        logger.info("Background tasks drained")
+    except Exception as e:
+        logger.warning("Background task drain did not finish cleanly: %s", e)
 
 
 app = FastAPI(
@@ -116,6 +168,10 @@ init_errors_handler(app)
 
 # init routes
 init_routes(app)
+
+# Secure by construction: refuse to boot if any non-public route forgot its
+# RequirePermission guard (a forgotten guard would otherwise ship an open endpoint).
+assert_all_routes_protected(app)
 
 # instrumentator = Instrumentator().instrument(app)  # Instrument first
 # instrumentator.expose(app)  # Then expose
