@@ -1,9 +1,9 @@
 """Tests for media router."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException, UploadFile, status
-from agentflow_cli.src.app.routers.media.router import router
+
+import pytest
+from fastapi import HTTPException, UploadFile
 
 
 @pytest.fixture

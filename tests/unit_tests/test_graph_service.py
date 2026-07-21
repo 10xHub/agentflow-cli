@@ -1,21 +1,21 @@
 """Unit tests for GraphService."""
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException
-from pydantic import BaseModel
 
+import pytest
 from agentflow.core.exceptions.media_exceptions import UnsupportedMediaInputError
 from agentflow.core.state import AgentState, Message, StreamChunk, StreamEvent
 from agentflow.storage.checkpointer import BaseCheckpointer
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+from fastapi import HTTPException
+from pydantic import BaseModel
+
+from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
-    GraphSetupSchema,
 )
+from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
 from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 
 
 class MockStateModel(BaseModel):
@@ -30,13 +30,14 @@ class TestGraphServiceMethods:
     def mock_graph(self):
         graph = MagicMock()
         graph.ainvoke = AsyncMock()
-        graph.astream = MagicMock() # Will be configured per test
+        graph.astream = MagicMock()  # Will be configured per test
         graph.astop = AsyncMock()
         graph.generate_graph = MagicMock()
-        
+
         # for get_state_schema
         class FakeState(BaseModel):
             a: int
+
         graph._state = FakeState
         return graph
 
@@ -104,12 +105,9 @@ class TestGraphServiceMethods:
         user = {"user_id": "123"}
         result = await service.stop_graph("thread-123", user, {"extra": "val"})
         assert result == {"status": "stopped"}
-        mock_graph.astop.assert_called_once_with({
-            "thread_id": "thread-123",
-            "user": user,
-            "extra": "val",
-            "user_id": "123"
-        })
+        mock_graph.astop.assert_called_once_with(
+            {"thread_id": "thread-123", "user": user, "extra": "val", "user_id": "123"}
+        )
 
     @pytest.mark.asyncio
     async def test_stop_graph_validation_error(self, service, mock_graph):
@@ -131,9 +129,9 @@ class TestGraphServiceMethods:
     async def test_prepare_input(self, service):
         gi = GraphInputSchema(
             messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}],
-            recursion_limit=10
+            recursion_limit=10,
         )
-        
+
         # Test with thread_id set
         gi.config = {"thread_id": "t1"}
         input_data, config, meta = await service._prepare_input(gi)
@@ -154,25 +152,25 @@ class TestGraphServiceMethods:
         gi = GraphInputSchema(
             messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}],
             recursion_limit=10,
-            config={"thread_id": "t1"}
+            config={"thread_id": "t1"},
         )
         user = {"user_id": "u1"}
-        
+
         mock_state = MagicMock(spec=AgentState)
         mock_state.model_dump.return_value = {"key": "val"}
         mock_msg = MagicMock(spec=Message)
         mock_msg.text.return_value = "msg_text"
-        
+
         mock_graph.ainvoke.return_value = {
             "messages": [mock_msg],
             "state": mock_state,
             "context": [mock_msg],
-            "context_summary": "summary"
+            "context_summary": "summary",
         }
 
         # Mock thread_name_generator_path to trigger save_thread_name
         mock_config.thread_name_generator_path = "some_path"
-        
+
         # Since _save_thread returns True, it's considered a new thread
         mock_checkpointer.aput_thread.return_value = True
 
@@ -183,10 +181,14 @@ class TestGraphServiceMethods:
 
     @pytest.mark.asyncio
     async def test_invoke_graph_errors(self, service, mock_graph):
-        gi = GraphInputSchema(messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}])
-        
+        gi = GraphInputSchema(
+            messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}]
+        )
+
         # UnsupportedMediaInputError
-        mock_graph.ainvoke.side_effect = UnsupportedMediaInputError("provider", "model", "media_type", "source_kind")
+        mock_graph.ainvoke.side_effect = UnsupportedMediaInputError(
+            "provider", "model", "media_type", "source_kind"
+        )
         with pytest.raises(HTTPException) as exc:
             await service.invoke_graph(gi, {})
         assert exc.value.status_code == 422
@@ -207,28 +209,30 @@ class TestGraphServiceMethods:
     async def test_stream_graph_success(self, service, mock_graph, mock_config):
         gi = GraphInputSchema(
             messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}],
-            config={"thread_id": "t1"}
+            config={"thread_id": "t1"},
         )
-        
+
         chunk = StreamChunk(event=StreamEvent.MESSAGE, data={"chunk": "x"})
-        
+
         # Mock generator to yield chunk
         async def mock_stream(*args, **kwargs):
             yield chunk
 
         mock_graph.astream = mock_stream
-        
+
         mock_config.thread_name_generator_path = "some_path"
-        
+
         chunks = []
         async for c in service.stream_graph(gi, {}):
             chunks.append(c)
-            
-        assert len(chunks) == 2  # message chunk + final completed status chunk (due to thread name generator path branch)
-        
+
+        assert (
+            len(chunks) == 2
+        )  # message chunk + final completed status chunk (due to thread name generator path branch)
+
         data0 = json.loads(chunks[0])
         assert data0["event"] == "message"
-        
+
         data1 = json.loads(chunks[1])
         assert data1["event"] == "updates"
         assert data1["data"]["status"] == "completed"
@@ -237,19 +241,19 @@ class TestGraphServiceMethods:
     async def test_stream_graph_exception_handling(self, service, mock_graph):
         gi = GraphInputSchema(
             messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}],
-            config={"thread_id": "t1"}
+            config={"thread_id": "t1"},
         )
-        
+
         async def mock_stream_error(*args, **kwargs):
             raise Exception("stream crash")
             yield  # make it a generator
-            
+
         mock_graph.astream = mock_stream_error
-        
+
         chunks = []
         async for c in service.stream_graph(gi, {}):
             chunks.append(c)
-            
+
         assert len(chunks) == 1
         data = json.loads(chunks[0])
         assert data["event"] == "error"
@@ -262,11 +266,17 @@ class TestGraphServiceMethods:
     async def test_graph_details_success_and_errors(self, service, mock_graph):
         mock_graph.generate_graph.return_value = {
             "info": {
-                "node_count": 2, "edge_count": 1, "checkpointer": False,
-                "checkpointer_type": None, "publisher": False, "store": False,
-                "interrupt_before": None, "interrupt_after": None
+                "node_count": 2,
+                "edge_count": 1,
+                "checkpointer": False,
+                "checkpointer_type": None,
+                "publisher": False,
+                "store": False,
+                "interrupt_before": None,
+                "interrupt_after": None,
             },
-            "nodes": [], "edges": []
+            "nodes": [],
+            "edges": [],
         }
         res = await service.graph_details()
         assert res.info.node_count == 2
@@ -297,6 +307,7 @@ class TestGraphServiceMethods:
     @pytest.mark.asyncio
     async def test_setup(self, service, mock_graph):
         from agentflow_cli.src.app.core.config.settings import get_settings
+
         settings = get_settings()
         old_mode = settings.MODE
         settings.MODE = "development"
@@ -314,16 +325,15 @@ class TestGraphServiceMethods:
             mock_graph.attach_remote_tools = MagicMock()
             res = await service.setup(MockSetupData())
             assert res["status"] == "success"
-            mock_graph.attach_remote_tools.assert_called_once_with([
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "t1",
-                        "description": "desc",
-                        "parameters": {}
+            mock_graph.attach_remote_tools.assert_called_once_with(
+                [
+                    {
+                        "type": "function",
+                        "function": {"name": "t1", "description": "desc", "parameters": {}},
                     }
-                }
-            ], "n1")
+                ],
+                "n1",
+            )
         finally:
             settings.MODE = old_mode
 

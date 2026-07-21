@@ -24,7 +24,6 @@ class _RecordingCheckpointer:
 
     async def aget_state(self, config: dict[str, Any]):
         self.seen_config = config
-        return None
 
 
 def _service(checkpointer) -> GraphService:

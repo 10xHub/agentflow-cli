@@ -15,9 +15,8 @@ Setup:
 3. Set API_KEYS environment variable
 """
 
-import os
 import hashlib
-import hmac
+import os
 from datetime import datetime
 from typing import Any
 

@@ -239,4 +239,3 @@ class TestCheckpointerService:
         """Test _reconstruct_state rebuilds AgentState."""
         # Skip this test as it requires complex Pydantic model setup
         # The core functionality is tested in other tests
-        pass

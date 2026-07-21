@@ -1,10 +1,11 @@
 """Tests for checkpointer router."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException, status
+
+import pytest
+from fastapi import HTTPException
+
 from agentflow_cli.src.app.routers.checkpointer.router import (
-    router,
     validate_thread_id,
 )
 

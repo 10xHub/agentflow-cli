@@ -1,7 +1,3 @@
-import types
-
-import pytest
-
 from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.commands.version import VersionCommand
 from agentflow_cli.cli.constants import CLI_VERSION
@@ -59,14 +55,29 @@ def test_version_command_error_branch(monkeypatch):
     out = DummyOutput()
     cmd = VersionCommand(output=out)  # type: ignore[arg-type]
 
-    def boom(self):  # simulate failure in reading pyproject
+    def boom():  # simulate failure resolving the core package version
         raise ValueError("cannot read")
 
-    monkeypatch.setattr(VersionCommand, "_read_package_version", boom, raising=True)
+    monkeypatch.setattr(VersionCommand, "_core_version", staticmethod(boom), raising=True)
     exit_code = cmd.execute()
     assert exit_code == 1
     assert not out.successes
     assert any("Unexpected" in e or "cannot read" in e for e in out.errors)
+
+
+def test_version_command_reports_core_not_installed(monkeypatch):
+    """A missing core package must not crash the command."""
+    from importlib.metadata import PackageNotFoundError
+
+    def missing(_name):
+        raise PackageNotFoundError(_name)
+
+    monkeypatch.setattr("agentflow_cli.cli.commands.version._pkg_version", missing)
+    out = DummyOutput()
+    cmd = VersionCommand(output=out)  # type: ignore[arg-type]
+
+    assert cmd.execute() == 0
+    assert any("not installed" in i for i in out.infos)
 
 
 def test_version_command_success_path():

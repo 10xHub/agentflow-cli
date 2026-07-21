@@ -132,8 +132,9 @@ def test_authz_receives_thread_id_from_request_body():
     and mutate. This drives a minimal body-carrying route through the real
     ``RequirePermission`` and asserts the backend now sees it.
     """
-    from fastapi import APIRouter, Depends
     from typing import Any
+
+    from fastapi import APIRouter, Depends
 
     from agentflow_cli.src.app.core.auth.permissions import RequirePermission
 
@@ -193,9 +194,7 @@ def test_ownership_backend_enforces_owner_only_reads():
     authz = OwnershipAuthorizationBackend(checkpointer=registry)
     # The service reads through a real in-memory checkpointer; authz resolves ownership
     # through the registry above.
-    app = build_app(
-        routers=[checkpointer_router], authz=authz, checkpointer=InMemoryCheckpointer()
-    )
+    app = build_app(routers=[checkpointer_router], authz=authz, checkpointer=InMemoryCheckpointer())
     client = make_client(app)
 
     # Owner reads their thread.
@@ -213,8 +212,9 @@ def test_ownership_backend_enforces_owner_only_reads():
 def test_ownership_backend_blocks_invoke_and_stream_on_foreign_thread():
     """Regression for the reported gap: running (invoke/stream) another user's thread
     must be rejected *before* the graph executes, not just at write time."""
-    from fastapi import APIRouter, Depends
     from typing import Any
+
+    from fastapi import APIRouter, Depends
 
     from agentflow_cli.src.app.core.auth.authorization import OwnershipAuthorizationBackend
     from agentflow_cli.src.app.core.auth.permissions import RequirePermission
@@ -278,9 +278,7 @@ def test_ownership_is_cached_across_requests():
     registry = _OwnerRegistryCheckpointer()
     registry.own("thread-A", "alice")
     authz = OwnershipAuthorizationBackend(checkpointer=registry)
-    app = build_app(
-        routers=[checkpointer_router], authz=authz, checkpointer=InMemoryCheckpointer()
-    )
+    app = build_app(routers=[checkpointer_router], authz=authz, checkpointer=InMemoryCheckpointer())
     client = make_client(app)
 
     for _ in range(6):

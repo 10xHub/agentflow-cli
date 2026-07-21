@@ -1,9 +1,9 @@
 """Tests for store router."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException, status
-from agentflow_cli.src.app.routers.store.router import router
+
+import pytest
+from fastapi import HTTPException
 
 
 @pytest.fixture

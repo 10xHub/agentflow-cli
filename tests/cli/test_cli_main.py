@@ -1,8 +1,11 @@
-from typer.testing import CliRunner
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
+from typer.testing import CliRunner
+
 import agentflow_cli.cli.main as main_mod
 from agentflow_cli.cli.exceptions import AgentflowCLIError
+
 
 runner = CliRunner()
 
@@ -32,11 +35,12 @@ def test_api_command(monkeypatch):
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
-        main_mod.APICommand,
-        "execute",
-        lambda self, **kwargs: called.update(kwargs) or 0
+        main_mod.APICommand, "execute", lambda self, **kwargs: called.update(kwargs) or 0
     )
-    result = runner.invoke(main_mod.app, ["api", "-c", "custom.json", "-H", "1.2.3.4", "-p", "8080", "--no-reload", "--verbose"])
+    result = runner.invoke(
+        main_mod.app,
+        ["api", "-c", "custom.json", "-H", "1.2.3.4", "-p", "8080", "--no-reload", "--verbose"],
+    )
     assert result.exit_code == 0
     assert called["config"] == "custom.json"
     assert called["host"] == "1.2.3.4"
@@ -47,11 +51,7 @@ def test_api_command(monkeypatch):
 def test_version_command(monkeypatch):
     called = []
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
-    monkeypatch.setattr(
-        main_mod.VersionCommand,
-        "execute",
-        lambda self: called.append(True) or 0
-    )
+    monkeypatch.setattr(main_mod.VersionCommand, "execute", lambda self: called.append(True) or 0)
     result = runner.invoke(main_mod.app, ["version"])
     assert result.exit_code == 0
     assert len(called) == 1
@@ -61,9 +61,7 @@ def test_init_command(monkeypatch):
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
-        main_mod.InitCommand,
-        "execute",
-        lambda self, **kwargs: called.update(kwargs) or 0
+        main_mod.InitCommand, "execute", lambda self, **kwargs: called.update(kwargs) or 0
     )
     result = runner.invoke(main_mod.app, ["init", "--path", "test_path", "--force"])
     assert result.exit_code == 0
@@ -75,13 +73,21 @@ def test_build_command(monkeypatch):
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
-        main_mod.BuildCommand,
-        "execute",
-        lambda self, **kwargs: called.update(kwargs) or 0
+        main_mod.BuildCommand, "execute", lambda self, **kwargs: called.update(kwargs) or 0
     )
     result = runner.invoke(
         main_mod.app,
-        ["build", "-o", "Dfile", "--force", "--python-version", "3.12", "-p", "5000", "--docker-compose"]
+        [
+            "build",
+            "-o",
+            "Dfile",
+            "--force",
+            "--python-version",
+            "3.12",
+            "-p",
+            "5000",
+            "--docker-compose",
+        ],
     )
     assert result.exit_code == 0
     assert called["output_file"] == "Dfile"
@@ -95,13 +101,10 @@ def test_skills_command(monkeypatch):
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
-        main_mod.SkillsCommand,
-        "execute",
-        lambda self, **kwargs: called.update(kwargs) or 0
+        main_mod.SkillsCommand, "execute", lambda self, **kwargs: called.update(kwargs) or 0
     )
     result = runner.invoke(
-        main_mod.app,
-        ["skills", "-a", "codex", "-p", "skills_path", "--force", "--all", "--list"]
+        main_mod.app, ["skills", "-a", "codex", "-p", "skills_path", "--force", "--all", "--list"]
     )
     assert result.exit_code == 0
     assert called["agent"] == "codex"
@@ -115,13 +118,11 @@ def test_test_command(monkeypatch):
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
-        main_mod.TestCommand,
-        "execute",
-        lambda self, **kwargs: called.update(kwargs) or 0
+        main_mod.TestCommand, "execute", lambda self, **kwargs: called.update(kwargs) or 0
     )
     result = runner.invoke(
         main_mod.app,
-        ["test", "tests/foo.py", "--coverage", "--html", "-k", "foo_test", "--", "--lf", "-vv"]
+        ["test", "tests/foo.py", "--coverage", "--html", "-k", "foo_test", "--", "--lf", "-vv"],
     )
     assert result.exit_code == 0
     assert called["path"] == "tests/foo.py"
@@ -135,13 +136,23 @@ def test_eval_command(monkeypatch):
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
-        main_mod.EvalCommand,
-        "execute",
-        lambda self, **kwargs: called.update(kwargs) or 0
+        main_mod.EvalCommand, "execute", lambda self, **kwargs: called.update(kwargs) or 0
     )
     result = runner.invoke(
         main_mod.app,
-        ["eval", "target_eval", "-o", "out_dir", "--no-report", "-t", "0.8", "--open", "--parallel", "-c", "8"]
+        [
+            "eval",
+            "target_eval",
+            "-o",
+            "out_dir",
+            "--no-report",
+            "-t",
+            "0.8",
+            "--open",
+            "--parallel",
+            "-c",
+            "8",
+        ],
     )
     assert result.exit_code == 0
     assert called["target"] == "target_eval"
@@ -165,7 +176,7 @@ def test_handle_agentflow_cli_error(monkeypatch):
     monkeypatch.setattr(
         main_mod.VersionCommand,
         "execute",
-        lambda self: (_ for _ in ()).throw(AgentflowCLIError("Custom error message", exit_code=42))
+        lambda self: (_ for _ in ()).throw(AgentflowCLIError("Custom error message", exit_code=42)),
     )
     result = runner.invoke(main_mod.app, ["version"])
     assert result.exit_code == 42
@@ -176,7 +187,7 @@ def test_handle_generic_exception(monkeypatch):
     monkeypatch.setattr(
         main_mod.VersionCommand,
         "execute",
-        lambda self: (_ for _ in ()).throw(ValueError("Some generic value error"))
+        lambda self: (_ for _ in ()).throw(ValueError("Some generic value error")),
     )
     result = runner.invoke(main_mod.app, ["version"])
     assert result.exit_code == 1
@@ -196,4 +207,3 @@ def test_main_generic_exception(monkeypatch):
         with pytest.raises(SystemExit) as exc_info:
             main_mod.main()
         assert exc_info.value.code == 1
-

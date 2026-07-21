@@ -93,7 +93,9 @@ def _build_app(config, rate_backend=None, *, auth=False):
     async def ws(
         websocket: WebSocket,
         _guard: None = deps[0],
-        user: dict[str, Any] = (deps[1] if auth else Depends(lambda: {})),
+        # Must stay a lambda: FastAPI resolves the dependency via
+        # inspect.signature(call, eval_str=True), which fails on the `dict` builtin.
+        user: dict[str, Any] = (deps[1] if auth else Depends(lambda: {})),  # noqa: PIE807
     ):
         await websocket.accept(subprotocol=ws_bearer_subprotocol(websocket))
         await websocket.send_json({"active": realtime_guard._registry.active, "user": user})
@@ -171,9 +173,7 @@ class TestSubprotocolToken:
     def test_token_via_subprotocol_authenticates_and_is_echoed(self):
         app = _build_app(_StubConfig(None, None), auth=True)
         client = TestClient(app)
-        with client.websocket_connect(
-            "/ws", subprotocols=[WS_BEARER_SUBPROTOCOL, "alice"]
-        ) as conn:
+        with client.websocket_connect("/ws", subprotocols=[WS_BEARER_SUBPROTOCOL, "alice"]) as conn:
             msg = conn.receive_json()
             assert msg["user"]["user_id"] == "alice"
             # Server must echo the sentinel subprotocol or browsers fail the handshake.

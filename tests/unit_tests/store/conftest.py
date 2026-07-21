@@ -1,6 +1,6 @@
 """Shared fixtures for store unit tests."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest

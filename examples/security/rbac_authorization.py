@@ -325,7 +325,7 @@ def rbac_backend():
 @pytest.mark.asyncio
 async def test_admin_full_access(rbac_backend):
     user = {"user_id": "admin1", "role": "admin"}
-    
+
     # Admin can do everything
     assert await rbac_backend.authorize(user, "graph", "invoke")
     assert await rbac_backend.authorize(user, "graph", "stop")
@@ -334,7 +334,7 @@ async def test_admin_full_access(rbac_backend):
 @pytest.mark.asyncio
 async def test_developer_limited_access(rbac_backend):
     user = {"user_id": "dev1", "role": "developer"}
-    
+
     # Developer can invoke but not stop
     assert await rbac_backend.authorize(user, "graph", "invoke")
     assert not await rbac_backend.authorize(user, "graph", "stop")
@@ -342,7 +342,7 @@ async def test_developer_limited_access(rbac_backend):
 @pytest.mark.asyncio
 async def test_viewer_read_only(rbac_backend):
     user = {"user_id": "viewer1", "role": "viewer"}
-    
+
     # Viewer can only read
     assert await rbac_backend.authorize(user, "graph", "read")
     assert not await rbac_backend.authorize(user, "graph", "invoke")
@@ -351,7 +351,7 @@ async def test_viewer_read_only(rbac_backend):
 @pytest.mark.asyncio
 async def test_guest_no_access(rbac_backend):
     user = {"user_id": "guest1", "role": "guest"}
-    
+
     # Guest has no access
     assert not await rbac_backend.authorize(user, "graph", "read")
     assert not await rbac_backend.authorize(user, "graph", "invoke")
@@ -401,11 +401,11 @@ async def authorize(self, user, resource, action, resource_id=None, **context):
     # Check time-based restrictions
     if context.get("after_hours"):
         return user.get("role") == "admin"
-    
+
     # Check IP-based restrictions
     if context.get("external_ip"):
         return action == "read"
-    
+
     # Standard RBAC check
     return await super().authorize(user, resource, action, resource_id, **context)
 """

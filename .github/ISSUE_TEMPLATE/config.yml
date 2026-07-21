@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/10xHub/agentflow-cli/security/advisories/new
+    about: Report privately through a draft security advisory. Never in a public issue.
+  - name: Core framework issue (StateGraph, ToolNode, state, memory)
+    url: https://github.com/10xHub/agentflow/issues
+    about: If it is about graph execution rather than serving or scaffolding, file it against the core package.
+  - name: TypeScript client issue
+    url: https://github.com/10xHub/agentflow/issues
+    about: For "@10xscale/agentflow-client" problems.
+  - name: Documentation
+    url: https://10xhub.github.io/Agentflow/
+    about: Check the docs before filing - configuration and CLI reference live there.
+  - name: Questions and usage help
+    url: https://github.com/10xHub/agentflow-cli/discussions
+    about: Ask in Discussions rather than opening an issue.

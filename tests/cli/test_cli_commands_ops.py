@@ -45,7 +45,7 @@ def test_api_command_minimal_success(monkeypatch, tmp_path, silent_output):
             p.write_text("{}", encoding="utf-8")
             return p
 
-        def load_config(self, path):  # noqa: D401 - simple stub
+        def load_config(self, path):  # - simple stub
             return {}
 
         def resolve_env_file(self):
@@ -109,7 +109,7 @@ def test_api_command_schedules_playground_launch(monkeypatch, tmp_path, silent_o
             p.write_text("{}", encoding="utf-8")
             return p
 
-        def load_config(self, path):  # noqa: D401 - simple stub
+        def load_config(self, path):  # - simple stub
             return {}
 
         def resolve_env_file(self):
@@ -150,15 +150,23 @@ def test_api_command_schedules_playground_launch(monkeypatch, tmp_path, silent_o
 
 def _skip_binary(original):
     """Wrap _should_skip to also exclude non-text template artifacts."""
+
     def patched(self, src, template_dir, context, is_prod):
         if any(part in {".ruff_cache", "__pycache__"} for part in src.parts):
             return True
         return original(self, src, template_dir, context, is_prod)
+
     return patched
 
 
 def test_init_command_basic(monkeypatch, tmp_path, silent_output):
-    ctx = {"agent_name": "MyAgent", "agent_name_slug": "my-agent", "setup_type": "quick_start", "auth": "none", "rate_limit": "none"}
+    ctx = {
+        "agent_name": "MyAgent",
+        "agent_name_slug": "my-agent",
+        "setup_type": "quick_start",
+        "auth": "none",
+        "rate_limit": "none",
+    }
     monkeypatch.setattr(InitCommand, "_prompt_user", lambda self: ctx)
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False)
@@ -169,7 +177,13 @@ def test_init_command_basic(monkeypatch, tmp_path, silent_output):
 
 
 def test_init_command_prod(monkeypatch, tmp_path, silent_output):
-    ctx = {"agent_name": "MyAgent", "agent_name_slug": "my-agent", "setup_type": "production", "auth": "none", "rate_limit": "none"}
+    ctx = {
+        "agent_name": "MyAgent",
+        "agent_name_slug": "my-agent",
+        "setup_type": "production",
+        "auth": "none",
+        "rate_limit": "none",
+    }
     monkeypatch.setattr(InitCommand, "_prompt_user", lambda self: ctx)
     monkeypatch.setattr(InitCommand, "_should_skip", _skip_binary(InitCommand._should_skip))
     cmd = InitCommand(output=silent_output)
@@ -177,7 +191,9 @@ def test_init_command_prod(monkeypatch, tmp_path, silent_output):
     assert code == 0
     assert (tmp_path / "agentflow.json").exists()
     assert (tmp_path / "pyproject.toml").exists()
-    assert any((tmp_path / f).exists() for f in (".pre-commit-config.yaml", ".pre-commot-config.yaml"))
+    assert any(
+        (tmp_path / f).exists() for f in (".pre-commit-config.yaml", ".pre-commot-config.yaml")
+    )
 
 
 def test_init_command_existing_without_force(tmp_path, silent_output):
@@ -238,7 +254,13 @@ def test_init_command_force_overwrite(monkeypatch, tmp_path, silent_output):
     cfg.write_text("{}", encoding="utf-8")
     agent_file.write_text("print('old')", encoding="utf-8")
     # Execute with force=True should succeed (0) and overwrite
-    ctx = {"agent_name": "MyAgent", "agent_name_slug": "my-agent", "setup_type": "quick_start", "auth": "none", "rate_limit": "none"}
+    ctx = {
+        "agent_name": "MyAgent",
+        "agent_name_slug": "my-agent",
+        "setup_type": "quick_start",
+        "auth": "none",
+        "rate_limit": "none",
+    }
     monkeypatch.setattr(InitCommand, "_prompt_user", lambda self: ctx)
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=True)

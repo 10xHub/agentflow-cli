@@ -1,23 +1,24 @@
 """Unit tests for the Graph API router endpoints."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi import Request
 
 from agentflow_cli.src.app.routers.graph.router import (
-    invoke_graph,
-    stream_graph,
+    fix_graph,
     graph_details,
+    invoke_graph,
+    setup_graph,
     state_schema,
     stop_graph,
-    setup_graph,
-    fix_graph,
+    stream_graph,
 )
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
-    GraphInputSchema,
-    GraphStopSchema,
-    GraphSetupSchema,
     FixGraphRequestSchema,
+    GraphInputSchema,
+    GraphSetupSchema,
+    GraphStopSchema,
 )
 
 
@@ -46,7 +47,9 @@ def mock_user():
 
 @pytest.mark.asyncio
 async def test_invoke_graph_endpoint(mock_request, mock_service, mock_user):
-    graph_input = GraphInputSchema(messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}])
+    graph_input = GraphInputSchema(
+        messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}]
+    )
     mock_service.invoke_graph.return_value = {"messages": []}
 
     with patch("agentflow_cli.src.app.routers.graph.router.success_response") as mock_success:
@@ -64,12 +67,16 @@ async def test_invoke_graph_endpoint(mock_request, mock_service, mock_user):
 
 @pytest.mark.asyncio
 async def test_stream_graph_endpoint(mock_service, mock_user):
-    graph_input = GraphInputSchema(messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}])
-    
+    graph_input = GraphInputSchema(
+        messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}]
+    )
+
     mock_stream = MagicMock()
     mock_service.stream_graph.return_value = mock_stream
 
-    with patch("agentflow_cli.src.app.routers.graph.router.StreamingResponse") as mock_streaming_response:
+    with patch(
+        "agentflow_cli.src.app.routers.graph.router.StreamingResponse"
+    ) as mock_streaming_response:
         mock_streaming_response.return_value = "streaming_response_obj"
         res = await stream_graph(
             graph_input=graph_input,

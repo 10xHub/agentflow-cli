@@ -1,8 +1,9 @@
 """Tests for CLI validation utilities."""
 
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
 
 from agentflow_cli.cli.core.validation import Validator, validate_cli_options
 from agentflow_cli.cli.exceptions import ValidationError

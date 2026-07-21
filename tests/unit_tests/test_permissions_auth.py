@@ -125,9 +125,7 @@ class TestRequirePermissionCall:
 
         perm = RequirePermission("graph", "invoke")
 
-        result = await perm(
-            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
-        )
+        result = await perm(mock_request, mock_response, mock_config, mock_auth_backend, mock_authz)
 
         assert result == {}
 
@@ -146,9 +144,7 @@ class TestRequirePermissionCall:
 
         perm = RequirePermission("graph", "invoke")
 
-        result = await perm(
-            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
-        )
+        result = await perm(mock_request, mock_response, mock_config, mock_auth_backend, mock_authz)
 
         assert result["user_id"] == "test-user"
         assert "authz" in result  # trusted isolation/scopes block stamped by RequirePermission
@@ -259,9 +255,7 @@ class TestRequirePermissionCall:
 
         perm = RequirePermission("graph", "invoke", extract_resource_id=custom_extractor)
 
-        result = await perm(
-            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
-        )
+        result = await perm(mock_request, mock_response, mock_config, mock_auth_backend, mock_authz)
 
         # Verify authorize was called with the custom resource ID
         mock_authz.authorize.assert_called_once()
@@ -366,9 +360,7 @@ class TestRequirePermissionIntegration:
 
         perm = RequirePermission("checkpointer", "read")
 
-        result = await perm(
-            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
-        )
+        result = await perm(mock_request, mock_response, mock_config, mock_auth_backend, mock_authz)
 
         assert result["user_id"] == "user-123"
         assert result["role"] == "admin"
@@ -398,9 +390,7 @@ class TestRequirePermissionIntegration:
 
         perm = RequirePermission("graph", "invoke")
 
-        result = await perm(
-            mock_request, mock_response, mock_config, mock_auth_backend, mock_authz
-        )
+        result = await perm(mock_request, mock_response, mock_config, mock_auth_backend, mock_authz)
 
         assert result == {}
         # Verify authenticate and authorize were NOT called

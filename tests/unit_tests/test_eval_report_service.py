@@ -233,7 +233,10 @@ class TestEvalReportServiceRunDetail:
         report = _report(
             "customer_support",
             1_000_000.0,
-            [_eval_case("c1", "greets user", True, 0.9), _eval_case("c2", "refunds order", False, 0.4)],
+            [
+                _eval_case("c1", "greets user", True, 0.9),
+                _eval_case("c2", "refunds order", False, 0.4),
+            ],
             eval_set_name="customer-support",
         )
         (tmp_path / "customer_support_run1.json").write_text(json.dumps(report))
@@ -256,11 +259,13 @@ class TestEvalReportServiceRunDetail:
 
     def test_detail_includes_regression_against_previous_run_of_same_set(self, tmp_path):
         older = _report(
-            "customer_support", 1_000_000.0,
+            "customer_support",
+            1_000_000.0,
             [_eval_case("c1", "n", True, 0.9), _eval_case("c2", "n", True, 0.85)],
         )
         newer = _report(
-            "customer_support", 1_000_500.0,
+            "customer_support",
+            1_000_500.0,
             [_eval_case("c1", "n", True, 0.88), _eval_case("c2", "n", False, 0.4)],
         )
         (tmp_path / "customer_support_a.json").write_text(json.dumps(older))
@@ -276,7 +281,9 @@ class TestEvalReportServiceRunDetail:
             s for s in detail["regression"]["summary"] if s["label"] == "newly failing"
         )
         assert newly_failing["value"] == "1"
-        row_c2 = next(r for r in detail["regression"]["rows"] if r["name"] == "n" and r["stay"] is False)
+        row_c2 = next(
+            r for r in detail["regression"]["rows"] if r["name"] == "n" and r["stay"] is False
+        )
         assert row_c2["flip"] == "pass → fail"
 
         older_detail = service.get_run_detail("customer_support_a")

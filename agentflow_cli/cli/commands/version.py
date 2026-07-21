@@ -1,10 +1,11 @@
 """Version command implementation."""
 
-import tomllib
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from typing import Any
 
 from agentflow_cli.cli.commands import BaseCommand
-from agentflow_cli.cli.constants import CLI_VERSION, PROJECT_ROOT
+from agentflow_cli.cli.constants import CLI_VERSION
 
 
 class VersionCommand(BaseCommand):
@@ -24,27 +25,24 @@ class VersionCommand(BaseCommand):
                 color="green",
             )
 
-            # Get package version from pyproject.toml
-            pkg_version = self._read_package_version()
+            core_version = self._core_version()
 
-            self.output.success(f"agentflow-cli CLI\n  Version: {CLI_VERSION}")
-            self.output.info(f"agentflow-cli Package\n  Version: {pkg_version}")
+            self.output.success(f"10xscale-agentflow-cli\n  Version: {CLI_VERSION}")
+            self.output.info(f"10xscale-agentflow (core)\n  Version: {core_version}")
 
             return 0
 
         except Exception as e:
             return self.handle_error(e)
 
-    def _read_package_version(self) -> str:
-        """Read package version from pyproject.toml.
+    @staticmethod
+    def _core_version() -> str:
+        """Resolve the installed core framework version.
 
         Returns:
-            Package version string
+            Version string, or ``"not installed"`` when the core package is absent.
         """
         try:
-            pyproject_path = PROJECT_ROOT / "pyproject.toml"
-            with pyproject_path.open("rb") as f:
-                data = tomllib.load(f)
-            return data.get("project", {}).get("version", "unknown")
-        except Exception:
-            return "unknown"
+            return _pkg_version("10xscale-agentflow")
+        except PackageNotFoundError:
+            return "not installed"

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-
 from agentflow.core.authz import ALL_SCOPES
+
 from agentflow_cli.src.app.core.auth.authorization import RoleBasedAuthorizationBackend
 
 

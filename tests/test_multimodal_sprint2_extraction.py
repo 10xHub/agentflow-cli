@@ -1,4 +1,4 @@
-"""Tests for Sprint 2 – DocumentExtractor & DocumentPipeline.
+"""Tests for Sprint 2 - DocumentExtractor & DocumentPipeline.
 
 These tests live in agentflow-api because document extraction is an API concern
 (not a core library concern).

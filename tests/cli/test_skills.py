@@ -88,9 +88,7 @@ def test_all_with_explicit_agent_is_rejected(
 # --- single-agent install -------------------------------------------------
 
 
-def test_install_claude_creates_folder_and_manifest(
-    cmd: SkillsCommand, tmp_path: Path
-) -> None:
+def test_install_claude_creates_folder_and_manifest(cmd: SkillsCommand, tmp_path: Path) -> None:
     exit_code = cmd.execute(agent="claude", path=str(tmp_path))
     assert exit_code == 0
 
@@ -213,18 +211,14 @@ def test_all_with_force_reinstalls_everything(cmd: SkillsCommand, tmp_path: Path
 # --- path safety ----------------------------------------------------------
 
 
-def test_install_at_filesystem_root_is_refused(
-    cmd: SkillsCommand, out: _CapturingOutput
-) -> None:
+def test_install_at_filesystem_root_is_refused(cmd: SkillsCommand, out: _CapturingOutput) -> None:
     root = Path(Path.cwd().anchor) if Path.cwd().anchor else Path("/")
     exit_code = cmd.execute(agent="claude", path=str(root))
     assert exit_code != 0
     assert any("filesystem root" in e for e in out.errors)
 
 
-def test_install_at_home_dir_is_refused(
-    cmd: SkillsCommand, out: _CapturingOutput
-) -> None:
+def test_install_at_home_dir_is_refused(cmd: SkillsCommand, out: _CapturingOutput) -> None:
     exit_code = cmd.execute(agent="claude", path=str(Path.home()))
     assert exit_code != 0
     assert any("home directory" in e for e in out.errors)

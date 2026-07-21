@@ -1,9 +1,6 @@
 """Tests for log sanitization utilities."""
 
 import logging
-from unittest.mock import Mock
-
-import pytest
 
 from agentflow_cli.src.app.core.utils.log_sanitizer import (
     BEARER_PATTERN,

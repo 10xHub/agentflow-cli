@@ -65,7 +65,9 @@ class TestMergeReportsTokenAggregation:
         r2 = self._make_mock_report("case_c")
         fake_merged = MagicMock()
 
-        with patch("agentflow_cli.cli.commands.eval.ER.create", return_value=fake_merged) as mock_create:
+        with patch(
+            "agentflow_cli.cli.commands.eval.ER.create", return_value=fake_merged
+        ) as mock_create:
             merged = cmd._merge_reports([r1, r2])
 
         assert merged is fake_merged
@@ -82,7 +84,9 @@ class TestMergeReportsTokenAggregation:
         r2 = self._make_mock_report("z")
         fake_merged = MagicMock()
 
-        with patch("agentflow_cli.cli.commands.eval.ER.create", return_value=fake_merged) as mock_create:
+        with patch(
+            "agentflow_cli.cli.commands.eval.ER.create", return_value=fake_merged
+        ) as mock_create:
             cmd._merge_reports([r1, r2])
 
         _, kwargs = mock_create.call_args
@@ -103,9 +107,7 @@ class TestConfEvalPriorityChain:
         p.write_text("")
         return p
 
-    def test_per_file_config_beats_confeval_config(
-        self, tmp_path: Path, cmd: EvalCommand
-    ) -> None:
+    def test_per_file_config_beats_confeval_config(self, tmp_path: Path, cmd: EvalCommand) -> None:
         from agentflow.qa.evaluation import EvalConfig
 
         global_cfg = EvalConfig()
@@ -129,9 +131,7 @@ class TestConfEvalPriorityChain:
         assert used_config is not global_cfg
         assert used_source == "per-file"
 
-    def test_per_file_config_used_when_no_confeval(
-        self, tmp_path: Path, cmd: EvalCommand
-    ) -> None:
+    def test_per_file_config_used_when_no_confeval(self, tmp_path: Path, cmd: EvalCommand) -> None:
         from agentflow.qa.evaluation import EvalConfig
 
         per_file_cfg = EvalConfig()

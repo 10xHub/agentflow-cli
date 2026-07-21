@@ -1,14 +1,7 @@
 """Tests for APICommand class."""
 
-import os
-import socket
-import sys
-import threading
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
-
-import pytest
 
 from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.core.output import OutputFormatter

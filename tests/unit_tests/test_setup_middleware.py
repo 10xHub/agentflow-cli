@@ -1,12 +1,13 @@
 import sys
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from agentflow_cli.src.app.core.config.setup_middleware import (
-    setup_middleware,
     SelectiveGZipMiddleware,
+    setup_middleware,
 )
 
 
@@ -35,11 +36,15 @@ def test_request_id_middleware_adds_headers():
 @pytest.mark.asyncio
 async def test_selective_gzip_middleware_excludes():
     from unittest.mock import AsyncMock
+
     called = []
+
     async def app(scope, receive, send):
         called.append((scope, receive, send))
 
-    with patch("agentflow_cli.src.app.core.config.setup_middleware.GZipMiddleware") as MockGZipMiddleware:
+    with patch(
+        "agentflow_cli.src.app.core.config.setup_middleware.GZipMiddleware"
+    ) as MockGZipMiddleware:
         mock_gzip_instance = AsyncMock()
         MockGZipMiddleware.return_value = mock_gzip_instance
 
@@ -68,6 +73,7 @@ async def test_selective_gzip_middleware_excludes():
 
 def test_setup_otel_import_error():
     from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+
     settings = MagicMock()
     settings.OTEL_SERVICE_NAME = "test"
     with patch.dict("sys.modules", {"opentelemetry": None}):
@@ -112,6 +118,7 @@ def test_setup_otel_with_endpoint():
         mock_processor.BatchSpanProcessor = MagicMock()
 
         from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+
         _setup_otel(MagicMock(), settings)
 
         mock_resource.Resource.create.assert_called_once_with({"service.name": "test-service"})
@@ -150,6 +157,7 @@ def test_setup_otel_no_endpoint():
         mock_processor.SimpleSpanProcessor = MagicMock()
 
         from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+
         _setup_otel(MagicMock(), settings)
 
         mock_processor.ConsoleSpanExporter.assert_called_once()
@@ -184,6 +192,7 @@ def test_setup_otel_grpc_exporter_import_error():
         mock_provider.TracerProvider.return_value = mock_provider
 
         from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+
         _setup_otel(MagicMock(), settings)
         # Should return gracefully on ImportError of grpc exporter
 
@@ -191,6 +200,7 @@ def test_setup_otel_grpc_exporter_import_error():
 def test_attach_otel_publisher_import_error():
     with patch.dict("sys.modules", {"agentflow.runtime.publisher.base_publisher": None}):
         from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+
         container = MagicMock()
         _attach_otel_publisher(container, MagicMock())
 
@@ -198,6 +208,7 @@ def test_attach_otel_publisher_import_error():
 def test_attach_otel_publisher_value_error():
     class FakeObservabilityLevel:
         STANDARD = "standard"
+
         def __init__(self, val):
             raise ValueError("invalid level")
 
@@ -212,12 +223,12 @@ def test_attach_otel_publisher_value_error():
         "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
         "agentflow.runtime.publisher.composite_publisher": MagicMock(),
         "agentflow.runtime.publisher.otel_publisher": MagicMock(
-            ObservabilityLevel=FakeObservabilityLevel,
-            OtelPublisher=FakeOtelPublisher
-        )
+            ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
+        ),
     }
     with patch.dict("sys.modules", modules):
         from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+
         container = MagicMock()
         container.try_get.return_value = None
         settings = MagicMock()
@@ -229,6 +240,7 @@ def test_attach_otel_publisher_value_error():
 def test_attach_otel_publisher_no_existing():
     class FakeObservabilityLevel:
         STANDARD = "standard"
+
         def __init__(self, val):
             self.val = val
 
@@ -243,12 +255,12 @@ def test_attach_otel_publisher_no_existing():
         "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
         "agentflow.runtime.publisher.composite_publisher": MagicMock(),
         "agentflow.runtime.publisher.otel_publisher": MagicMock(
-            ObservabilityLevel=FakeObservabilityLevel,
-            OtelPublisher=FakeOtelPublisher
-        )
+            ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
+        ),
     }
     with patch.dict("sys.modules", modules):
         from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+
         container = MagicMock()
         container.try_get.return_value = None
         settings = MagicMock()
@@ -260,6 +272,7 @@ def test_attach_otel_publisher_no_existing():
 def test_attach_otel_publisher_existing_composite():
     class FakeObservabilityLevel:
         STANDARD = "standard"
+
         def __init__(self, val):
             self.val = val
 
@@ -273,6 +286,7 @@ def test_attach_otel_publisher_existing_composite():
     class FakeCompositePublisher:
         def __init__(self, publishers=None):
             self.publishers = publishers or []
+
         def add_publisher(self, pub):
             self.publishers.append(pub)
 
@@ -280,26 +294,31 @@ def test_attach_otel_publisher_existing_composite():
 
     modules = {
         "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
-        "agentflow.runtime.publisher.composite_publisher": MagicMock(CompositePublisher=FakeCompositePublisher),
+        "agentflow.runtime.publisher.composite_publisher": MagicMock(
+            CompositePublisher=FakeCompositePublisher
+        ),
         "agentflow.runtime.publisher.otel_publisher": MagicMock(
-            ObservabilityLevel=FakeObservabilityLevel,
-            OtelPublisher=FakeOtelPublisher
-        )
+            ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
+        ),
     }
     with patch.dict("sys.modules", modules):
         from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+
         container = MagicMock()
         container.try_get.return_value = existing
         settings = MagicMock()
         settings.OTEL_LEVEL = "standard"
 
-        with patch("agentflow_cli.src.app.core.config.setup_middleware.isinstance", return_value=True):
+        with patch(
+            "agentflow_cli.src.app.core.config.setup_middleware.isinstance", return_value=True
+        ):
             _attach_otel_publisher(container, settings)
 
 
 def test_attach_otel_publisher_existing_single():
     class FakeObservabilityLevel:
         STANDARD = "standard"
+
         def __init__(self, val):
             self.val = val
 
@@ -321,14 +340,16 @@ def test_attach_otel_publisher_existing_single():
 
     modules = {
         "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
-        "agentflow.runtime.publisher.composite_publisher": MagicMock(CompositePublisher=FakeCompositePublisher),
+        "agentflow.runtime.publisher.composite_publisher": MagicMock(
+            CompositePublisher=FakeCompositePublisher
+        ),
         "agentflow.runtime.publisher.otel_publisher": MagicMock(
-            ObservabilityLevel=FakeObservabilityLevel,
-            OtelPublisher=FakeOtelPublisher
-        )
+            ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
+        ),
     }
     with patch.dict("sys.modules", modules):
         from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+
         container = MagicMock()
         container.try_get.return_value = existing
         settings = MagicMock()
@@ -374,12 +395,20 @@ def test_setup_middleware_all():
 
     container = MagicMock()
 
-    with patch("agentflow_cli.src.app.core.config.setup_middleware.get_settings", return_value=settings), \
-         patch("agentflow_cli.src.app.core.config.setup_middleware.init_sentry") as mock_init_sentry, \
-         patch("agentflow_cli.src.app.core.config.setup_middleware.build_backend", return_value="mock_backend") as mock_build_backend, \
-         patch("agentflow_cli.src.app.core.config.setup_middleware._setup_otel") as mock_setup_otel, \
-         patch("agentflow_cli.src.app.core.config.setup_middleware._attach_otel_publisher") as mock_attach:
-
+    with (
+        patch(
+            "agentflow_cli.src.app.core.config.setup_middleware.get_settings", return_value=settings
+        ),
+        patch("agentflow_cli.src.app.core.config.setup_middleware.init_sentry") as mock_init_sentry,
+        patch(
+            "agentflow_cli.src.app.core.config.setup_middleware.build_backend",
+            return_value="mock_backend",
+        ) as mock_build_backend,
+        patch("agentflow_cli.src.app.core.config.setup_middleware._setup_otel") as mock_setup_otel,
+        patch(
+            "agentflow_cli.src.app.core.config.setup_middleware._attach_otel_publisher"
+        ) as mock_attach,
+    ):
         setup_middleware(app, graph_config=graph_config, container=container)
 
         mock_init_sentry.assert_called_once_with(settings)
@@ -387,7 +416,6 @@ def test_setup_middleware_all():
         assert app.state.rate_limit_backend == "mock_backend"
         mock_setup_otel.assert_called_once_with(app, settings)
         mock_attach.assert_called_once_with(container, settings)
-
 
 
 # ── _setup_observability ──────────────────────────────────────────────────────

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from agentflow_cli.cli.commands.init import InitCommand
 
 

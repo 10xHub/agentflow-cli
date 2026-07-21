@@ -6,7 +6,6 @@ preprocessing, and config endpoint.
 
 from __future__ import annotations
 
-import base64
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,6 +14,7 @@ import pytest
 # MediaService unit tests
 # ---------------------------------------------------------------------------
 from agentflow.storage.checkpointer import InMemoryCheckpointer
+
 from agentflow_cli.src.app.core.config.media_settings import MediaSettings, MediaStorageType
 
 
@@ -286,6 +286,7 @@ class TestMediaSettings:
 class TestMediaStoreFactory:
     def test_memory_store(self):
         from agentflow.storage.media.storage.memory_store import InMemoryMediaStore
+
         from agentflow_cli.src.app.routers.media import _create_media_store
 
         s = _make_settings(MEDIA_STORAGE_TYPE=MediaStorageType.MEMORY)
@@ -294,6 +295,7 @@ class TestMediaStoreFactory:
 
     def test_local_store(self):
         from agentflow.storage.media.storage.local_store import LocalFileMediaStore
+
         from agentflow_cli.src.app.routers.media import _create_media_store
 
         s = _make_settings(MEDIA_STORAGE_TYPE=MediaStorageType.LOCAL)

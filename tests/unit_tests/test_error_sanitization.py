@@ -1,7 +1,5 @@
 """Unit tests for error message sanitization."""
 
-from unittest.mock import patch
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -89,8 +87,9 @@ def test_http_exception_sanitized_in_production():
 
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
+
     from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
+    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
 
     app = FastAPI()
     app.add_middleware(RequestIDMiddleware)
@@ -123,11 +122,11 @@ def test_http_exception_detailed_in_development():
 
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
-    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
 
     # Clear settings cache
     from agentflow_cli.src.app.core.config.settings import get_settings
+    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
+    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
 
     get_settings.cache_clear()
 
@@ -162,9 +161,10 @@ def test_validation_error_sanitized_in_production():
 
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
-    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
+
     from agentflow_cli.src.app.core.config.settings import get_settings
+    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
+    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
 
     # Clear cache
     get_settings.cache_clear()

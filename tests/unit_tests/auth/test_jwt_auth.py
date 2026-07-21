@@ -13,8 +13,8 @@ These tests cover all edge cases and scenarios for JWT authentication:
 """
 
 import os
-from datetime import datetime, timedelta, timezone, UTC
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 import jwt
 import pytest
@@ -58,8 +58,8 @@ class TestJwtAuth:
         return {
             "user_id": "user-123",
             "email": "test@example.com",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
-            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
+            "iat": datetime.now(UTC),
         }
 
     @pytest.fixture
@@ -174,8 +174,8 @@ class TestJwtAuth:
         """Test that expired token raises UserAccountError with EXPIRED_TOKEN."""
         expired_payload = {
             "user_id": "user-123",
-            "exp": datetime.now(timezone.utc) - timedelta(hours=1),  # Expired 1 hour ago
-            "iat": datetime.now(timezone.utc) - timedelta(hours=2),
+            "exp": datetime.now(UTC) - timedelta(hours=1),  # Expired 1 hour ago
+            "iat": datetime.now(UTC) - timedelta(hours=2),
         }
         token = self.create_token(expired_payload)
         credentials = self.create_credentials(token)
@@ -213,7 +213,7 @@ class TestJwtAuth:
         """Test that token signed with wrong secret raises UserAccountError."""
         payload = {
             "user_id": "user-123",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
         # Sign with a different secret
         token = self.create_token(payload, secret="wrong-secret-key")
@@ -239,7 +239,7 @@ class TestJwtAuth:
         ):
             payload = {
                 "user_id": "user-123",
-                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                "exp": datetime.now(UTC) + timedelta(hours=1),
             }
             # Token signed with HS256 but server expects HS384
             token = self.create_token(payload, algorithm="HS256")
@@ -276,8 +276,8 @@ class TestJwtAuth:
         """Test that valid token without user_id raises UserAccountError."""
         payload_without_user_id = {
             "email": "test@example.com",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
-            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
+            "iat": datetime.now(UTC),
         }
         token = self.create_token(payload_without_user_id)
         credentials = self.create_credentials(token)
@@ -321,7 +321,7 @@ class TestJwtAuth:
             "role": "admin",
             "permissions": ["read", "write", "delete"],
             "organization_id": "org-789",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
@@ -431,7 +431,7 @@ class TestJwtAuth:
         """Test authentication with minimal valid token (user_id and exp)."""
         minimal_payload = {
             "user_id": "minimal-user",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
         token = self.create_token(minimal_payload)
         credentials = self.create_credentials(token)
@@ -469,7 +469,7 @@ class TestJwtAuth:
         """Test that numeric user_id in token works correctly."""
         payload = {
             "user_id": 12345,
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
@@ -508,7 +508,7 @@ class TestJwtAuth:
         """Test that token about to expire (in 1 second) is still valid."""
         payload = {
             "user_id": "user-123",
-            "exp": datetime.now(timezone.utc) + timedelta(seconds=30),
+            "exp": datetime.now(UTC) + timedelta(seconds=30),
         }
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
@@ -528,7 +528,7 @@ class TestJwtAuth:
         special_user_id = "user+test@example.com"
         payload = {
             "user_id": special_user_id,
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
         }
         token = self.create_token(payload)
         credentials = self.create_credentials(token)
@@ -560,7 +560,7 @@ class TestJwtAuth:
         ):
             payload = {
                 "user_id": "user-hs384",
-                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                "exp": datetime.now(UTC) + timedelta(hours=1),
             }
             token = self.create_token(payload, algorithm="HS384")
             credentials = self.create_credentials(token)
@@ -585,7 +585,7 @@ class TestJwtAuth:
         ):
             payload = {
                 "user_id": "user-hs512",
-                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                "exp": datetime.now(UTC) + timedelta(hours=1),
             }
             token = self.create_token(payload, algorithm="HS512")
             credentials = self.create_credentials(token)
@@ -649,8 +649,8 @@ class TestJwtAuthIntegration:
                 "email": "integration@test.com",
                 "name": "Integration Test User",
                 "role": "developer",
-                "iat": datetime.now(timezone.utc),
-                "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+                "iat": datetime.now(UTC),
+                "exp": datetime.now(UTC) + timedelta(hours=24),
                 "iss": "test-issuer",
             }
 
@@ -698,7 +698,7 @@ class TestJwtAuthIntegration:
                 "count": 42,
                 "active": True,
                 "nullable": None,
-                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+                "exp": datetime.now(UTC) + timedelta(hours=1),
             }
 
             token = jwt.encode(complex_payload, secret, algorithm=algorithm)

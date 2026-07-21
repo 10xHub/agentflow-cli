@@ -99,9 +99,8 @@ def test_authz_block_drives_core_isolation_via_api():
     """End-to-end: the API stamps scope="owner"; the core checkpointer then isolates by
     owner. Uses a backend that allows every action (authorize=True) but declares owner
     isolation, so ONLY the stamped block -- not authorize() -- blocks the non-owner."""
-    import anyio
-    from typing import Any
 
+    import anyio
     from agentflow.core.authz import build_authz
     from agentflow.core.state import AgentState
 

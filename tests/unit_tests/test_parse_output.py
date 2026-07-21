@@ -1,5 +1,3 @@
-import os
-
 from pydantic import BaseModel
 
 from agentflow_cli.src.app.core.config.settings import Settings

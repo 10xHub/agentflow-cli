@@ -3,8 +3,6 @@
 import os
 from unittest.mock import patch
 
-import pytest
-
 from agentflow_cli.src.app.core.config.settings import Settings, get_settings
 
 

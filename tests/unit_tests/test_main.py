@@ -2,12 +2,10 @@
 
 import logging
 import os
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi import FastAPI
-from injectq import InjectQ
 
 from agentflow_cli.src.app.main import _cleanup_temp_media_cache, app, container, graph_config
 

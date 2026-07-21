@@ -1,13 +1,14 @@
-import pytest
-import asyncio
+import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import types
+
+import pytest
+from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
+from agentflow.qa.evaluation.eval_result import EvalCaseResult
 
 from agentflow_cli.cli.commands.eval import EvalCommand, _PendingCase, _PendingSimulation
 from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow.qa.evaluation import EvalConfig, CriteriaConfig, CriterionConfig
-from agentflow.qa.evaluation.eval_result import EvalCaseResult
+
 
 # Disable pytest collection for the imported EvalCommand class
 EvalCommand.__test__ = False
@@ -50,9 +51,10 @@ def test_load_agent_from_config_success(cmd):
     mock_agent = MagicMock()
     mock_module = types.SimpleNamespace(my_agent=mock_agent)
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm), \
-         patch("importlib.import_module", return_value=mock_module) as mock_import:
-
+    with (
+        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch("importlib.import_module", return_value=mock_module) as mock_import,
+    ):
         agent = cmd._load_agent_from_config()
         assert agent is mock_agent
         mock_import.assert_called_once_with("my_module")
@@ -151,9 +153,10 @@ async def test_run_flat_pool_cases(cmd):
         eval_set_name="Eval Set 1",
     )
 
-    with patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"), \
-         patch("agentflow_cli.cli.commands.eval.override_dependency"):
-
+    with (
+        patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"),
+        patch("agentflow_cli.cli.commands.eval.override_dependency"),
+    ):
         results = await cmd._run_flat_pool([pc], max_concurrency=4, parallel=False)
         assert len(results) == 1
         assert results[0][0] == "test_file.py"
@@ -183,9 +186,10 @@ async def test_run_flat_pool_case_error(cmd):
         eval_set_name="Eval Set 1",
     )
 
-    with patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"), \
-         patch("agentflow_cli.cli.commands.eval.override_dependency"):
-
+    with (
+        patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"),
+        patch("agentflow_cli.cli.commands.eval.override_dependency"),
+    ):
         results = await cmd._run_flat_pool([pc], max_concurrency=4, parallel=False)
         assert len(results) == 1
         assert results[0][3].passed is False
@@ -241,6 +245,7 @@ async def test_run_flat_pool_simulation_error(cmd):
 
     async def mock_simulator_run(graph, scenario):
         raise ValueError("simulation failed")
+
     simulator.run = mock_simulator_run
 
     ps = _PendingSimulation(
@@ -266,8 +271,10 @@ def test_execute_target_not_found(cmd):
 
 
 def test_execute_no_files(cmd, tmp_path):
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager"), \
-         patch.object(cmd, "_discover", return_value=[]):
+    with (
+        patch("agentflow_cli.cli.commands.eval.ConfigManager"),
+        patch.object(cmd, "_discover", return_value=[]),
+    ):
         code = cmd.execute(target=str(tmp_path))
         assert code == 1
         assert len(cmd.output.errors) > 0
@@ -309,16 +316,17 @@ def test_execute_success(cmd, tmp_path):
     )
     quads = [("test_eval.py", "eval_set_id", "eval_set_name", mock_case_result)]
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm), \
-         patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]), \
-         patch.object(cmd, "_load_confeval", return_value=None), \
-         patch.object(cmd, "_collect_from_file", return_value=[fake_case]), \
-         patch.object(cmd, "_print_criteria_block"), \
-         patch.object(cmd, "_run_flat_pool", return_value=quads), \
-         patch.object(cmd, "_merge_reports", return_value=mock_report), \
-         patch("agentflow_cli.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr), \
-         patch("webbrowser.open") as mock_web_open:
-
+    with (
+        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]),
+        patch.object(cmd, "_load_confeval", return_value=None),
+        patch.object(cmd, "_collect_from_file", return_value=[fake_case]),
+        patch.object(cmd, "_print_criteria_block"),
+        patch.object(cmd, "_run_flat_pool", return_value=quads),
+        patch.object(cmd, "_merge_reports", return_value=mock_report),
+        patch("agentflow_cli.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr),
+        patch("webbrowser.open") as mock_web_open,
+    ):
         code = cmd.execute(target=str(tmp_path), open_report=True)
         assert code == 0
         mock_web_open.assert_called_once()
@@ -352,25 +360,27 @@ def test_execute_below_threshold(cmd, tmp_path):
     )
     quads = [("test_eval.py", "eval_set_id", "eval_set_name", mock_case_result)]
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm), \
-         patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]), \
-         patch.object(cmd, "_load_confeval", return_value=None), \
-         patch.object(cmd, "_collect_from_file", return_value=[fake_case]), \
-         patch.object(cmd, "_print_criteria_block"), \
-         patch.object(cmd, "_run_flat_pool", return_value=quads), \
-         patch.object(cmd, "_merge_reports", return_value=mock_report), \
-         patch("agentflow_cli.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr):
-
+    with (
+        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]),
+        patch.object(cmd, "_load_confeval", return_value=None),
+        patch.object(cmd, "_collect_from_file", return_value=[fake_case]),
+        patch.object(cmd, "_print_criteria_block"),
+        patch.object(cmd, "_run_flat_pool", return_value=quads),
+        patch.object(cmd, "_merge_reports", return_value=mock_report),
+        patch("agentflow_cli.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr),
+    ):
         code = cmd.execute(target=str(tmp_path), threshold=0.8)
         assert code == 1
         assert "below threshold" in cmd.output.errors[0]
 
 
 def test_execute_collect_error(cmd, tmp_path):
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager"), \
-         patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]), \
-         patch.object(cmd, "_collect_from_file", side_effect=ValueError("load error")):
-
+    with (
+        patch("agentflow_cli.cli.commands.eval.ConfigManager"),
+        patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]),
+        patch.object(cmd, "_collect_from_file", side_effect=ValueError("load error")),
+    ):
         code = cmd.execute(target=str(tmp_path))
         assert code == 1
         assert "Error loading test_eval.py: load error" in cmd.output.errors[0]
@@ -378,6 +388,7 @@ def test_execute_collect_error(cmd, tmp_path):
 
 def test_reset_inject_proxy():
     from agentflow_cli.cli.commands.eval import _reset_inject_proxy
+
     _reset_inject_proxy(None)
 
 
@@ -391,8 +402,10 @@ def test_load_module(cmd, tmp_path):
 def test_load_confeval_func_error(cmd, tmp_path):
     confeval = tmp_path / "confeval.py"
     confeval.write_text("")
+
     def raise_err():
         raise ValueError("config error")
+
     fake_mod = types.SimpleNamespace(get_eval_config=raise_err, EVAL_CONFIG="some_config")
 
     with patch.object(cmd, "_load_module", return_value=fake_mod):
@@ -431,8 +444,10 @@ def test_collect_eval_functions(cmd):
 def test_collect_from_file_scenarios_error(cmd, tmp_path):
     p = tmp_path / "x_eval.py"
     p.write_text("")
+
     def raise_err():
         raise ValueError("scenarios error")
+
     fake_mod = types.SimpleNamespace(get_scenarios=raise_err)
     with patch.object(cmd, "_load_module", return_value=fake_mod):
         res = cmd._collect_from_file(p, None)
@@ -580,9 +595,10 @@ async def test_run_flat_pool_parallel(cmd):
         eval_set_name="Eval Set 1",
     )
 
-    with patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"), \
-         patch("agentflow_cli.cli.commands.eval.override_dependency"):
-
+    with (
+        patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"),
+        patch("agentflow_cli.cli.commands.eval.override_dependency"),
+    ):
         results = await cmd._run_flat_pool([pc], max_concurrency=2, parallel=True)
         assert len(results) == 1
         assert results[0][3].passed is True
@@ -603,8 +619,9 @@ def test_execute_load_config_error(cmd, tmp_path):
     mock_cm.auto_discover_config.return_value = "agentflow.json"
     mock_cm.load_config.side_effect = ValueError("corrupt json")
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm), \
-         patch.object(cmd, "_discover", return_value=[]):
+    with (
+        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch.object(cmd, "_discover", return_value=[]),
+    ):
         code = cmd.execute(target=str(tmp_path))
         assert code == 1
-

@@ -42,7 +42,7 @@ Common full shape:
 - `store`: optional import path to a `BaseStore` instance; required for store endpoints.
 - `injectq`: optional import path to an `InjectQ` container.
 - `thread_name_generator`: optional import path to a thread-name generator class/instance.
-- `authorization`: optional import path to an authorization backend.
+- `authorization`: `null` (mode default: `ownership` in production, `allow_all` in dev), a built-in name (`"ownership"` | `"allow_all"`/`"default"`/`"none"`), an RBAC config object (`{"backend": "rbac", "roles": {...}, "default_scopes": [...], "isolation": "owner"}`), or a `module:attr` import path to a custom `AuthorizationBackend`. See `references/auth-and-authorization.md`.
 - `env`: optional `.env` path loaded before graph import.
 - `auth`: `null`, `"jwt"`, or `{"method": "custom", "path": "module:backend"}`.
 - `rate_limit`: optional sliding-window rate limiter config object; omit or set to `null` to disable. See `references/rate-limiting.md` for the full field reference.

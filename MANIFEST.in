@@ -1,17 +1,23 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include RELEASE_NOTES.md
+include CONTRIBUTING.md
+include SECURITY.md
+include CODE_OF_CONDUCT.md
 include agentflow.json
-include *.md
-include LICENSE*
-include requirements.txt
-include example_weather_agent.py
-recursive-include agentflow_cli *.json
-recursive-include agentflow_cli *.yaml
-recursive-include agentflow_cli *.yml
-recursive-include agentflow_cli *.md
-recursive-include agentflow_cli *.py
-recursive-include src *.json
-recursive-include src *.yaml
-recursive-include src *.yml
-recursive-include graph *.py
-recursive-include graph *.json
-recursive-include migrations *.py
-recursive-include scripts *.py
+
+# Ship the whole package, including scaffolding templates. The templates contain
+# dotfiles (.env.example, .python-version) and a pyproject.toml that extension-based
+# globs silently drop, which breaks `agentflow init` for PyPI installs.
+recursive-include agentflow_cli *
+recursive-include agentflow_cli/cli/templates .env.example .python-version
+
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude .DS_Store
+# Tool caches created by running the scaffolded prod template in place.
+prune agentflow_cli/**/.ruff_cache
+prune agentflow_cli/**/.pytest_cache
+prune agentflow_cli/**/.mypy_cache
+prune agentflow_cli/**/htmlcov

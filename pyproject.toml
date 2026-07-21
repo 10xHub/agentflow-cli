@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.4.0"
+version = "0.5.0"
 description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
@@ -34,24 +34,28 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
-    "10xscale-agentflow>=0.9.0",
-    "fastapi",
-    "gunicorn",
-    "orjson",
-    "python-multipart",
-    "pydantic",
-    "pydantic-settings",
-    "uvicorn",
-    "typer",
-    "python-dotenv",
-    "questionary",
+    # 0.9.0 is the first core release shipping `agentflow.core.authz`.
+    "10xscale-agentflow>=0.9.0,<2.0",
+    # Pre-1.0 and major-version-risky deps are capped; floors are the versions
+    # the suite is verified against.
+    "fastapi>=0.116,<1.0",
+    "gunicorn>=23.0,<24",
+    "orjson>=3.11,<4",
+    "python-multipart>=0.0.19,<0.1",
+    "pydantic>=2.13,<3",
+    "pydantic-settings>=2.3,<3",
+    "uvicorn>=0.30,<1.0",
+    "typer>=0.17,<1.0",
+    "python-dotenv>=1.0,<2",
+    "questionary>=2.0,<3",
 ]
 
 [project.urls]
 Homepage = "https://github.com/10xHub/agentflow-cli"
 Repository = "https://github.com/10xHub/agentflow-cli"
 Issues = "https://github.com/10xHub/agentflow-cli/issues"
-Documentation = "https://agentflow-cli.readthedocs.io/"
+Documentation = "https://10xhub.github.io/Agentflow/"
+Changelog = "https://github.com/10xHub/agentflow-cli/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 sentry = [
@@ -62,13 +66,13 @@ firebase = [
     "oauth2client>=4.1.3",
 ]
 snowflakekit = [
-    "snowflakekit",
+    "snowflakekit>=0.1.1,<1.0",
 ]
 redis = [
-    "redis>=5.0.7",
+    "redis>=5.0.7,<7",
 ]
 jwt = [
-    "PyJWT",
+    "PyJWT>=2.8,<3",
 ]
 media = [
     "textxtract[pdf,docx,html,xml,md]>=0.2.0",
@@ -96,7 +100,20 @@ include = ["agentflow_cli*"]
 exclude = ["tests*", "docs*", "__pycache__*", "agentflow-cli/tests*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.json", "*.yaml", "*.yml", "*.md", "*.txt"]
+# `**/*` (not extension globs) so scaffolding dotfiles - .env.example,
+# .python-version - and templates/prod/pyproject.toml reach the wheel.
+# Without them `agentflow init` fails on a PyPI install.
+"agentflow_cli" = ["py.typed", "**/*"]
+
+[tool.setuptools.exclude-package-data]
+# Tool caches that appear if the prod template is ever run in place.
+"*" = [
+    "**/.ruff_cache/**",
+    "**/.pytest_cache/**",
+    "**/.mypy_cache/**",
+    "**/htmlcov/**",
+    "**/*.py[cod]",
+]
 
 [tool.ruff]
 line-length = 100
@@ -146,9 +163,12 @@ lint.ignore = [
 # Allow unused variables when underscore-prefixed.
 lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 exclude = [
-    "venv/*",
-    "*/agentflow-cli/cli/templates/prod/*",
-    "*/agentflow_cli/cli/templates/dev/*",
+    "venv",
+    ".venv",
+    # Emitted scaffolding, not library code. These paths must match from the repo
+    # root - the previous `*/agentflow-cli/...` patterns had a hyphen typo and a
+    # leading `*/`, so neither ever matched and templates were being linted.
+    "agentflow_cli/cli/templates",
 ]
 
 
@@ -157,14 +177,26 @@ exclude = [
 max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
-"bin/*.py" = ["E402", "S603", "T201", "S101"]
-"*/tests/*.py" = ["E402", "S603", "T201", "S101"]
-"*/test/*.py" = ["E402", "S603", "T201", "S101"]
-"scripts/*.py" = ["E402", "S603", "T201", "S101", "INP001"]
-"*/__init__.py" = ["E402", "S603", "T201", "S101"]
-"*/migrations/*.py" = ["E402", "S603", "T201", "S101"]
-"agentflow_cli/cli/templates/prod/**" = ["S101", "PLR2004", "E402", "S603", "T201", "INP001"]
-"agentflow_cli/cli/templates/dev/**" = ["S101", "PLR2004", "E402", "S603", "T201", "INP001"]
+# Patterns are matched against paths relative to the repo root. A leading `*/`
+# never matches a top-level directory, which is why these previously had no effect.
+"bin/**" = ["E402", "S603", "T201", "S101"]
+"scripts/**" = ["E402", "S603", "T201", "S101", "INP001"]
+"**/migrations/**" = ["E402", "S603", "T201", "S101"]
+"**/__init__.py" = ["E402", "S603", "T201", "S101", "F401"]
+# Test code: asserts, subprocess calls, prints, magic numbers, bound-but-unused
+# locals (the act/assert split), and long/complex test bodies are all normal.
+"tests/**" = [
+    "E402", "E501", "E722", "E731",
+    "S101", "S104", "S105", "S106", "S108", "S110", "S113", "S603", "S607",
+    "T201", "F841", "RET504", "SIM105", "SIM118", "SIM222",
+    "PTH109", "PTH123", "RUF013",
+    "PLR2004", "PLR0912", "PLR0913", "PLR0915", "INP001", "ARG001", "SIM117",
+]
+# Examples are illustrative scripts: they print, they are not a package, and
+# they hardcode demo values on purpose.
+"examples/**" = [
+    "T201", "INP001", "PLR2004", "S104", "S105", "RET504", "E501",
+]
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
@@ -178,8 +210,57 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = true
 
+[tool.mypy]
+python_version = "3.12"
+files = ["agentflow_cli"]
+# Templates are emitted code, not library code - they reference modules that only
+# exist in a scaffolded project.
+exclude = "^agentflow_cli/cli/templates/"
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = false
+no_implicit_optional = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = ["agentflow_cli.cli.templates.*"]
+ignore_errors = true
+
+# --- Phased adoption backlog -------------------------------------------------
+# mypy was introduced in the 0.5.0 readiness pass against a codebase that had
+# never been type checked. Everything not listed here is checked and clean, so
+# CI fails on any *new* type error. Work these modules off the list one at a
+# time; do not add to it.
+#
+#   graph_service.py            14 errors (call-arg, union-attr)
+#   multimodal_preprocessor.py   7 errors (union-attr, arg-type)
+#   permissions.py               5 errors (type-abstract from the InjectAPI
+#                                          pattern - likely needs a Protocol)
+#   auth_backend.py              3 errors (call-arg)
+#   eval.py                      3 errors (list invariance; use Sequence)
+#   graph/router.py              2 errors (type-abstract, same as permissions)
+#   settings/media_settings/
+#   setup_middleware.py          1 error each (assignment, var-annotated)
+[[tool.mypy.overrides]]
+module = [
+    "agentflow_cli.src.app.routers.graph.services.graph_service",
+    "agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor",
+    "agentflow_cli.src.app.routers.graph.router",
+    "agentflow_cli.src.app.core.auth.permissions",
+    "agentflow_cli.src.app.core.auth.auth_backend",
+    "agentflow_cli.src.app.core.config.settings",
+    "agentflow_cli.src.app.core.config.media_settings",
+    "agentflow_cli.src.app.core.config.setup_middleware",
+    "agentflow_cli.cli.commands.eval",
+]
+ignore_errors = true
+
 [tool.bandit]
-exclude_dirs = ["*/tests/*", "*/agentflow-cli/tests/*", "*/agentflow_cli/cli/templates/prod/*", "*/agentflow_cli/cli/templates/dev/*",]
+exclude_dirs = ["tests", "agentflow_cli/cli/templates", ".venv", "venv"]
 skips = ["B101", "B611", "B601"]
 
 
@@ -206,9 +287,14 @@ addopts = [
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
+    "--cov-branch",
     "--cov-fail-under=80",
     "--strict-markers",
     "-v"
+]
+markers = [
+    "integration: requires real external services (Redis, Postgres); run with --integration",
+    "slow: takes more than a few seconds",
 ]
 
 [tool.coverage.run]
@@ -255,6 +341,7 @@ dev = [
     "pytest-env>=1.1.5",
     "pytest-xdist>=3.8.0",
     "pre-commit>=3.8.0",
+    "mypy>=1.11.0",
     "ruff==0.5.2",
     "mkdocs-gen-files==0.5.0",
     "mkdocstrings==0.25.2",

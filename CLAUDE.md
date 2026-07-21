@@ -5,12 +5,15 @@ core framework see `agentflow/CLAUDE.md`; for the TS client, docs, or playground
 for the monorepo overview see the workspace-root `CLAUDE.md`.
 
 - Package name (PyPI): `10xscale-agentflow-cli`
-- Version: `0.4.0` (`pyproject.toml`). `CLI_VERSION` and `agentflow_cli.__version__` are
-  single-sourced from the installed distribution metadata (falling back to `pyproject.toml`), so
-  `agentflow version` reports `0.4.0` consistently. The previous `1.0.0` hardcode is gone.
+- Version: `0.5.0` (`pyproject.toml`). `CLI_VERSION` and `agentflow_cli.__version__` are
+  single-sourced from the installed distribution metadata (falling back to `pyproject.toml` only
+  for a non-installed source checkout), so `agentflow version` reports `0.5.0` consistently.
 - Requires: Python >= 3.12 · Status: `4 - Beta`
 - Console entry point: `agentflow = agentflow_cli.cli.main:main`
 - Depends on the core framework: `10xscale-agentflow>=0.7.0`.
+
+- Depends on the core framework: `10xscale-agentflow>=0.9.0` (0.9.0 is the first release that
+  ships `agentflow.core.authz`, which the RBAC/scope code imports).
 
 ## What this package is
 
@@ -26,7 +29,7 @@ Importable package: `agentflow_cli/`. Two halves:
 | Path | What lives there |
 |---|---|
 | `agentflow_cli/cli/` | The Typer CLI. `main.py` (command definitions), `commands/` (one class per command: api, build, eval, init, skills, test, version), `core/` (config, output, validation), `constants.py`, `templates/` (project scaffolds: `dev/` minimal, `prod/` full) |
-| `agentflow_cli/src/app/` | The FastAPI app. `main.py` + `loader.py` (build app from `agentflow.json`), `routers/` (graph, checkpointer, store, media, ping; a2a/a2ui present but not mounted), `core/auth/`, `core/config/`, `core/middleware/` (rate_limit, security_headers, request_limits), `tasks/`, `utils/`, `worker.py` |
+| `agentflow_cli/src/app/` | The FastAPI app. `main.py` + `loader.py` (build app from `agentflow.json`), `routers/` (graph, checkpointer, store, media, ping), `core/auth/`, `core/config/`, `core/middleware/` (rate_limit, security_headers, request_limits), `tasks/`, `utils/`, `worker.py` |
 
 Public exports from the package root (`from agentflow_cli import ...`): `BaseAuth`,
 `SnowFlakeIdGenerator`, `ThreadNameGenerator`.
@@ -42,7 +45,7 @@ Public exports from the package root (`from agentflow_cli import ...`): `BaseAut
 | `agentflow eval` | Run agent evaluations; discovers `*_eval.py`/`eval_*.py`, runs cases (optionally `--parallel`), writes HTML+JSON to `eval_reports/` | `--output/-o`, `--no-report`, `--threshold/-t`, `--open`, `--parallel/-p`, `--max-concurrency/-c` |
 | `agentflow test` | Run project tests via pytest (args after `--` forwarded verbatim) | `--coverage/-C`, `--html`, `-k`, path arg |
 | `agentflow skills` | Install bundled Agentflow skills for Codex/Claude/GitHub | `--agent/-a`, `--path/-p`, `--force/-f`, `--all`, `--list/-l` |
-| `agentflow version` | Show CLI + package version | reads `CLI_VERSION` constant + package version from `pyproject.toml` |
+| `agentflow version` | Show CLI + core framework version | both resolve from installed distribution metadata |
 
 Defaults (from `cli/constants.py`): `DEFAULT_HOST="127.0.0.1"`, `DEFAULT_PORT=8000`,
 `DEFAULT_CONFIG_FILE="agentflow.json"`.
@@ -110,8 +113,8 @@ and for redis backend a `redis` sub-object `{ "url", "prefix" }` (or shorthand U
   `/{file_id}/info`, `/{file_id}/url`, `GET /v1/config/multimodal`.
 - **Ping**: `GET /ping`.
 
-Routers are wired in `routers/setup_router.py` (`init_routes`). `a2a.py` and `a2ui.py` exist but
-are **not** mounted there yet.
+Routers are wired in `routers/setup_router.py` (`init_routes`). The `a2a.py` / `a2ui.py` stubs
+were removed in the 0.5.0 readiness pass; they were fully commented out and never mounted.
 
 ## Settings / environment
 
@@ -150,19 +153,20 @@ ruff check . && ruff format .
 ## Known doc drift (do not trust without checking)
 
 - **Version is now single-sourced.** `CLI_VERSION` (and `agentflow_cli.__version__`, which aliases
-  it) resolve from installed distribution metadata, falling back to `pyproject.toml`. `agentflow
-  version` reports `0.4.0` for both the CLI and package lines. (The old hardcoded `1.0.0` drift is
-  resolved.)
+  it) resolve from installed distribution metadata. `agentflow version` prints the CLI version and
+  the installed core `10xscale-agentflow` version; the old `pyproject.toml` path read - which
+  printed `unknown` from a wheel - is gone.
 - **README shows `agentflow init --prod`** — that flag does not exist. `init` is interactive and
   only accepts `--path` / `--force`.
 - **`api`/`play` help text claims default host `0.0.0.0`** but `DEFAULT_HOST` is `127.0.0.1`.
 - **"Pyagenity" branding leftovers.** The CLI app help, `agentflow_cli.__init__` docstring, the
   `version` banner, and several router docstrings still say "Pyagenity" (the framework's former
   name). Cosmetic but pervasive; rename to Agentflow when touching those files.
-- **a2a / a2ui routers are not mounted.** Don't document a2a HTTP endpoints as live until
-  `setup_router.init_routes` includes them.
-- **`pyproject.toml` URLs** point at `github.com/10xHub/agentflow-cli` and
-  `agentflow-cli.readthedocs.io`; confirm these are canonical vs the core's `agentflow.10xscale.ai`.
+- **a2a / a2ui routers no longer exist.** Don't document a2a HTTP endpoints as live; restore the
+  files from git history if that surface is actually built.
+- **`pyproject.toml` URLs** point at `github.com/10xHub/agentflow-cli` with docs at
+  `10xhub.github.io/Agentflow/`. The git remote is still `Iamsdt/pyagenity-api.git` and needs to be
+  repointed before release (checklist 1.5).
 - The workspace-root `CLAUDE.md` lists only `init/api/play/build` and an older `agentflow.json`
   shape; the real CLI has `eval/test/skills/version` too and the config supports `rate_limit`,
   `thread_name_generator`, and `authorization`.

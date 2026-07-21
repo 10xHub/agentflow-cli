@@ -106,8 +106,9 @@ class TestSnowFlakeIdGeneratorIdType:
 
     def test_id_type_is_bigint(self, mock_snowflake_kit):
         """Test that id_type returns IDType.BIGINT."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
         from agentflow.utils.id_generator import IDType
+
+        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         generator = SnowFlakeIdGenerator(
             snowflake_epoch=1723323246031,

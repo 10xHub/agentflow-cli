@@ -1,13 +1,11 @@
 """Unit tests for StoreService."""
 
-from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 from agentflow.storage.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
 from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
-    DeleteMemorySchema,
     ForgetMemorySchema,
     SearchMemorySchema,
     StoreMemorySchema,

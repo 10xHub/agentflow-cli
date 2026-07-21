@@ -7,15 +7,15 @@ import pytest
 from agentflow.storage.store import BaseStore, MemorySearchResult, MemoryType
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from injectq import InjectQ
+from injectq.integrations.fastapi import setup_fastapi
 
 from agentflow_cli.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
 )
-from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
-from injectq import InjectQ
-from injectq.integrations.fastapi import setup_fastapi
+from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
 
 
 @pytest.fixture

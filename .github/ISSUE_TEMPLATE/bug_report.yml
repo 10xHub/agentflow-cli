@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in the API server or CLI does not work as documented.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do **not** file security vulnerabilities here -
+        see [SECURITY.md](https://github.com/10xHub/agentflow-cli/blob/main/SECURITY.md)
+        for the private disclosure channel.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is about `10xscale-agentflow-cli` (API/CLI), not the core `10xscale-agentflow` package.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what actually happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: A minimal sequence someone else can run. Include the exact commands.
+      placeholder: |
+        1. agentflow init
+        2. agentflow api
+        3. curl -X POST localhost:8000/v1/graph/invoke ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Version information
+      description: Output of `agentflow version`, plus your Python version and OS.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: agentflow.json
+      description: Your config, with secrets redacted.
+      render: json
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or traceback
+      description: The full traceback if there is one. Redact secrets.
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: How did you install it?
+      options:
+        - PyPI (pip / uv)
+        - Source checkout (editable install)
+        - Docker image built with `agentflow build`
+        - Other
+    validations:
+      required: true

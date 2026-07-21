@@ -3,9 +3,6 @@
 import logging
 import sys
 from io import StringIO
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from agentflow_cli.cli.logger import (
     CLILoggerMixin,
@@ -274,7 +271,7 @@ class TestLoggerIntegration:
 
         logger = get_logger("integration_test")
 
-        assert logger.level == logging.DEBUG or logger.level == logging.INFO
+        assert logger.level in (logging.DEBUG, logging.INFO)
         assert len(logger.handlers) > 0
 
     def test_multiple_loggers_independent(self):

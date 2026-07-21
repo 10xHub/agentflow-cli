@@ -11,8 +11,15 @@ permissions:
   contents: read
 
 jobs:
+  # 0. Never build a release out of untested code. Runs the full CI workflow
+  #    (lint, mypy, tests on 3.12 + 3.13, artifact verification) against the tag.
+  ci:
+    uses: ./.github/workflows/ci.yaml
+    secrets: inherit
+
   # 1. Build the sdist + wheel and verify the tag matches pyproject version.
   build:
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

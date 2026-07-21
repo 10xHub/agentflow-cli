@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -131,9 +130,7 @@ class TestLoadConfeval:
 
         via_fn = EvalConfig()
         via_const = EvalConfig()
-        fake_mod = types.SimpleNamespace(
-            get_eval_config=lambda: via_fn, EVAL_CONFIG=via_const
-        )
+        fake_mod = types.SimpleNamespace(get_eval_config=lambda: via_fn, EVAL_CONFIG=via_const)
         confeval = tmp_path / "confeval.py"
         confeval.write_text("")
         with patch.object(cmd, "_load_module", return_value=fake_mod):
@@ -169,9 +166,7 @@ class TestConfevalDiscovery:
     confeval.py.
     """
 
-    def test_search_dirs_walks_up_from_file(
-        self, tmp_path: Path, cmd: EvalCommand
-    ) -> None:
+    def test_search_dirs_walks_up_from_file(self, tmp_path: Path, cmd: EvalCommand) -> None:
         evals_dir = tmp_path / "evals"
         sub = evals_dir / "sub"
         sub.mkdir(parents=True)
@@ -311,9 +306,7 @@ class TestCollectFromFile:
         assert used_config is default_cfg
         assert used_source == "built-in defaults"
 
-    def test_no_entry_point_returns_empty_and_warns(
-        self, tmp_path: Path, cmd: EvalCommand
-    ) -> None:
+    def test_no_entry_point_returns_empty_and_warns(self, tmp_path: Path, cmd: EvalCommand) -> None:
         fake_mod = types.SimpleNamespace()
         with (
             patch.object(cmd, "_load_module", return_value=fake_mod),

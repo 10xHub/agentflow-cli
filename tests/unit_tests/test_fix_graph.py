@@ -1,10 +1,10 @@
 """Unit tests for fix_graph functionality."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from agentflow.storage.checkpointer import BaseCheckpointer
 from agentflow.core.state import AgentState, Message, TextBlock
+from agentflow.storage.checkpointer import BaseCheckpointer
 from fastapi import HTTPException
 
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService

@@ -1,8 +1,5 @@
 """Tests for thread name generation utilities."""
 
-import re
-from unittest.mock import patch
-
 import pytest
 
 from agentflow_cli.src.app.utils.thread_name_generator import (
@@ -172,7 +169,7 @@ class TestAIThreadNameGeneratorCompoundName:
     def test_generate_compound_name_contains_valid_complement(self):
         """Test that compound name contains a valid complement."""
         generator = AIThreadNameGenerator()
-        pattern_dict = {base: complements for base, complements in generator.COMPOUND_PATTERNS}
+        pattern_dict = dict(generator.COMPOUND_PATTERNS)
 
         for _ in range(10):
             name = generator.generate_compound_name()

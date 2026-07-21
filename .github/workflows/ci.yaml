@@ -1,64 +1,152 @@
 name: CI
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  lint:
+    name: Lint and type check
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run pre-commit (ruff, bandit, hygiene hooks)
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Type check
+        run: uv run mypy
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Must cover every version advertised in pyproject.toml classifiers.
+        python-version: ["3.12", "3.13"]
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      REDIS_URL: redis://localhost:6379/0
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Cache Python deps
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/pip
-          .venv
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
 
-    - name: Cache uv
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.local/share/uv
-          ~/.cache/uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('.uv/config.json') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      - name: Install dependencies
+        run: uv sync --dev
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.13'
+      - name: Run tests with coverage
+        run: uv run pytest --integration
 
-    - name: Install dependencies
-      run: |
-        # create venv in repo so it can be cached
-        python -m venv .venv
-        source .venv/bin/activate
-        pip install --upgrade pip
-        uv sync --dev
+      - name: Upload coverage reports to Codecov
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
-    - name: Run pre-commit
-      run: uv run pre-commit run --all-files
+  package:
+    name: Build and verify artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Run tests with coverage
-      run: |
-        source .venv/bin/activate
-        uv run pytest --cov --cov-branch --cov-report=xml
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
 
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+
+      # Extension-based package-data globs silently drop these, which breaks
+      # `agentflow init` for PyPI installs. Assert against the artifact, not the config.
+      - name: Assert scaffolding templates are present in the wheel
+        run: |
+          python - <<'PY'
+          import glob, sys, zipfile
+
+          wheel = sorted(glob.glob("dist/*.whl"))[-1]
+          names = set(zipfile.ZipFile(wheel).namelist())
+          required = [
+              "agentflow_cli/py.typed",
+              "agentflow_cli/cli/templates/dev/.env.example",
+              "agentflow_cli/cli/templates/prod/.env.example",
+              "agentflow_cli/cli/templates/prod/.python-version",
+              "agentflow_cli/cli/templates/prod/pyproject.toml",
+              "agentflow_cli/cli/templates/prod/.pre-commit-config.yaml",
+          ]
+          missing = [p for p in required if p not in names]
+          if missing:
+              print(f"::error::{wheel} is missing required files:")
+              for p in missing:
+                  print(f"::error::  {p}")
+              sys.exit(1)
+          print(f"{wheel}: all {len(required)} required files present ({len(names)} total).")
+          PY
+
+      - name: Smoke test the installed wheel
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          /tmp/smoke/bin/agentflow version
+          /tmp/smoke/bin/agentflow --help

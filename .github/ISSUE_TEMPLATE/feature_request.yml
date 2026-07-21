@@ -1,0 +1,63 @@
+name: Feature request
+description: Propose a new capability for the API server or CLI.
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and discussions for this idea.
+          required: true
+        - label: This belongs in the API/CLI layer, not in the core `10xscale-agentflow` framework.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that is hard or impossible today? Describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should it look like? Include the CLI flag, HTTP route, or `agentflow.json` key you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What you tried, and why it did not work.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CLI (init, build, test, eval, skills)
+        - HTTP / WebSocket API
+        - Auth or authorization
+        - Rate limiting
+        - Checkpointer / threads
+        - Store (memory)
+        - Media / file handling
+        - Scaffolding templates
+        - Packaging / deployment
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: breaking
+    attributes:
+      label: Compatibility
+      options:
+        - label: This would be a breaking change to public API surface.
+          required: false

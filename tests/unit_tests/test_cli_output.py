@@ -1,21 +1,20 @@
 """Tests for CLI output formatting module."""
 
-import sys
 import io
-from unittest.mock import patch, MagicMock
+import sys
+from unittest.mock import patch
 
 import pytest
-import typer
 
 from agentflow_cli.cli.core.output import (
     OutputFormatter,
-    print_banner,
-    success,
+    emphasize,
     error,
     info,
-    warning,
-    emphasize,
     output,
+    print_banner,
+    success,
+    warning,
 )
 
 
@@ -182,7 +181,6 @@ class TestOutputFormatter:
         # With an empty list and no title, typer.echo might not be called at all
         # or may be called for the empty list display. Both are acceptable.
         # Just verify the method doesn't raise an exception
-        pass
 
     @patch("typer.echo")
     def test_print_key_value_pairs_without_title(self, mock_echo, formatter):

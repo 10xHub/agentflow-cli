@@ -1,14 +1,14 @@
 """Tests for authentication permissions module."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.security import HTTPAuthorizationCredentials
-from fastapi.testclient import TestClient
 
-from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+import pytest
+from fastapi import Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
+
 from agentflow_cli.src.app.core.auth.auth_backend import BaseAuth
 from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+from agentflow_cli.src.app.core.auth.permissions import RequirePermission
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 
 

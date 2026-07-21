@@ -2,8 +2,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from agentflow_cli.src.app.core.config.sentry_config import init_sentry
 
 
