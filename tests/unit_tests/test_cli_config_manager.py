@@ -53,11 +53,12 @@ class TestConfigManager:
         assert result.exists()
         assert str(result) == temp_config_file
 
-    def test_find_config_file_absolute_path_not_found(self):
+    def test_find_config_file_absolute_path_not_found(self, tmp_path):
         """Test finding config file with non-existent absolute path."""
         manager = ConfigManager()
+        missing = (tmp_path / "missing" / "config.json").resolve()
         with pytest.raises(ConfigurationError) as exc_info:
-            manager.find_config_file("/non/existent/path/config.json")
+            manager.find_config_file(str(missing))
         assert "Config file not found" in str(exc_info.value)
 
     def test_find_config_file_relative_path(self, temp_dir):
@@ -115,6 +116,15 @@ class TestConfigManager:
             assert discovered is None or isinstance(discovered, Path)
         finally:
             os.chdir(old_cwd)
+
+    def test_auto_discover_config_walks_parent_directories(self, tmp_path, monkeypatch):
+        config_path = tmp_path / "agentflow.json"
+        config_path.write_text(json.dumps({"agent": "graph.agent:app"}), encoding="utf-8")
+        nested = tmp_path / "packages" / "worker"
+        nested.mkdir(parents=True)
+        monkeypatch.chdir(nested)
+
+        assert ConfigManager().auto_discover_config() == config_path
 
     def test_load_config_with_path(self, temp_config_file):
         """Test loading config with explicit path."""

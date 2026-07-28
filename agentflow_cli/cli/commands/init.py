@@ -8,27 +8,16 @@ from string import Template
 from typing import Any
 
 import questionary
-import typer
 
 from agentflow_cli.cli.commands import BaseCommand
-from agentflow_cli.cli.constants import Colors
-from agentflow_cli.cli.exceptions import FileOperationError
+from agentflow_cli.cli.exceptions import FileOperationError, ValidationError
 
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 _SKIP_DIRS = {"__pycache__", ".ruff_cache"}
-_DIVIDER = Colors.colorize("  " + "─" * 46, "cyan")
 
 # Directories inside prod/ that are only included based on user choices
 _AUTH_DIR = "auth"
-
-
-def _dim(text: str) -> str:
-    return f"\033[2m{text}\033[0m"
-
-
-def _bold(text: str) -> str:
-    return f"\033[1m{text}\033[0m"
 
 
 def _slugify(name: str) -> str:
@@ -58,15 +47,37 @@ def _strip_env_blocks(content: str, *, keep_redis: bool, keep_jwt: bool) -> str:
 class InitCommand(BaseCommand):
     """Command to initialize a new agent project interactively."""
 
-    def execute(self, path: str = ".", force: bool = False, **kwargs: Any) -> int:
+    def execute(
+        self,
+        path: str = ".",
+        force: bool = False,
+        agent_name: str | None = None,
+        template: str | None = None,
+        auth: str | None = None,
+        rate_limit: str | None = None,
+        yes: bool = False,
+        non_interactive: bool = False,
+        dry_run: bool = False,
+        **kwargs: Any,
+    ) -> int:
         try:
             self.output.print_banner(
                 "Init", "Create a new AgentFlow agent project", color="magenta"
             )
 
-            context = self._prompt_user()
+            context: dict[str, Any] | None
+            if yes or non_interactive:
+                context = self._non_interactive_context(
+                    path=path,
+                    agent_name=agent_name,
+                    template=template,
+                    auth=auth,
+                    rate_limit=rate_limit,
+                )
+            else:
+                context = self._prompt_user()
             if context is None:
-                typer.echo("\n  Cancelled.")
+                self.output.info("Cancelled.", emoji=False)
                 return 0
 
             self._print_summary(context)
@@ -77,12 +88,25 @@ class InitCommand(BaseCommand):
             # clobbered unless they passed --force.
             config_path = base_path / "agentflow.json"
             config_pre_existed = config_path.exists()
-            base_path.mkdir(parents=True, exist_ok=True)
 
             is_prod = context["setup_type"] == "production"
             template_dir = _TEMPLATES_DIR / ("prod" if is_prod else "dev")
 
-            typer.echo(f"\n  {_bold('Creating project files...')}\n")
+            if dry_run:
+                planned = [
+                    str(src.relative_to(template_dir))
+                    for src in sorted(template_dir.rglob("*"))
+                    if src.is_file()
+                    and not self._should_skip(src, template_dir, context, is_prod)
+                ]
+                if "agentflow.json" not in planned:
+                    planned.append("agentflow.json")
+                self.output.print_list(planned, title="Files that would be created", bullet="→")
+                self.output.info("Dry run complete; no files were written.", emoji=False)
+                return 0
+
+            base_path.mkdir(parents=True, exist_ok=True)
+            self.output.info("Creating project files...", emoji=False)
             created = self._copy_template_dir(
                 template_dir, base_path, context, force=force, is_prod=is_prod
             )
@@ -100,23 +124,79 @@ class InitCommand(BaseCommand):
                 self._print_file_line(config_path, base_path)
 
             agent_name = context["agent_name"]
-            typer.echo("")
-            typer.echo(_DIVIDER)
-            typer.echo(
-                "  ✨  "
-                + Colors.colorize(f'Project "{agent_name}" ready at ', "green")
-                + Colors.colorize(str(base_path.resolve()), "cyan")
-            )
-            typer.echo(_DIVIDER)
+            self.output.success(f'Project "{agent_name}" ready at {base_path.resolve()}')
 
             self._print_next_steps(context, is_prod)
 
             return 0
 
-        except FileOperationError as e:
+        except (FileOperationError, ValidationError) as e:
             return self.handle_error(e)
         except Exception as e:
             return self.handle_error(FileOperationError(f"Failed to initialize project: {e}"))
+
+    def _non_interactive_context(
+        self,
+        *,
+        path: str,
+        agent_name: str | None,
+        template: str | None,
+        auth: str | None,
+        rate_limit: str | None,
+    ) -> dict[str, Any]:
+        """Resolve a complete, reproducible scaffold recipe without prompting."""
+        resolved_template = (template or "quick-start").strip().lower().replace("_", "-")
+        if resolved_template not in {"quick-start", "production"}:
+            raise ValidationError(
+                f"Invalid template '{resolved_template}'. Choose quick-start or production.",
+                field="template",
+            )
+
+        inferred_name = Path(path).resolve().name if path not in {"", "."} else "MyAgent"
+        resolved_name = (agent_name or inferred_name).strip()
+        slug = _slugify(resolved_name)
+        if not resolved_name or not slug:
+            raise ValidationError(
+                "Agent name must contain at least one letter or number.",
+                field="name",
+            )
+
+        resolved_auth = (auth or "none").strip().lower()
+        if resolved_auth not in {"none", "jwt", "custom"}:
+            raise ValidationError(
+                f"Invalid auth mode '{resolved_auth}'. Choose none, jwt, or custom.",
+                field="auth",
+            )
+
+        resolved_rate_limit = (rate_limit or "none").strip().lower()
+        if resolved_rate_limit not in {"none", "memory", "redis"}:
+            raise ValidationError(
+                f"Invalid rate-limit mode '{resolved_rate_limit}'. "
+                "Choose none, memory, or redis.",
+                field="rate_limit",
+            )
+
+        if resolved_template == "quick-start" and (
+            resolved_auth != "none" or resolved_rate_limit != "none"
+        ):
+            raise ValidationError(
+                "--auth and --rate-limit require --template production.",
+                field="template",
+            )
+
+        return {
+            "agent_name": resolved_name,
+            "agent_name_slug": slug,
+            "setup_type": "production"
+            if resolved_template == "production"
+            else "quick_start",
+            "auth": resolved_auth,
+            "rate_limit": resolved_rate_limit,
+            "rl_requests": 100,
+            "rl_window": 60,
+            "rl_by": "ip",
+            "rl_trusted_proxy": False,
+        }
 
     # ------------------------------------------------------------------
     # Prompts
@@ -224,11 +304,6 @@ class InitCommand(BaseCommand):
         is_prod = context["setup_type"] == "production"
         setup_label = "Production" if is_prod else "Quick Start"
 
-        typer.echo("")
-        typer.echo(_DIVIDER)
-        typer.echo("  " + _bold("Project Summary"))
-        typer.echo(_DIVIDER)
-
         rows: list[tuple[str, str]] = [
             ("Agent name", context["agent_name"]),
             ("Package name", context["agent_name_slug"]),
@@ -252,19 +327,15 @@ class InitCommand(BaseCommand):
                     )
                 )
 
-        label_width = max(len(k) for k, _ in rows) + 2
-        for label, value in rows:
-            padded = (label + " ").ljust(label_width, "·")
-            typer.echo(
-                "  " + Colors.colorize(padded, "cyan") + "  " + Colors.colorize(value, "white")
-            )
-        typer.echo(_DIVIDER)
+        self.output.print_table(
+            ["Setting", "Value"],
+            [[label, value] for label, value in rows],
+            title="Project summary",
+        )
 
     def _print_file_line(self, dest: Path, base_path: Path) -> None:
         rel = dest.relative_to(base_path)
-        typer.echo(
-            "    " + Colors.colorize("✓", "green") + "  " + Colors.colorize(str(rel), "white")
-        )
+        self.output.info(f"Created {rel}", emoji=False)
 
     def _print_next_steps(self, context: dict, is_prod: bool) -> None:
         steps: list[tuple[str, str]] = []
@@ -285,18 +356,14 @@ class InitCommand(BaseCommand):
 
         steps.append(("agentflow play", "Launch your agent"))
 
-        typer.echo("")
-        typer.echo("  " + Colors.colorize("🚀  Next steps", "magenta"))
-        typer.echo("")
-
-        cmd_width = max(len(cmd) for cmd, _ in steps) + 2
-        for i, (cmd, description) in enumerate(steps, 1):
-            num = Colors.colorize(f"  {i}", "cyan")
-            command = Colors.colorize(cmd.ljust(cmd_width), "yellow")
-            desc = _dim(description)
-            typer.echo(f"{num}  {command}  {desc}")
-
-        typer.echo("")
+        self.output.print_table(
+            ["#", "Command", "Purpose"],
+            [
+                [str(index), command, description]
+                for index, (command, description) in enumerate(steps, 1)
+            ],
+            title="Next steps",
+        )
 
     # ------------------------------------------------------------------
     # Config generation

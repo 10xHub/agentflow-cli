@@ -24,6 +24,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Adaptive Rich terminal rendering with TTY/CI detection, plain/JSONL modes,
+  `NO_COLOR` support, ASCII fallback, quiet mode, and shared status rendering.
+- Root `--format`, `--json`, `--color`, `--no-color`, `--progress`, `--cwd`,
+  `--yes`, `--non-interactive`, `--debug`, and `-V/--version` options.
+- `agentflow dev` as the goal-oriented local development command; `api` and `play`
+  remain available for compatibility.
+- `agentflow doctor` package, evaluation API, project configuration, and port checks.
+- Cross-platform `agentflow config list|get|set|unset|path|validate` user preferences.
+- Reproducible `agentflow init --non-interactive` recipes and `--dry-run` previews.
+- Stable CLI error codes and dependency recovery suggestions.
 - `py.typed` marker, so type information now reaches consumers (PEP 561).
 - `--integration` pytest flag gating tests marked `integration` that require real
   Redis/Postgres, so a default `pytest` run needs no external services.
@@ -33,6 +43,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Community health files: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
   `RELEASE_NOTES.md`, issue forms, and a pull request template.
 - `Changelog` entry in project URLs.
+
+### Changed
+
+- Command implementations are loaded lazily, so a broken optional feature no longer
+  prevents root help, version, completion, or unrelated commands from starting.
+- CLI logging now uses one invocation-wide handler, so quiet and verbose levels apply
+  consistently without duplicate records.
+- Project configuration discovery now walks parent directories from the current
+  working directory.
+- Init, build, and eval status output now flows through the shared renderer instead of
+  writing raw ANSI control sequences.
 
 ### Fixed
 

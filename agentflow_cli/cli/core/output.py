@@ -1,31 +1,125 @@
-"""Output formatting utilities for the CLI."""
+"""Adaptive terminal output utilities for the CLI."""
 
 from __future__ import annotations
 
+import json
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, TextIO
 
-import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.status import Status
+from rich.table import Table
+from rich.theme import Theme
 
-from agentflow_cli.cli.constants import (
-    EMOJI_ERROR,
-    EMOJI_INFO,
-    EMOJI_SPARKLE,
-    EMOJI_SUCCESS,
-    Colors,
+from agentflow_cli.cli.capabilities import (
+    ColorMode,
+    OutputFormat,
+    ProgressMode,
+    TerminalCapabilities,
+)
+
+
+_THEME = Theme(
+    {
+        "agentflow.success": "bold green",
+        "agentflow.error": "bold red",
+        "agentflow.warning": "bold yellow",
+        "agentflow.info": "cyan",
+        "agentflow.muted": "dim",
+        "agentflow.title": "bold magenta",
+    }
 )
 
 
 class OutputFormatter:
-    """Handles formatted output for the CLI."""
+    """Render semantic CLI output for terminals, pipes, and automation."""
 
-    def __init__(self, stream: TextIO | None = None) -> None:
-        """Initialize the output formatter.
+    def __init__(
+        self,
+        stream: TextIO | None = None,
+        *,
+        error_stream: TextIO | None = None,
+        output_format: OutputFormat = OutputFormat.HUMAN,
+        color_mode: ColorMode = ColorMode.AUTO,
+        progress_mode: ProgressMode = ProgressMode.AUTO,
+        quiet: bool = False,
+    ) -> None:
+        self._stream = stream
+        self._error_stream = error_stream
+        self.output_format = output_format
+        self.color_mode = color_mode
+        self.progress_mode = progress_mode
+        self.quiet = quiet
+        self.capabilities = TerminalCapabilities.detect(
+            stream=self.stream,
+            output_format=output_format,
+            color_mode=color_mode,
+            progress_mode=progress_mode,
+        )
 
-        Args:
-            stream: Output stream (defaults to stdout)
-        """
-        self.stream = stream or sys.stdout
+    @property
+    def stream(self) -> TextIO:
+        """Current stdout stream, remaining compatible with CliRunner capture."""
+        return self._stream or sys.stdout
+
+    @property
+    def error_stream(self) -> TextIO:
+        """Current stderr stream, or the explicit test stream when supplied."""
+        if self._error_stream is not None:
+            return self._error_stream
+        if self._stream is not None:
+            return self._stream
+        return sys.stderr
+
+    def configure(
+        self,
+        *,
+        output_format: OutputFormat | None = None,
+        color_mode: ColorMode | None = None,
+        progress_mode: ProgressMode | None = None,
+        quiet: bool | None = None,
+    ) -> None:
+        """Apply invocation-level rendering policy."""
+        if output_format is not None:
+            self.output_format = output_format
+        if color_mode is not None:
+            self.color_mode = color_mode
+        if progress_mode is not None:
+            self.progress_mode = progress_mode
+        if quiet is not None:
+            self.quiet = quiet
+        self.capabilities = TerminalCapabilities.detect(
+            stream=self.stream,
+            output_format=self.output_format,
+            color_mode=self.color_mode,
+            progress_mode=self.progress_mode,
+        )
+
+    def _console(self, *, error: bool = False) -> Console:
+        return Console(
+            file=self.error_stream if error else self.stream,
+            theme=_THEME,
+            no_color=not self.capabilities.color,
+            force_terminal=self.capabilities.color,
+            highlight=False,
+            soft_wrap=False,
+        )
+
+    @property
+    def _structured(self) -> bool:
+        return self.capabilities.output_format in {OutputFormat.JSON, OutputFormat.JSONL}
+
+    def _emit_event(self, event: str, message: str, **data: Any) -> None:
+        payload = {
+            "schema": "agentflow.cli/v1",
+            "type": event,
+            "message": message,
+            **data,
+        }
+        print(json.dumps(payload, ensure_ascii=False, default=str), file=self.stream, flush=True)
 
     def print_banner(
         self,
@@ -34,74 +128,70 @@ class OutputFormatter:
         color: str = "cyan",
         width: int = 50,
     ) -> None:
-        """Print a formatted banner.
+        """Render a compact section heading or a panel on an interactive terminal."""
+        if self.quiet:
+            return
+        if self._structured:
+            self._emit_event("section", title, subtitle=subtitle)
+            return
+        if self.capabilities.output_format == OutputFormat.PLAIN:
+            print(f"\n== {title} ==", file=self.stream)
+            if subtitle:
+                print(subtitle, file=self.stream)
+            print("", file=self.stream)
+            return
 
-        Args:
-            title: Banner title
-            subtitle: Optional subtitle
-            color: Color name for the banner
-            width: Banner width
-        """
-        colored_title = Colors.colorize(f"== {title} ==", color)
-
-        typer.echo("")
-        typer.echo(colored_title, file=self.stream)
+        body = f"[agentflow.title]{title}[/agentflow.title]"
         if subtitle:
-            typer.echo(subtitle, file=self.stream)
-        typer.echo("", file=self.stream)
+            body += f"\n[agentflow.muted]{subtitle}[/agentflow.muted]"
+        self._console().print(Panel.fit(body, border_style=color, padding=(0, 1), width=width))
 
     def success(self, message: str, emoji: bool = True) -> None:
-        """Print a success message.
-
-        Args:
-            message: Success message
-            emoji: Whether to include emoji
-        """
-        prefix = f"{EMOJI_SUCCESS}  " if emoji else ""
-        formatted = Colors.colorize(f"{prefix}{message}", "green")
-        typer.echo(f"\n{formatted}", file=self.stream)
+        if self.quiet:
+            return
+        symbol = "✓" if self.capabilities.unicode else "OK"
+        self._message("success", message, symbol if emoji else "", error=False)
 
     def error(self, message: str, emoji: bool = True) -> None:
-        """Print an error message.
-
-        Args:
-            message: Error message
-            emoji: Whether to include emoji
-        """
-        prefix = f"{EMOJI_ERROR}  " if emoji else ""
-        formatted = Colors.colorize(f"{prefix}{message}", "red")
-        typer.echo(f"\n{formatted}", err=True)
+        symbol = "✗" if self.capabilities.unicode else "X"
+        self._message("error", message, symbol if emoji else "", error=True)
 
     def info(self, message: str, emoji: bool = True) -> None:
-        """Print an info message.
-
-        Args:
-            message: Info message
-            emoji: Whether to include emoji
-        """
-        prefix = f"{EMOJI_INFO}  " if emoji else ""
-        formatted = Colors.colorize(f"{prefix}{message}", "blue")
-        typer.echo(f"\n{formatted}", file=self.stream)
+        if self.quiet:
+            return
+        self._message("info", message, "i" if emoji else "", error=False)
 
     def warning(self, message: str, emoji: bool = True) -> None:
-        """Print a warning message.
+        if self.quiet:
+            return
+        self._message("warning", message, "!" if emoji else "", error=False)
 
-        Args:
-            message: Warning message
-            emoji: Whether to include emoji
-        """
-        prefix = f"{EMOJI_ERROR}  " if emoji else ""
-        formatted = Colors.colorize(f"{prefix}{message}", "yellow")
-        typer.echo(f"\n{formatted}", file=self.stream)
+    def _message(
+        self,
+        level: str,
+        message: str,
+        symbol: str,
+        *,
+        error: bool,
+    ) -> None:
+        if self._structured:
+            self._emit_event(level, message)
+            return
+        prefix = f"{symbol} " if symbol else ""
+        if self.capabilities.output_format == OutputFormat.PLAIN:
+            print(f"{prefix}{message}", file=self.error_stream if error else self.stream)
+            return
+        self._console(error=error).print(f"[agentflow.{level}]{prefix}{message}[/agentflow.{level}]")
 
     def emphasize(self, message: str) -> None:
-        """Print an emphasized message with sparkle emoji.
-
-        Args:
-            message: Message to emphasize
-        """
-        formatted = f"{EMOJI_SPARKLE}  {message}"
-        typer.echo(f"\n{formatted}", file=self.stream)
+        if self.quiet:
+            return
+        self._message(
+            "info",
+            message,
+            "•" if self.capabilities.unicode else "*",
+            error=False,
+        )
 
     def print_list(
         self,
@@ -109,18 +199,16 @@ class OutputFormatter:
         title: str | None = None,
         bullet: str = "•",
     ) -> None:
-        """Print a formatted list.
-
-        Args:
-            items: List items to print
-            title: Optional list title
-            bullet: Bullet character
-        """
+        if self.quiet:
+            return
+        if self._structured:
+            self._emit_event("list", title or "", items=items)
+            return
+        console = self._console()
         if title:
-            typer.echo(f"\n{title}:", file=self.stream)
-
+            console.print(f"\n[bold]{title}[/bold]")
         for item in items:
-            typer.echo(f"  {bullet} {item}", file=self.stream)
+            console.print(f"  {bullet} {item}")
 
     def print_key_value_pairs(
         self,
@@ -128,19 +216,17 @@ class OutputFormatter:
         title: str | None = None,
         indent: int = 2,
     ) -> None:
-        """Print key-value pairs in a formatted way.
-
-        Args:
-            pairs: Dictionary of key-value pairs
-            title: Optional title for the section
-            indent: Indentation level
-        """
+        if self.quiet:
+            return
+        if self._structured:
+            self._emit_event("data", title or "", data=pairs)
+            return
+        console = self._console()
         if title:
-            typer.echo(f"\n{title}:", file=self.stream)
-
-        indent_str = " " * indent
+            console.print(f"\n[bold]{title}[/bold]")
+        pad = " " * indent
         for key, value in pairs.items():
-            typer.echo(f"{indent_str}{key}: {value}", file=self.stream)
+            console.print(f"{pad}[agentflow.muted]{key}[/agentflow.muted]  {value}")
 
     def print_table(
         self,
@@ -148,66 +234,60 @@ class OutputFormatter:
         rows: list[list[str]],
         title: str | None = None,
     ) -> None:
-        """Print a simple table.
+        if self.quiet:
+            return
+        if self._structured:
+            records = [
+                {
+                    header: row[index] if index < len(row) else ""
+                    for index, header in enumerate(headers)
+                }
+                for row in rows
+            ]
+            self._emit_event("table", title or "", columns=headers, rows=records)
+            return
 
-        Args:
-            headers: Table headers
-            rows: Table rows
-            title: Optional table title
-        """
-        if title:
-            typer.echo(f"\n{title}:", file=self.stream)
-
-        # Calculate column widths
-        all_rows = [headers, *rows]
-        col_widths = [
-            max(len(str(row[i])) for row in all_rows if i < len(row)) for i in range(len(headers))
-        ]
-
-        # Print headers
-        header_row = " | ".join(str(headers[i]).ljust(col_widths[i]) for i in range(len(headers)))
-        typer.echo(f"\n{header_row}", file=self.stream)
-        typer.echo("-" * len(header_row), file=self.stream)
-
-        # Print rows
+        table = Table(title=title, header_style="bold cyan", show_lines=False)
+        for header in headers:
+            table.add_column(str(header), overflow="fold")
         for row in rows:
-            row_str = " | ".join(
-                str(row[i] if i < len(row) else "").ljust(col_widths[i])
-                for i in range(len(headers))
-            )
-            typer.echo(row_str, file=self.stream)
+            table.add_row(*(str(row[i]) if i < len(row) else "" for i in range(len(headers))))
+        self._console().print(table)
+
+    @contextmanager
+    def status(self, message: str) -> Iterator[Status | None]:
+        """Show an indeterminate status when animation is safe."""
+        if self.quiet or not self.capabilities.animation:
+            if not self.quiet and self.capabilities.progress_mode == ProgressMode.PLAIN:
+                self.info(message, emoji=False)
+            yield None
+            return
+        with self._console().status(message, spinner="dots") as status:
+            yield status
 
 
-# Global instance for convenience
 output = OutputFormatter()
 
 
-# Convenience functions that use the global instance
 def print_banner(title: str, subtitle: str | None = None, color: str = "cyan") -> None:
-    """Print a formatted banner using the global formatter."""
     output.print_banner(title, subtitle, color)
 
 
 def success(message: str, emoji: bool = True) -> None:
-    """Print a success message using the global formatter."""
     output.success(message, emoji)
 
 
 def error(message: str, emoji: bool = True) -> None:
-    """Print an error message using the global formatter."""
     output.error(message, emoji)
 
 
 def info(message: str, emoji: bool = True) -> None:
-    """Print an info message using the global formatter."""
     output.info(message, emoji)
 
 
 def warning(message: str, emoji: bool = True) -> None:
-    """Print a warning message using the global formatter."""
     output.warning(message, emoji)
 
 
 def emphasize(message: str) -> None:
-    """Print an emphasized message using the global formatter."""
     output.emphasize(message)

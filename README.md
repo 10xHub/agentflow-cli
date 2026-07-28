@@ -88,7 +88,9 @@ agentflow build --docker-compose
 
 ## 🖥️ CLI Commands
 
-For detailed command documentation, see the **[CLI Guide](./docs/cli-guide.md)**.
+Run `agentflow --help` or `agentflow COMMAND --help` for the generated command reference.
+The modernization architecture and delivery roadmap are documented in
+[`CLI_UX_IMPLEMENTATION_PLAN.md`](./CLI_UX_IMPLEMENTATION_PLAN.md).
 
 ### `agentflow init`
 
@@ -98,28 +100,32 @@ Initialize a new project with configuration and a sample graph.
 agentflow init                  # interactive (chooses dev vs production setup)
 agentflow init --path ./my-app  # custom directory
 agentflow init --force          # overwrite existing files
+agentflow init --path ./my-app --name MyAgent --template quick-start \
+  --non-interactive            # reproducible CI/agent workflow
+agentflow init --path ./my-app --template production --auth jwt \
+  --rate-limit redis --yes --dry-run
 ```
 
-### `agentflow api`
+### `agentflow dev`
 
-Start the development API server.
+Start the development API server and open the hosted playground when it is ready.
 
 ```bash
-agentflow api                              # defaults (127.0.0.1:8000)
-agentflow api --host 127.0.0.1 --port 9000 # custom host/port
-agentflow api --config production.json     # custom config file
-agentflow api --no-reload                  # disable auto-reload
-agentflow api --verbose                    # verbose logging
+agentflow dev                              # defaults (127.0.0.1:8000)
+agentflow dev --host 127.0.0.1 --port 9000 # custom host/port
+agentflow dev --config production.json     # custom config file
+agentflow dev --no-open --no-reload        # API only, without auto-reload
 ```
 
-### `agentflow play`
+`agentflow api` and `agentflow play` remain available as compatibility commands.
 
-Start the dev server and open the hosted playground with your local backend URL preconfigured.
+### Adaptive and structured output
 
 ```bash
-agentflow play
-agentflow play --host 127.0.0.1 --port 9000
-agentflow play --config production.json
+agentflow --format plain --no-color doctor
+agentflow --format jsonl eval --parallel
+agentflow --quiet build
+agentflow --cwd ../my-agent dev
 ```
 
 ### `agentflow build`
@@ -157,7 +163,20 @@ agentflow skills --list         # show supported agents
 Display CLI and package version information.
 
 ```bash
+agentflow --version            # script-friendly CLI version only
 agentflow version
+```
+
+### `agentflow doctor` / `agentflow config`
+
+Diagnose the local package/project environment and manage cross-platform user preferences.
+
+```bash
+agentflow doctor
+agentflow config path
+agentflow config set output.format plain
+agentflow config get output.format
+agentflow config validate
 ```
 
 ---

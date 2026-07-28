@@ -23,6 +23,12 @@ class SilentOutput:
     def error(self, *a, **kw):
         pass
 
+    def print_table(self, *a, **kw):
+        pass
+
+    def print_list(self, *a, **kw):
+        pass
+
 
 def _skip_binary(original):
     """Wrap _should_skip to also exclude non-text template artifacts."""

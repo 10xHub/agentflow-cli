@@ -3,8 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-import typer
-
 from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.constants import DEFAULT_PORT, DEFAULT_PYTHON_VERSION, DEFAULT_SERVICE_NAME
 from agentflow_cli.cli.core.validation import Validator
@@ -241,8 +239,6 @@ class BuildCommand(BaseCommand):
         Args:
             docker_compose: Whether docker-compose was generated
         """
-        self.output.info("\n🚀 Next steps:")
-
         if docker_compose:
             steps = [
                 "Review the generated Dockerfile and docker-compose.yml",
@@ -258,10 +254,12 @@ class BuildCommand(BaseCommand):
                 "Access your API at: http://localhost:8000",
             ]
 
-        for i, step in enumerate(steps, 1):
-            typer.echo(f"{i}. {step}")
+        self.output.print_list(
+            [f"{index}. {step}" for index, step in enumerate(steps, 1)],
+            title="Next steps",
+            bullet="→",
+        )
 
-        self.output.info("\n💡 For production deployment, consider:")
         production_tips = [
             "Using a multi-stage build to reduce image size",
             "Setting up proper environment variables",
@@ -269,5 +267,8 @@ class BuildCommand(BaseCommand):
             "Using a reverse proxy like nginx",
         ]
 
-        for tip in production_tips:
-            typer.echo(f"   • {tip}")
+        self.output.print_list(
+            production_tips,
+            title="Production considerations",
+            bullet="•",
+        )

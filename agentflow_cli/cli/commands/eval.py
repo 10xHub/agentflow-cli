@@ -424,7 +424,7 @@ class EvalCommand(BaseCommand):
             source = "built-in defaults"
             criteria = self._default_config().criteria
 
-        print(f"Criteria  source: {source}", flush=True)  # noqa: T201
+        lines = [f"Criteria  source: {source}"]
         for name in criteria.model_fields:
             cfg = getattr(criteria, name)
             if cfg is None:
@@ -436,8 +436,8 @@ class EvalCommand(BaseCommand):
                 parts.append(f"judge={cfg.judge_model}")
             if cfg.num_samples and cfg.num_samples != 1:
                 parts.append(f"samples={cfg.num_samples}")
-            print(f"  {name:<40} {'  '.join(parts)}", flush=True)  # noqa: T201
-        print("", flush=True)  # noqa: T201
+            lines.append(f"  {name:<40} {'  '.join(parts)}")
+        self.output.info("\n".join(lines), emoji=False)
 
     def _criteria_rows(self, config: EvalConfig) -> list[tuple[str, str, dict[str, Any]]]:
         """Return (name, human_summary, machine_dict) for each active criterion."""
@@ -496,28 +496,30 @@ class EvalCommand(BaseCommand):
         (per-file > confeval.py > built-in defaults).
         """
         seen: set[str] = set()
+        blocks: list[str] = []
         for pc in pending:
             if pc.file_name in seen:
                 continue
             seen.add(pc.file_name)
 
             if isinstance(pc, _PendingSimulation):
-                print(  # noqa: T201
-                    f"Criteria  {pc.file_name}  (source: user-simulator goals)", flush=True
+                blocks.append(
+                    f"Criteria  {pc.file_name}  (source: user-simulator goals)"
                 )
-                print("", flush=True)  # noqa: T201
                 continue
 
             source = pc.config_source
             if source == "confeval.py" and confeval_path:
                 source = str(confeval_path)
-            print(f"Criteria  {pc.file_name}  (source: {source})", flush=True)  # noqa: T201
+            lines = [f"Criteria  {pc.file_name}  (source: {source})"]
             rows = self._criteria_rows(pc.config)
             if not rows:
-                print("  (no active criteria)", flush=True)  # noqa: T201
+                lines.append("  (no active criteria)")
             for name, summary, _ in rows:
-                print(f"  {name:<40} {summary}", flush=True)  # noqa: T201
-            print("", flush=True)  # noqa: T201
+                lines.append(f"  {name:<40} {summary}")
+            blocks.append("\n".join(lines))
+        if blocks:
+            self.output.info("\n\n".join(blocks), emoji=False)
 
     # ------------------------------------------------------------------
     # Progress printing
@@ -534,12 +536,14 @@ class EvalCommand(BaseCommand):
         status = "PASSED" if result.passed else ("ERROR" if result.is_error else "FAILED")
         duration = f"{result.duration_seconds:.2f}s"
         label = f"{file_name}::{case_name}"
-        status_colored = f"\033[32m{status}\033[0m" if result.passed else f"\033[31m{status}\033[0m"
         tok = getattr(result, "token_usage", None)
         tok_str = ""
         if tok and (tok.input_tokens or tok.output_tokens):
             tok_str = f"  in={tok.input_tokens} out={tok.output_tokens}"
-        print(f"[{index:3d}/{total}] {label}  {status_colored}  {duration}{tok_str}", flush=True)  # noqa: T201
+        self.output.info(
+            f"[{index:3d}/{total}] {label}  {status}  {duration}{tok_str}",
+            emoji=False,
+        )
 
     # ------------------------------------------------------------------
     # Flat pool execution — single asyncio event loop for all cases
@@ -892,7 +896,7 @@ class EvalCommand(BaseCommand):
                     self.output.warning(f"Reporter error [{name}]: {err}")
 
             if open_report and report_result.html_path:
-                webbrowser.open(Path(report_result.html_path).as_uri())
+                webbrowser.open(Path(report_result.html_path).resolve().as_uri())
 
         summary = merged.summary
         self.output.info(
