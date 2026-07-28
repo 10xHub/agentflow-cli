@@ -123,6 +123,9 @@ agentflow dev --no-open --no-reload        # API only, without auto-reload
 
 ```bash
 agentflow play                         # animated in an interactive terminal
+agentflow demo                         # preview every animation theme safely
+agentflow demo --style typing          # full-screen AGENTFLOW typing reveal
+agentflow demo --style build           # preview one command theme
 agentflow --no-animation play          # accessible/static workflow
 agentflow --animation doctor           # force the animation showcase
 agentflow --format plain --no-color doctor
@@ -136,6 +139,13 @@ activity states, and polished completion panels. Motion is automatically
 disabled for redirected output, CI, `TERM=dumb`, JSON/JSONL, and
 `AGENTFLOW_NO_SPINNER=1`. Use `--no-animation` for a stable screen-reader
 friendly experience or `--animation` to force motion in a compatible terminal.
+
+Every animated command owns one themed alternate-screen workspace for its full
+lifetime. `play` and `dev` type the Agentflow identity and remain on that
+background while the server runs; `api` animates a live graph network, `init`
+assembles a project scaffold, `build` advances a delivery pipeline, and
+`test`/`eval` scan through completion states. The original terminal buffer is
+restored only after the command exits or is interrupted.
 
 ### `agentflow build`
 

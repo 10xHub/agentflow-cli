@@ -145,11 +145,11 @@ def test_forced_tty_header_uses_animation_renderer(monkeypatch) -> None:
         def isatty(self) -> bool:
             return True
 
-    calls: list[tuple[str, str | None, bool]] = []
+    calls: list[tuple[str, str | None, bool, bool]] = []
     monkeypatch.setattr(
         "agentflow_cli.cli.core.output.render_command_intro",
-        lambda _console, *, command, subtitle, unicode: calls.append(
-            (command, subtitle, unicode)
+        lambda _console, *, command, subtitle, unicode, persistent_screen: calls.append(
+            (command, subtitle, unicode, persistent_screen)
         ),
     )
     stream = TTYStream()
@@ -159,7 +159,40 @@ def test_forced_tty_header_uses_animation_renderer(monkeypatch) -> None:
         progress_mode=ProgressMode.TTY,
     )
     rendered.command_header("play", "Start the playground")
-    assert calls == [("play", "Start the playground", True)]
+    assert calls == [("play", "Start the playground", True, False)]
+
+
+def test_fullscreen_session_owns_and_restores_alternate_screen(monkeypatch) -> None:
+    class FakeScreen:
+        entered = False
+        exited = False
+
+        def __enter__(self):
+            self.entered = True
+            return self
+
+        def __exit__(self, *_args):
+            self.exited = True
+
+    class FakeConsole:
+        def __init__(self) -> None:
+            self.context = FakeScreen()
+
+        def screen(self, **_kwargs):
+            return self.context
+
+    rendered, _stream = formatter(progress_mode=ProgressMode.TTY)
+    console = FakeConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+
+    assert rendered.start_fullscreen_session() is True
+    assert rendered.fullscreen_active is True
+    assert console.context.entered is True
+    assert rendered.start_fullscreen_session() is False
+
+    rendered.end_fullscreen_session()
+    assert rendered.fullscreen_active is False
+    assert console.context.exited is True
 
 
 def test_structured_activity_emits_lifecycle_events() -> None:

@@ -58,6 +58,7 @@ def _lazy_command(module_name: str, class_name: str) -> type:
 
 APICommand = _lazy_command("agentflow_cli.cli.commands.api", "APICommand")
 BuildCommand = _lazy_command("agentflow_cli.cli.commands.build", "BuildCommand")
+DemoCommand = _lazy_command("agentflow_cli.cli.commands.demo", "DemoCommand")
 EvalCommand = _lazy_command("agentflow_cli.cli.commands.eval", "EvalCommand")
 DoctorCommand = _lazy_command("agentflow_cli.cli.commands.doctor", "DoctorCommand")
 InitCommand = _lazy_command("agentflow_cli.cli.commands.init", "InitCommand")
@@ -238,6 +239,8 @@ def root(  # noqa: PLR0913
         yes=yes,
         non_interactive=non_interactive,
     )
+    if output.start_fullscreen_session():
+        ctx.call_on_close(output.end_fullscreen_session)
 
     if version_flag:
         typer.echo(CLI_VERSION)
@@ -558,6 +561,21 @@ def doctor(
     _configure_command(verbose=verbose, quiet=quiet)
     try:
         sys.exit(DoctorCommand(output).execute())
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command(rich_help_panel="Diagnostics")
+def demo(
+    style: str = typer.Option(
+        "all",
+        "--style",
+        help="Animation theme: all, typing, network, init, build, or eval.",
+    ),
+) -> None:
+    """Preview Agentflow terminal animations without changing project state."""
+    try:
+        sys.exit(DemoCommand(output).execute(style=style))
     except Exception as e:
         sys.exit(handle_exception(e))
 

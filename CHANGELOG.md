@@ -26,6 +26,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Terminal-native frame animation for interactive commands, plus reusable
   animated activities, timed state transitions, and completion panels.
+- Command-specific network, scaffold, delivery-pipeline, and evaluation-scan
+  animation themes, with a side-effect-free `agentflow demo` preview command.
+- Alternate-screen `AGENTFLOW` typing reveal and full-canvas background
+  transition for `play` and `dev`, previewable with `demo --style typing`.
+- Invocation-scoped alternate-screen ownership so every animated command keeps
+  its themed background until completion or interruption.
 - Staged startup feedback and connected-playground completion output for
   `agentflow play` and `agentflow dev`.
 - Adaptive `--animation` / `--no-animation` controls with CI, pipe, JSON, and

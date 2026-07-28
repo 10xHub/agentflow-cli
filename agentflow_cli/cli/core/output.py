@@ -59,6 +59,8 @@ class OutputFormatter:
         self.color_mode = color_mode
         self.progress_mode = progress_mode
         self.quiet = quiet
+        self._session_console: Console | None = None
+        self._screen_context: Any | None = None
         self.capabilities = TerminalCapabilities.detect(
             stream=self.stream,
             output_format=output_format,
@@ -105,6 +107,8 @@ class OutputFormatter:
         )
 
     def _console(self, *, error: bool = False) -> Console:
+        if self._session_console is not None:
+            return self._session_console
         return Console(
             file=self.error_stream if error else self.stream,
             theme=_THEME,
@@ -113,6 +117,35 @@ class OutputFormatter:
             highlight=False,
             soft_wrap=False,
         )
+
+    @property
+    def fullscreen_active(self) -> bool:
+        """Whether this invocation currently owns the alternate screen."""
+        return self._screen_context is not None
+
+    def start_fullscreen_session(self) -> bool:
+        """Enter a themed alternate screen for the full command lifetime."""
+        if self.fullscreen_active or self.quiet or not self.capabilities.animation:
+            return False
+        console = self._console()
+        screen_context = console.screen(style="on grey3", hide_cursor=False)
+        self._session_console = console
+        self._screen_context = screen_context
+        try:
+            screen_context.__enter__()
+        except Exception:
+            self._session_console = None
+            self._screen_context = None
+            raise
+        return True
+
+    def end_fullscreen_session(self) -> None:
+        """Restore the user's original terminal after a full-screen command."""
+        screen_context = self._screen_context
+        self._screen_context = None
+        self._session_console = None
+        if screen_context is not None:
+            screen_context.__exit__(None, None, None)
 
     @property
     def _structured(self) -> bool:
@@ -170,6 +203,7 @@ class OutputFormatter:
             command=command,
             subtitle=subtitle,
             unicode=self.capabilities.unicode,
+            persistent_screen=self.fullscreen_active,
         )
 
     def success(self, message: str, emoji: bool = True) -> None:
