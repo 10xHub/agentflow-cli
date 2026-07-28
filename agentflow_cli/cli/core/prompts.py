@@ -138,7 +138,7 @@ class PromptService:
         options = [choice.to_questionary() for choice in choices]
         default_option = next((o for o in options if o.value == default), None)
         return self._ask(
-            questionary.select(
+            lambda: questionary.select(
                 message,
                 choices=options,
                 default=default_option,
@@ -160,7 +160,7 @@ class PromptService:
     ) -> list[str] | None:
         """Toggle any number of options with space. Returns None if cancelled."""
         return self._ask(
-            questionary.checkbox(
+            lambda: questionary.checkbox(
                 message,
                 choices=[choice.to_questionary() for choice in choices],
                 instruction=instruction,
@@ -174,7 +174,7 @@ class PromptService:
     def confirm(self, message: str, *, default: bool = False) -> bool | None:
         """Ask a yes/no question. Returns None if cancelled."""
         return self._ask(
-            questionary.confirm(message, default=default, style=PROMPT_STYLE, qmark="?")
+            lambda: questionary.confirm(message, default=default, style=PROMPT_STYLE, qmark="?")
         )
 
     def text(
@@ -186,7 +186,7 @@ class PromptService:
     ) -> str | None:
         """Ask for a free-text value. Returns None if cancelled."""
         return self._ask(
-            questionary.text(
+            lambda: questionary.text(
                 message,
                 default=default,
                 validate=validate,
@@ -195,14 +195,18 @@ class PromptService:
             )
         )
 
-    def _ask(self, question: questionary.Question) -> Any:
-        """Run one question and restore whatever chrome it may have erased.
+    def _ask(self, build: Callable[[], questionary.Question]) -> Any:
+        """Build and run one question, restoring chrome it may have erased.
+
+        The question is constructed inside the guard, not passed in ready-made:
+        questionary builds its prompt-toolkit application eagerly, so a terminal
+        it cannot drive raises during construction rather than during ``ask``.
 
         The answer type depends on the question, so each caller narrows it in
         its own return annotation.
         """
         try:
-            return question.ask()
+            return build().ask()
         except ValidationError:
             raise
         except Exception as exc:

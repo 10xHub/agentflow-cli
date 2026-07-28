@@ -230,6 +230,13 @@ class InitCommand(BaseCommand):
 
     def _prompt_user(self) -> dict | None:  # noqa: PLR0911
         prompts = self.output.prompts()
+        prompts.require_interactive(
+            field="template",
+            alternatives=(
+                "Re-run with --yes to accept the defaults, or --non-interactive "
+                "with --name/--template for a reproducible recipe."
+            ),
+        )
 
         agent_name = prompts.text("What is your agent name?", default="MyAgent")
         if agent_name is None:

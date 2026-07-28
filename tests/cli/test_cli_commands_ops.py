@@ -196,12 +196,29 @@ def test_init_command_prod(monkeypatch, tmp_path, silent_output):
     )
 
 
-def test_init_command_existing_without_force(tmp_path, silent_output):
+def test_init_command_existing_without_force(monkeypatch, tmp_path, silent_output):
+    ctx = {
+        "agent_name": "MyAgent",
+        "agent_name_slug": "my-agent",
+        "setup_type": "quick_start",
+        "auth": "none",
+        "rate_limit": "none",
+    }
+    monkeypatch.setattr(InitCommand, "_prompt_user", lambda self: ctx)
     cfg = tmp_path / "agentflow.json"
     cfg.write_text("{}", encoding="utf-8")
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False)
     assert code == 1
+
+
+def test_init_without_a_terminal_explains_the_flag_alternative(tmp_path, silent_output):
+    """No TTY and no --yes/--non-interactive is a usage problem with a fix."""
+    cmd = InitCommand(output=silent_output)
+    code = cmd.execute(path=str(tmp_path), force=False)
+
+    assert code == 3
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_build_command_basic_no_requirements(tmp_path, monkeypatch, silent_output):
