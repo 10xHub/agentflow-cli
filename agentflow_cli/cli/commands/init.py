@@ -315,7 +315,9 @@ class InitCommand(BaseCommand):
 
         auth = context["auth"]
         if auth == "jwt":
-            config["auth"] = {"method": "jwt"}
+            # JWT is configured with the bare string. The dict form requires a "path"
+            # (see GraphConfig.auth_config) and is only valid for method "custom".
+            config["auth"] = "jwt"
         elif auth == "custom":
             config["auth"] = {"method": "custom", "path": "auth.agent_auth:AgentAuth"}
 

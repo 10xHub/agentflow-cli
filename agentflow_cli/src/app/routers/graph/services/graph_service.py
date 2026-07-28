@@ -1069,9 +1069,23 @@ class GraphService:
             ):
                 has_auth = True
         if settings.MODE == "production" or has_auth:
+            # Name the condition that actually tripped: reporting only
+            # "production/multi-tenant" sends people auditing MODE when it was
+            # the auth backend, and vice versa.
+            reasons = []
+            if settings.MODE == "production":
+                reasons.append("MODE is 'production'")
+            if has_auth:
+                reasons.append("an auth backend is configured in agentflow.json")
             raise HTTPException(
                 status_code=403,
-                detail="Dynamic tool setup is disabled in production/multi-tenant mode.",
+                detail=(
+                    "Dynamic tool setup is disabled because "
+                    + " and ".join(reasons)
+                    + ". Registration mutates process-wide graph state, so it is unsafe to "
+                    "expose once requests can come from more than one tenant. Attach the tools "
+                    "statically instead via CompiledGraph.attach_remote_tools()."
+                ),
             )
 
         # lets create tools
