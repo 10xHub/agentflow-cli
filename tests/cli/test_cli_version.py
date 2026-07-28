@@ -15,8 +15,8 @@ class StubOutput:
         self.error_messages = []
 
     # Methods used by VersionCommand
-    def print_banner(self, title, subtitle, color=""):
-        self.banner_args.append((title, subtitle, color))
+    def command_header(self, command, subtitle, color=""):
+        self.banner_args.append((command.title(), subtitle, color))
 
     def success(self, msg):
         self.success_messages.append(msg)

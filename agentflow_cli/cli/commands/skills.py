@@ -135,8 +135,8 @@ class SkillsCommand(BaseCommand):
             Exit code.
         """
         try:
-            self.output.print_banner(
-                "Skills",
+            self.output.command_header(
+                "skills",
                 "Install bundled Agentflow skills for Codex, Claude, or GitHub Copilot.",
                 color="magenta",
             )

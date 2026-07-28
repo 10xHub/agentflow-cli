@@ -57,38 +57,40 @@ class APICommand(BaseCommand):
             Exit code
         """
         try:
-            # Print banner
-            self.output.print_banner(
-                "API (development)",
+            self.output.command_header(
+                "play" if open_playground else "api",
                 "Starting development server via Uvicorn. Not for production use.",
             )
 
-            # Validate inputs
-            validated_options = validate_cli_options(host, port, config)
+            with self.output.activity(
+                "Discovering and validating the project",
+                done="Project configuration validated",
+                spinner="aesthetic",
+            ):
+                validated_options = validate_cli_options(host, port, config)
+                config_manager = ConfigManager()
+                actual_config_path = config_manager.find_config_file(validated_options["config"])
+                config_manager.load_config(str(actual_config_path))
 
-            # Load configuration
-            config_manager = ConfigManager()
-            actual_config_path = config_manager.find_config_file(validated_options["config"])
-            # Load and validate config
-            config_manager.load_config(str(actual_config_path))
+            with self.output.activity(
+                "Loading environment and graph runtime",
+                done="Runtime environment prepared",
+                spinner="bouncingBar",
+            ):
+                env_file_path = config_manager.resolve_env_file()
+                if env_file_path:
+                    self.logger.info("Loading environment from: %s", env_file_path)
+                    load_dotenv(env_file_path)
+                else:
+                    load_dotenv()
 
-            # Load environment file if specified
-            env_file_path = config_manager.resolve_env_file()
-            if env_file_path:
-                self.logger.info("Loading environment from: %s", env_file_path)
-                load_dotenv(env_file_path)
-            else:
-                # Load default .env if it exists
-                load_dotenv()
+                os.environ["GRAPH_PATH"] = str(actual_config_path)
 
-            # Set environment variables
-            os.environ["GRAPH_PATH"] = str(actual_config_path)
+                # Add project root to sys.path for importing graph modules
+                sys.path.insert(0, str(actual_config_path.parent))
 
-            # Add project root to sys.path for importing graph modules
-            sys.path.insert(0, str(actual_config_path.parent))
-
-            # Ensure we're using the correct module path
-            sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+                # Ensure we're using the correct module path
+                sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
             self.logger.info(
                 "Starting API with config: %s, host: %s, port: %d",
@@ -104,7 +106,23 @@ class APICommand(BaseCommand):
                     playground_base_url=playground_url,
                 )
 
-            # Start the server
+            browser_host = self._normalize_browser_host(validated_options["host"])
+            self.output.completion_screen(
+                "Ready to serve",
+                "Agentflow runtime configured successfully",
+                details={
+                    "API": f"http://{browser_host}:{validated_options['port']}",
+                    "Docs": f"http://{browser_host}:{validated_options['port']}/docs",
+                    "Config": actual_config_path,
+                    "Reload": "enabled" if reload else "disabled",
+                },
+                next_steps=(
+                    ["The playground will open automatically when the API becomes reachable."]
+                    if open_playground
+                    else ["Press Ctrl+C to stop the development server."]
+                ),
+            )
+
             uvicorn.run(
                 "agentflow_cli.src.app.main:app",
                 host=validated_options["host"],
@@ -161,12 +179,17 @@ class APICommand(BaseCommand):
         opened = webbrowser.open_new_tab(launch_url)
         if opened:
             self.logger.info("Opened playground URL: %s", launch_url)
+            self.output.completion_screen(
+                "Playground ready",
+                "Local API connected and browser launched",
+                details={"URL": launch_url},
+                next_steps=["Build, test, and inspect your agent in the playground."],
+            )
             return
 
-        self.logger.warning(
-            "Browser launch returned false. Open the playground manually: %s",
-            launch_url,
-        )
+        message = f"Browser launch returned false. Open the playground manually: {launch_url}"
+        self.logger.warning(message)
+        self.output.warning(message)
 
     def _wait_for_server(
         self,

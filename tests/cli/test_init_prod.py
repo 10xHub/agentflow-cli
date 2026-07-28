@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 
 from agentflow_cli.cli.commands.init import InitCommand
 
 
 class SilentOutput:
-    def print_banner(self, *a, **kw):
+    def command_header(self, *a, **kw):
+        pass
+
+    @contextmanager
+    def activity(self, *a, **kw):
+        yield None
+
+    def completion_screen(self, *a, **kw):
         pass
 
     def success(self, *a, **kw):

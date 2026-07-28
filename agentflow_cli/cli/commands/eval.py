@@ -818,8 +818,8 @@ class EvalCommand(BaseCommand):
             parts.append(f"{n_cases} eval case(s)")
         if n_sims:
             parts.append(f"{n_sims} simulation scenario(s)")
-        self.output.print_banner(
-            "Eval",
+        self.output.command_header(
+            "eval",
             f"Found {', '.join(parts)} across {n_files} file(s) in {target_path}",
         )
 

@@ -61,8 +61,8 @@ class InitCommand(BaseCommand):
         **kwargs: Any,
     ) -> int:
         try:
-            self.output.print_banner(
-                "Init", "Create a new AgentFlow agent project", color="magenta"
+            self.output.command_header(
+                "init", "Create a new AgentFlow agent project", color="magenta"
             )
 
             context: dict[str, Any] | None
@@ -105,28 +105,43 @@ class InitCommand(BaseCommand):
                 self.output.info("Dry run complete; no files were written.", emoji=False)
                 return 0
 
-            base_path.mkdir(parents=True, exist_ok=True)
-            self.output.info("Creating project files...", emoji=False)
-            created = self._copy_template_dir(
-                template_dir, base_path, context, force=force, is_prod=is_prod
-            )
+            with self.output.activity(
+                "Scaffolding project files",
+                done="Project files generated",
+                spinner="arc",
+            ):
+                base_path.mkdir(parents=True, exist_ok=True)
+                created = self._copy_template_dir(
+                    template_dir, base_path, context, force=force, is_prod=is_prod
+                )
 
-            # Regenerate agentflow.json from the built config. Force is safe only to
-            # override the copy this run just made; honor --force for a file that was
-            # already there.
-            config = self._build_config(context, is_prod)
-            self._write_file(
-                config_path,
-                json.dumps(config, indent=2) + "\n",
-                force=force or not config_pre_existed,
-            )
+                # Regenerate agentflow.json from the built config. Force is safe only to
+                # override the copy this run just made; honor --force for a file that was
+                # already there.
+                config = self._build_config(context, is_prod)
+                self._write_file(
+                    config_path,
+                    json.dumps(config, indent=2) + "\n",
+                    force=force or not config_pre_existed,
+                )
             if config_path not in created:
                 self._print_file_line(config_path, base_path)
 
             agent_name = context["agent_name"]
-            self.output.success(f'Project "{agent_name}" ready at {base_path.resolve()}')
-
-            self._print_next_steps(context, is_prod)
+            self.output.completion_screen(
+                "Project ready",
+                f'"{agent_name}" was created successfully',
+                details={
+                    "Location": base_path.resolve(),
+                    "Template": "production" if is_prod else "quick-start",
+                    "Auth": context["auth"],
+                },
+                next_steps=[
+                    f"cd {base_path}",
+                    "Copy .env.example to .env and add your model API key.",
+                    "agentflow play",
+                ],
+            )
 
             return 0
 

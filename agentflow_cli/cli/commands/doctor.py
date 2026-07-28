@@ -34,8 +34,8 @@ class DoctorCommand(BaseCommand):
             self._config_check(),
             self._port_check(DEFAULT_PORT),
         ]
-        self.output.print_banner(
-            "Doctor",
+        self.output.command_header(
+            "doctor",
             "Checking the current Agentflow development environment.",
             color="cyan",
         )
@@ -56,7 +56,11 @@ class DoctorCommand(BaseCommand):
         if warnings:
             self.output.warning(f"{len(warnings)} check(s) need attention.")
         else:
-            self.output.success("Environment is ready.")
+            self.output.completion_screen(
+                "Environment ready",
+                "All required Agentflow checks passed",
+                details={"Checks": len(diagnostics), "Project": Path.cwd()},
+            )
         return 0
 
     @staticmethod

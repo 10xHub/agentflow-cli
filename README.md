@@ -122,11 +122,20 @@ agentflow dev --no-open --no-reload        # API only, without auto-reload
 ### Adaptive and structured output
 
 ```bash
+agentflow play                         # animated in an interactive terminal
+agentflow --no-animation play          # accessible/static workflow
+agentflow --animation doctor           # force the animation showcase
 agentflow --format plain --no-color doctor
 agentflow --format jsonl eval --parallel
 agentflow --quiet build
 agentflow --cwd ../my-agent dev
 ```
+
+Interactive commands use a short terminal-native Agentflow reveal, animated
+activity states, and polished completion panels. Motion is automatically
+disabled for redirected output, CI, `TERM=dumb`, JSON/JSONL, and
+`AGENTFLOW_NO_SPINNER=1`. Use `--no-animation` for a stable screen-reader
+friendly experience or `--animation` to force motion in a compatible terminal.
 
 ### `agentflow build`
 

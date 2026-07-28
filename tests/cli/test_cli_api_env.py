@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,14 @@ from agentflow_cli.cli.core import validation as validation_module
 
 
 class SilentOutput:
-    def print_banner(self, *_, **__):
+    def command_header(self, *_, **__):
+        pass
+
+    @contextmanager
+    def activity(self, *_, **__):
+        yield None
+
+    def completion_screen(self, *_, **__):
         pass
 
     def error(self, *_):
@@ -19,6 +27,9 @@ class SilentOutput:
         pass
 
     def info(self, *_):
+        pass
+
+    def warning(self, *_):
         pass
 
 

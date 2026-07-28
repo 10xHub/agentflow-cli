@@ -125,6 +125,12 @@ def root(  # noqa: PLR0913
         help="Progress mode: auto, tty, plain, json, or quiet.",
         rich_help_panel="Global output",
     ),
+    animation: bool | None = typer.Option(
+        None,
+        "--animation/--no-animation",
+        help="Enable or disable decorative command animation.",
+        rich_help_panel="Global output",
+    ),
     cwd: Path | None = typer.Option(
         None,
         "--cwd",
@@ -188,6 +194,12 @@ def root(  # noqa: PLR0913
             raise typer.BadParameter("--json cannot be combined with a different --format.")
         if no_color and color not in {None, ColorMode.NEVER}:
             raise typer.BadParameter("--no-color cannot be combined with a different --color.")
+        if animation is not None and progress is not None:
+            expected = ProgressMode.TTY if animation else ProgressMode.PLAIN
+            if progress != expected:
+                raise typer.BadParameter(
+                    "--animation/--no-animation conflicts with the selected --progress mode."
+                )
         resolved_format = output_format or OutputFormat(
             preferences.get("output.format", OutputFormat.HUMAN)
         )
@@ -199,6 +211,8 @@ def root(  # noqa: PLR0913
             resolved_format = OutputFormat.JSON
         if no_color:
             resolved_color = ColorMode.NEVER
+        if animation is not None:
+            resolved_progress = ProgressMode.TTY if animation else ProgressMode.PLAIN
     except (ConfigurationError, ValueError) as exc:
         if ctx.invoked_subcommand != "config":
             raise typer.BadParameter(

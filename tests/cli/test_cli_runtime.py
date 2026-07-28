@@ -41,6 +41,12 @@ def test_plain_and_no_color_global_options() -> None:
     assert "Version" in result.output
 
 
+def test_no_animation_alias_selects_static_output() -> None:
+    result = runner.invoke(main_mod.app, ["--no-animation", "doctor"])
+    assert result.exit_code == 0
+    assert "Doctor" in result.output
+
+
 def test_dev_delegates_to_api_with_open_policy(monkeypatch) -> None:
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)

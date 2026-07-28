@@ -45,9 +45,8 @@ class BuildCommand(BaseCommand):
             Exit code
         """
         try:
-            # Print banner
-            self.output.print_banner(
-                "Build",
+            self.output.command_header(
+                "build",
                 "Generate Dockerfile (and optional docker-compose.yml) for production image",
                 color="yellow",
             )
@@ -70,17 +69,19 @@ class BuildCommand(BaseCommand):
             # Discover requirements files
             requirements_files, requirements_file = self._discover_requirements(current_dir)
 
-            # Generate Dockerfile content
-            dockerfile_content = generate_dockerfile_content(
-                python_version=validated_python_version,
-                port=validated_port,
-                requirements_file=requirements_file,
-                has_requirements=bool(requirements_files),
-                omit_cmd=docker_compose,
-            )
-
-            # Write Dockerfile
-            self._write_dockerfile(output_path, dockerfile_content)
+            with self.output.activity(
+                "Generating container assets",
+                done="Container assets generated",
+                spinner="material",
+            ):
+                dockerfile_content = generate_dockerfile_content(
+                    python_version=validated_python_version,
+                    port=validated_port,
+                    requirements_file=requirements_file,
+                    has_requirements=bool(requirements_files),
+                    omit_cmd=docker_compose,
+                )
+                self._write_dockerfile(output_path, dockerfile_content)
             self.output.success(f"Successfully generated Dockerfile at {output_path}")
 
             # Write .dockerignore in the same directory
@@ -115,8 +116,25 @@ class BuildCommand(BaseCommand):
                     force=force, service_name=validated_service_name, port=validated_port
                 )
 
-            # Show next steps
-            self._show_next_steps(docker_compose)
+            generated = ["Dockerfile", ".dockerignore"]
+            if docker_compose:
+                generated.append("docker-compose.yml")
+            if k8s:
+                generated.append("k8s.yaml")
+            self.output.completion_screen(
+                "Build assets ready",
+                "Deployment files generated successfully",
+                details={
+                    "Files": ", ".join(generated),
+                    "Service": validated_service_name,
+                    "Port": validated_port,
+                },
+                next_steps=(
+                    ["docker compose up --build"]
+                    if docker_compose
+                    else [f"docker build -t {validated_service_name} ."]
+                ),
+            )
 
             return 0
 

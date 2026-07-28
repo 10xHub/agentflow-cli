@@ -24,6 +24,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Terminal-native frame animation for interactive commands, plus reusable
+  animated activities, timed state transitions, and completion panels.
+- Staged startup feedback and connected-playground completion output for
+  `agentflow play` and `agentflow dev`.
+- Adaptive `--animation` / `--no-animation` controls with CI, pipe, JSON, and
+  accessibility-safe fallbacks.
 - Adaptive Rich terminal rendering with TTY/CI detection, plain/JSONL modes,
   `NO_COLOR` support, ASCII fallback, quiet mode, and shared status rendering.
 - Root `--format`, `--json`, `--color`, `--no-color`, `--progress`, `--cwd`,

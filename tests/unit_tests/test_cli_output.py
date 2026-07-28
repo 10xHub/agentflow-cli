@@ -130,6 +130,65 @@ def test_plain_status_degrades_to_a_checkpoint() -> None:
     assert "Loading" in stream.getvalue()
 
 
+def test_plain_command_header_degrades_to_static_banner() -> None:
+    rendered, stream = formatter(
+        output_format=OutputFormat.PLAIN,
+        progress_mode=ProgressMode.PLAIN,
+    )
+    rendered.command_header("play", "Start the playground")
+    assert "== Play ==" in stream.getvalue()
+    assert "Start the playground" in stream.getvalue()
+
+
+def test_forced_tty_header_uses_animation_renderer(monkeypatch) -> None:
+    class TTYStream(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    calls: list[tuple[str, str | None, bool]] = []
+    monkeypatch.setattr(
+        "agentflow_cli.cli.core.output.render_command_intro",
+        lambda _console, *, command, subtitle, unicode: calls.append(
+            (command, subtitle, unicode)
+        ),
+    )
+    stream = TTYStream()
+    rendered = OutputFormatter(
+        stream=stream,
+        output_format=OutputFormat.HUMAN,
+        progress_mode=ProgressMode.TTY,
+    )
+    rendered.command_header("play", "Start the playground")
+    assert calls == [("play", "Start the playground", True)]
+
+
+def test_structured_activity_emits_lifecycle_events() -> None:
+    rendered, stream = formatter(output_format=OutputFormat.JSONL)
+    with rendered.activity("Loading graph", done="Graph loaded"):
+        pass
+    payloads = [json.loads(line) for line in stream.getvalue().splitlines()]
+    assert [payload["type"] for payload in payloads] == [
+        "progress_start",
+        "progress_end",
+        "success",
+    ]
+    assert payloads[1]["status"] == "completed"
+
+
+def test_structured_completion_screen_is_one_event() -> None:
+    rendered, stream = formatter(output_format=OutputFormat.JSONL)
+    rendered.completion_screen(
+        "Ready",
+        "Server configured",
+        details={"API": "http://localhost:8000"},
+        next_steps=["Open docs"],
+    )
+    payload = json.loads(stream.getvalue())
+    assert payload["type"] == "completion"
+    assert payload["title"] == "Ready"
+    assert payload["details"]["API"] == "http://localhost:8000"
+
+
 def test_global_convenience_functions_delegate(monkeypatch) -> None:
     calls: list[tuple[str, str]] = []
     monkeypatch.setattr(output, "print_banner", lambda value, *a, **k: calls.append(("banner", value)))
