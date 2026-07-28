@@ -72,6 +72,8 @@ class AppFrame:
         self._open = False
         self._chrome = False
         self._command = ""
+        self._subtitle: str | None = None
+        self._version: str | None = None
         self._hint = ""
         self._height = 0
         self._width = 0
@@ -123,17 +125,34 @@ class AppFrame:
             return
 
         self._command = command
+        self._subtitle = subtitle
+        self._version = version
         self._hint = hint or "Ctrl+C to cancel"
-        body_top = _HEADER_ROWS + 1
-        body_bottom = self._height - _FOOTER_ROWS
 
         self._write(_CLEAR_SCREEN)
-        self._draw_header(command=command, subtitle=subtitle, version=version)
+        self._draw_header()
         self._draw_footer(self._hint)
         # Confine scrolling to the body, then park the cursor at its top so the
         # first line of output lands directly under the header.
-        self._write(_scroll_region(body_top, body_bottom) + _at(body_top))
+        self._write(_scroll_region(*self._body_bounds()) + _at(_HEADER_ROWS + 1))
         self._chrome = True
+
+    def redraw_chrome(self) -> None:
+        """Repaint the chrome after something else wrote outside the body.
+
+        Prompt-toolkit erases from the cursor to the end of the *screen*, which
+        a scrolling region does not contain — so a prompt takes the footer with
+        it and can clear the region itself. Both are re-asserted here.
+        """
+        if not self._open or not self._chrome:
+            return
+        self._draw_header()
+        self._draw_footer(self._hint)
+        # Setting a scrolling region homes the cursor, so bracket it.
+        self._write(_SAVE_CURSOR + _scroll_region(*self._body_bounds()) + _RESTORE_CURSOR)
+
+    def _body_bounds(self) -> tuple[int, int]:
+        return _HEADER_ROWS + 1, self._height - _FOOTER_ROWS
 
     def close(self, *, hold: bool = True) -> None:
         """Pause on a closing hint, then release the screen and restore the terminal."""
@@ -142,6 +161,7 @@ class AppFrame:
         self._open = False
 
         if self._chrome:
+            self._draw_header()
             self._draw_footer(
                 "Press Enter to close",
                 anchored=True,
@@ -160,13 +180,7 @@ class AppFrame:
     # Chrome rendering
     # ------------------------------------------------------------------
 
-    def _draw_header(
-        self,
-        *,
-        command: str,
-        subtitle: str | None,
-        version: str | None,
-    ) -> None:
+    def _draw_header(self) -> None:
         glyphs = self._glyphs
         width = self._width
 
@@ -174,14 +188,14 @@ class AppFrame:
         identity.append(f"{glyphs.diamond} ", style="agentflow.brand")
         identity.append_text(gradient_text("agentflow", bold=True))
         identity.append(f" {glyphs.caret} ", style="agentflow.muted")
-        identity.append(command, style="agentflow.command")
-        if version:
-            identity.append(" " * max(width - identity.cell_len - len(version) - 1, 1))
-            identity.append(version, style="agentflow.muted")
+        identity.append(self._command, style="agentflow.command")
+        if self._version:
+            identity.append(" " * max(width - identity.cell_len - len(self._version) - 1, 1))
+            identity.append(self._version, style="agentflow.muted")
         _pad(identity, width)
 
         caption = Text(" ", style="agentflow.header")
-        caption.append(subtitle or "", style="agentflow.muted")
+        caption.append(self._subtitle or "", style="agentflow.muted")
         _pad(caption, width)
 
         rows = (

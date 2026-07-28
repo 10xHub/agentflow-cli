@@ -82,6 +82,17 @@ class StepHandle:
             self._step.detail = reason
         self._on_change()
 
+    def fail(self, reason: str = "") -> None:
+        """Mark this stage failed without aborting the rest of the timeline.
+
+        Raising would be the usual way to fail a stage, but some commands want
+        to record one failure and carry on with the remaining work.
+        """
+        self._step.state = StepState.FAILED
+        if reason:
+            self._step.detail = reason
+        self._on_change()
+
 
 class Timeline(Protocol):
     """Shared surface across animated, plain, and structured renderers."""
@@ -159,6 +170,7 @@ class _BaseTimeline:
             self._on_finish(step)
             raise
         step.finished = time.monotonic()
+        # A stage that already reported skip() or fail() keeps that verdict.
         if step.state is StepState.ACTIVE:
             step.state = StepState.DONE
         self._on_finish(step)

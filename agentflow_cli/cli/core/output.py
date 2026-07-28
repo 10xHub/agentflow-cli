@@ -25,6 +25,7 @@ from agentflow_cli.cli.capabilities import (
 )
 from agentflow_cli.cli.constants import CLI_VERSION
 from agentflow_cli.cli.core.animations import render_command_intro, render_session_header
+from agentflow_cli.cli.core.prompts import PromptService
 from agentflow_cli.cli.core.screen import AppFrame
 from agentflow_cli.cli.core.steps import (
     LiveProgressRun,
@@ -180,6 +181,18 @@ class OutputFormatter:
         self._session_console = None
         if frame is not None:
             frame.close()
+
+    def refresh_chrome(self) -> None:
+        """Repaint pinned chrome that something else may have drawn over."""
+        if self._frame is not None:
+            self._frame.redraw_chrome()
+
+    def prompts(self, *, interactive: bool | None = None) -> PromptService:
+        """Build a prompt service bound to this invocation's terminal state."""
+        return PromptService(
+            interactive=interactive,
+            on_answered=self.refresh_chrome,
+        )
 
     @property
     def _structured(self) -> bool:

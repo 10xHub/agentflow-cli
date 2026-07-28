@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import json
 import shutil
-import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-import typer
-
 from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.constants import CLI_VERSION
+from agentflow_cli.cli.core.prompts import Choice
 from agentflow_cli.cli.exceptions import FileOperationError, ValidationError
 
 
@@ -152,11 +150,27 @@ class SkillsCommand(BaseCommand):
             project_root = self._safe_project_root(path)
 
             if all_agents:
-                return self._install_all(templates_root, project_root, force=force)
+                targets: tuple[_AgentTarget, ...] = _TARGETS
+            elif agent:
+                targets = (self._normalize_agent(agent),)
+            else:
+                selected = self._choose_agents(project_root)
+                if selected is None:
+                    self.output.info("Cancelled.", emoji=False)
+                    return 0
+                targets = selected
 
-            target = self._select_agent(agent)
-            self._install_one(templates_root, project_root, target, force=force)
-            return 0
+            force = force or self._confirm_overwrite(project_root, targets, force=force)
+            return self._install_targets(
+                templates_root,
+                project_root,
+                targets,
+                force=force,
+                # Naming one agent is a request for that agent specifically, so a
+                # collision is an error. A set the user did not enumerate — --all,
+                # or a multi-select — skips what is already there instead.
+                strict=bool(agent),
+            )
 
         except (FileOperationError, ValidationError) as e:
             return self.handle_error(e)
@@ -165,6 +179,152 @@ class SkillsCommand(BaseCommand):
             file_error.__cause__ = e
             return self.handle_error(file_error)
 
+    # ------------------------------------------------------------------
+    # Selection
+    # ------------------------------------------------------------------
+
+    def _choose_agents(self, project_root: Path) -> tuple[_AgentTarget, ...] | None:
+        """Offer a space-to-toggle list of agents. Returns None if cancelled."""
+        prompts = self.output.prompts()
+        prompts.require_interactive(
+            field="agent",
+            alternatives="Pass --agent codex|claude|github, or --all.",
+        )
+
+        choices = [
+            Choice(
+                value=target.name,
+                title=target.name,
+                description=self._choice_description(project_root, target),
+                # Pre-check what is already installed, so confirming without
+                # touching anything reinstalls exactly what is already there.
+                checked=bool(self._existing_paths(project_root, target)),
+            )
+            for target in _TARGETS
+        ]
+        names = prompts.checkbox(
+            "Which agents should get the Agentflow skill?",
+            choices,
+            validate=lambda selected: bool(selected) or "Select at least one agent.",
+        )
+        if names is None:
+            return None
+        return tuple(_AGENT_LOOKUP[name.lower()] for name in names)
+
+    def _choice_description(self, project_root: Path, target: _AgentTarget) -> str:
+        install_root = target.artifacts[0].install_relpath
+        if self._existing_paths(project_root, target):
+            return f"{install_root}  (installed)"
+        return install_root
+
+    @staticmethod
+    def _existing_paths(project_root: Path, target: _AgentTarget) -> list[Path]:
+        return [
+            project_root / artifact.install_relpath
+            for artifact in target.artifacts
+            if (project_root / artifact.install_relpath).exists()
+        ]
+
+    def _confirm_overwrite(
+        self,
+        project_root: Path,
+        targets: tuple[_AgentTarget, ...],
+        *,
+        force: bool,
+    ) -> bool:
+        """Offer to overwrite in place of failing, when a human is present."""
+        if force:
+            return False
+        occupied = [t.name for t in targets if self._existing_paths(project_root, t)]
+        if not occupied:
+            return False
+
+        prompts = self.output.prompts()
+        if not prompts.interactive:
+            # Non-interactive callers keep the previous contract: refuse and
+            # point at --force rather than silently replacing files.
+            return False
+        return bool(
+            prompts.confirm(
+                f"Overwrite the existing install for {', '.join(occupied)}?",
+                default=True,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Installation
+    # ------------------------------------------------------------------
+
+    def _install_targets(
+        self,
+        templates_root: Path,
+        project_root: Path,
+        targets: tuple[_AgentTarget, ...],
+        *,
+        force: bool,
+        strict: bool,
+    ) -> int:
+        installed: list[str] = []
+        skipped: list[str] = []
+        failed: list[str] = []
+
+        timeline = self.output.timeline(
+            "Installing Agentflow skills",
+            steps=tuple((target.name.lower(), f"{target.name} skill") for target in targets),
+        )
+        with timeline:
+            for target in targets:
+                with timeline.step(target.name.lower()) as step:
+                    existing = self._existing_paths(project_root, target)
+                    if existing and not force:
+                        if strict:
+                            paths = ", ".join(str(dest) for dest in existing)
+                            raise FileOperationError(
+                                f"Skill already installed at {paths}. " "Use --force to overwrite.",
+                                file_path=str(existing[0]),
+                            )
+                        step.skip("already installed — pass --force to overwrite")
+                        skipped.append(target.name)
+                        continue
+                    try:
+                        paths = self._install_one(templates_root, project_root, target, force=force)
+                    except (FileOperationError, OSError, UnicodeError) as exc:
+                        # Record and continue: one unwritable target should not
+                        # cancel the agents the user also asked for.
+                        self.logger.error("Install failed for %s: %s", target.name, exc)
+                        failed.append(f"{target.name}: {exc}")
+                        step.fail(str(exc))
+                        continue
+                    installed.append(target.name)
+                    step.detail(paths[0])
+
+        for target in targets:
+            if target.name in installed:
+                self._print_activation_hint(target)
+
+        if skipped:
+            self.output.warning(
+                "Skipped existing installs (use --force to overwrite): " + ", ".join(skipped)
+            )
+        if failed:
+            self.output.error("Failed installs: " + "; ".join(failed))
+            if not installed:
+                return 1
+
+        self.output.completion_screen(
+            "Skills installed" if installed else "Nothing to install",
+            f"{len(installed)} agent(s) ready" if installed else "Every selection was skipped",
+            details={
+                "Installed": ", ".join(installed) or "none",
+                "Skipped": ", ".join(skipped) or "none",
+                "Project": project_root,
+            },
+            next_steps=["Restart your coding agent so it loads the new skill directory."]
+            if installed
+            else [],
+        )
+        return 0
+
     def _install_one(
         self,
         templates_root: Path,
@@ -172,7 +332,7 @@ class SkillsCommand(BaseCommand):
         target: _AgentTarget,
         *,
         force: bool,
-    ) -> None:
+    ) -> list[str]:
         installs = [
             (
                 artifact,
@@ -218,10 +378,7 @@ class SkillsCommand(BaseCommand):
                 shutil.copyfile(source, dest)
             installed_paths.append(str(dest))
 
-        self.output.success(
-            f"Installed Agentflow skills for {target.name} at {', '.join(installed_paths)}"
-        )
-        self._print_activation_hint(target)
+        return installed_paths
 
     def _print_activation_hint(self, target: _AgentTarget) -> None:
         """Tell the user how to make the freshly installed skill take effect.
@@ -249,38 +406,6 @@ class SkillsCommand(BaseCommand):
                 ".github/skills/ directory and .github/instructions/ file."
             )
         self.output.warning(f"Activate: {note}")
-
-    def _install_all(self, templates_root: Path, project_root: Path, *, force: bool) -> int:
-        installed = 0
-        skipped: list[str] = []
-        failed: list[str] = []
-        for target in _TARGETS:
-            existing = [
-                project_root / artifact.install_relpath
-                for artifact in target.artifacts
-                if (project_root / artifact.install_relpath).exists()
-            ]
-            if existing and not force:
-                paths = ", ".join(str(dest) for dest in existing)
-                skipped.append(f"{target.name} ({paths})")
-                continue
-            try:
-                self._install_one(templates_root, project_root, target, force=force)
-                installed += 1
-            except (FileOperationError, OSError, UnicodeError) as e:
-                self.logger.error("Install failed for %s: %s", target.name, e)
-                failed.append(f"{target.name}: {e}")
-
-        if skipped:
-            self.output.warning(
-                "Skipped existing installs (use --force to overwrite): " + ", ".join(skipped)
-            )
-        if failed:
-            self.output.error("Failed installs: " + "; ".join(failed))
-
-        if failed and installed == 0:
-            return 1
-        return 0
 
     def _write_manifest(self, target_dir: Path, agent_name: str) -> None:
         manifest = {
@@ -316,25 +441,6 @@ class SkillsCommand(BaseCommand):
                 field="path",
             )
         return project_root
-
-    def _select_agent(self, agent: str | None) -> _AgentTarget:
-        if agent:
-            return self._normalize_agent(agent)
-
-        if not sys.stdin.isatty():
-            raise ValidationError(
-                "No --agent provided and stdin is not interactive. "
-                "Pass --agent codex|claude|github or --all.",
-                field="agent",
-            )
-
-        self.output.print_list(
-            [f"{i}. {t.name}" for i, t in enumerate(_TARGETS, 1)],
-            title="Which agent?",
-            bullet="-",
-        )
-        selected = typer.prompt("Select an agent", default="1")
-        return self._normalize_agent(selected)
 
     def _normalize_agent(self, value: str) -> _AgentTarget:
         key = value.strip().lower()

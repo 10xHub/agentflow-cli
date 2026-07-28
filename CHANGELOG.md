@@ -52,6 +52,19 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `init`, `build`, `test`, `eval`, `doctor`, and `skills`, previewable with the
   side-effect-free `agentflow demo`.
 - Row-by-row reveal for completion panels.
+- **Shared guided-prompt layer** (`cli/core/prompts.py`). Every interactive
+  question now runs through one themed service, so prompts share a palette, a
+  cancellation contract (Ctrl+C returns to a clean exit rather than a
+  traceback), and one non-interactive policy.
+- `agentflow skills` picks agents with an arrow-key list where **space toggles**
+  and enter confirms, instead of typing a menu number. Each row shows its
+  install path, already-installed agents are labelled and pre-checked, and
+  choosing one that exists offers to overwrite rather than failing.
+- `agentflow skills` reports installs through a timeline and a completion
+  screen, matching every other command.
+- `agentflow init` prompts now explain each option inline — what Quick Start
+  versus Production scaffolds, what each auth mode requires, what each rate
+  limit backend costs.
 - Staged startup feedback, a pre-flight port check, and connected-playground
   completion output for `agentflow play` and `agentflow dev`.
 - Adaptive `--animation` / `--no-animation` controls with CI, pipe, JSON, and
@@ -99,6 +112,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A console that reports itself as a terminal but refuses the alternate buffer
   (legacy Windows console) now aborts the frame before anything is written,
   rather than leaving a scrolling region on the user's real scrollback.
+- **A terminal that cannot host a prompt no longer crashes the command.**
+  `stdin.isatty()` is true under MSYS/Cygwin shells on Windows, but
+  prompt-toolkit cannot attach to a console there and raises — which surfaced as
+  `AF-INTERNAL-001: Unexpected error: Found xterm-256color, while expecting a
+  Windows console`. Prompt availability is now probed, so such a terminal counts
+  as non-interactive and gets the usual "pass --agent or --all" guidance.
+- Pinned chrome is repainted after each prompt. Prompt-toolkit erases from the
+  cursor to the end of the *screen*, which reaches past the scrolling region and
+  took the footer with it.
 - One Rich `Console` is now reused per stream. Rebuilding it per call meant a live
   display could not tell that ordinary prints belonged to it, so background output
   collided with spinners and progress bars instead of scrolling above them.

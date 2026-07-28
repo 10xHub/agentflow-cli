@@ -8,9 +8,8 @@ from pathlib import Path
 from string import Template
 from typing import Any
 
-import questionary
-
 from agentflow_cli.cli.commands import BaseCommand
+from agentflow_cli.cli.core.prompts import Choice
 from agentflow_cli.cli.exceptions import FileOperationError, ValidationError
 
 
@@ -230,27 +229,36 @@ class InitCommand(BaseCommand):
     # ------------------------------------------------------------------
 
     def _prompt_user(self) -> dict | None:  # noqa: PLR0911
-        agent_name = questionary.text(
-            "What is your agent name?",
-            default="MyAgent",
-        ).ask()
+        prompts = self.output.prompts()
+
+        agent_name = prompts.text("What is your agent name?", default="MyAgent")
         if agent_name is None:
             return None
 
-        setup_choice = questionary.select(
-            "Quick Start or Production setup?",
-            choices=["Quick Start", "Production"],
-            default="Quick Start",
-        ).ask()
-        if setup_choice is None:
+        template = prompts.select(
+            "Which project template?",
+            [
+                Choice(
+                    "quick_start",
+                    "Quick Start",
+                    "Minimal graph, no auth — fastest path to a running agent",
+                ),
+                Choice(
+                    "production",
+                    "Production",
+                    "Auth, rate limiting, evals, and tests scaffolded in",
+                ),
+            ],
+            default="quick_start",
+        )
+        if template is None:
             return None
 
-        is_prod = setup_choice == "Production"
-
+        is_prod = template == "production"
         context: dict[str, Any] = {
             "agent_name": agent_name,
             "agent_name_slug": _slugify(agent_name),
-            "setup_type": "production" if is_prod else "quick_start",
+            "setup_type": template,
             "auth": "none",
             "rate_limit": "none",
         }
@@ -260,66 +268,75 @@ class InitCommand(BaseCommand):
 
         # --- Production questions ---
 
-        auth_choice = questionary.select(
-            "Authentication type?",
-            choices=["None", "JWT", "Custom"],
-            default="None",
-        ).ask()
-        if auth_choice is None:
+        auth = prompts.select(
+            "How should requests be authenticated?",
+            [
+                Choice("none", "None", "Open endpoints — development only"),
+                Choice("jwt", "JWT", "Requires JWT_SECRET_KEY and JWT_ALGORITHM"),
+                Choice("custom", "Custom", "Scaffolds a BaseAuth subclass under auth/"),
+            ],
+            default="none",
+        )
+        if auth is None:
             return None
-        context["auth"] = auth_choice.lower()
+        context["auth"] = auth
 
-        if context["auth"] == "none":
+        if auth == "none":
             return context
 
-        rl_choice = questionary.select(
-            "Rate limiting?",
-            choices=["None", "Memory Based", "Redis Based"],
-            default="None",
-        ).ask()
-        if rl_choice is None:
+        rate_limit = prompts.select(
+            "Rate limiting backend?",
+            [
+                Choice("none", "None", "No request throttling"),
+                Choice("memory", "Memory", "Per-process counters — single instance only"),
+                Choice("redis", "Redis", "Shared counters — requires REDIS_URL"),
+            ],
+            default="none",
+        )
+        if rate_limit is None:
             return None
-        context["rate_limit"] = {
-            "None": "none",
-            "Memory Based": "memory",
-            "Redis Based": "redis",
-        }[rl_choice]
+        context["rate_limit"] = rate_limit
 
-        if context["rate_limit"] != "none":
-            rl_requests = questionary.text(
-                "Max requests per window?",
-                default="100",
-                validate=lambda v: (v.isdigit() and int(v) > 0) or "Enter a positive integer",
-            ).ask()
-            if rl_requests is None:
-                return None
-            context["rl_requests"] = int(rl_requests)
+        if rate_limit == "none":
+            return context
 
-            rl_window = questionary.text(
-                "Window size (seconds)?",
-                default="60",
-                validate=lambda v: (v.isdigit() and int(v) > 0) or "Enter a positive integer",
-            ).ask()
-            if rl_window is None:
-                return None
-            context["rl_window"] = int(rl_window)
+        rl_requests = prompts.text(
+            "Max requests per window?",
+            default="100",
+            validate=lambda v: (v.isdigit() and int(v) > 0) or "Enter a positive integer",
+        )
+        if rl_requests is None:
+            return None
+        context["rl_requests"] = int(rl_requests)
 
-            rl_by = questionary.select(
-                "Limit by?",
-                choices=["Per IP (recommended)", "Global"],
-                default="Per IP (recommended)",
-            ).ask()
-            if rl_by is None:
-                return None
-            context["rl_by"] = "ip" if "IP" in rl_by else "global"
+        rl_window = prompts.text(
+            "Window size (seconds)?",
+            default="60",
+            validate=lambda v: (v.isdigit() and int(v) > 0) or "Enter a positive integer",
+        )
+        if rl_window is None:
+            return None
+        context["rl_window"] = int(rl_window)
 
-            rl_proxy = questionary.confirm(
-                "Behind a reverse proxy? (reads real IP from forwarded headers)",
-                default=False,
-            ).ask()
-            if rl_proxy is None:
-                return None
-            context["rl_trusted_proxy"] = rl_proxy
+        rl_by = prompts.select(
+            "Count requests per?",
+            [
+                Choice("ip", "Per IP", "Recommended — each client gets its own budget"),
+                Choice("global", "Global", "One shared budget across all clients"),
+            ],
+            default="ip",
+        )
+        if rl_by is None:
+            return None
+        context["rl_by"] = rl_by
+
+        rl_proxy = prompts.confirm(
+            "Behind a reverse proxy? (reads the real IP from forwarded headers)",
+            default=False,
+        )
+        if rl_proxy is None:
+            return None
+        context["rl_trusted_proxy"] = rl_proxy
 
         return context
 
