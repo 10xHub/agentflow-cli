@@ -16,6 +16,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import questionary
 from prompt_toolkit.styles import Style
@@ -64,6 +65,10 @@ def prompt_toolkit_available() -> bool:
         create_output()
     except Exception:
         return False
+    return True
+
+
+def _accept_any(_selected: list[str]) -> bool:
     return True
 
 
@@ -161,7 +166,8 @@ class PromptService:
                 instruction=instruction,
                 style=PROMPT_STYLE,
                 qmark="?",
-                validate=validate,
+                # Questionary requires a validator; accept anything by default.
+                validate=validate or _accept_any,
             )
         )
 
@@ -189,8 +195,12 @@ class PromptService:
             )
         )
 
-    def _ask(self, question: questionary.Question) -> object:
-        """Run one question and restore whatever chrome it may have erased."""
+    def _ask(self, question: questionary.Question) -> Any:
+        """Run one question and restore whatever chrome it may have erased.
+
+        The answer type depends on the question, so each caller narrows it in
+        its own return annotation.
+        """
         try:
             return question.ask()
         except ValidationError:

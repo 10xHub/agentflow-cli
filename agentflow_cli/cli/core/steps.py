@@ -20,6 +20,7 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
+from types import TracebackType
 from typing import Any, Protocol
 
 from rich.console import Console, Group, RenderableType
@@ -99,7 +100,12 @@ class Timeline(Protocol):
 
     def __enter__(self) -> Timeline: ...
 
-    def __exit__(self, *exc_info: object) -> None: ...
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
 
     def add(self, key: str, title: str) -> None: ...
 
@@ -111,7 +117,12 @@ class ProgressRun(Protocol):
 
     def __enter__(self) -> ProgressRun: ...
 
-    def __exit__(self, *exc_info: object) -> None: ...
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
 
     def record(self, label: str, *, status: str, detail: str = "") -> None: ...
 
@@ -219,7 +230,12 @@ class LiveTimeline(_BaseTimeline):
         self._live.__enter__()
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         live = self._live
         self._live = None
         if live is None:
@@ -227,7 +243,7 @@ class LiveTimeline(_BaseTimeline):
         # Paint the resolved state before releasing the region so the final
         # frame is what stays in scrollback.
         live.update(self._render(), refresh=True)
-        live.__exit__(*exc_info)
+        live.__exit__(exc_type, exc, traceback)
         self._console.print()
 
     def _changed(self) -> None:
@@ -325,7 +341,12 @@ class StaticTimeline(_BaseTimeline):
             self._emit(f"{self._glyphs.diamond} {self._title}")
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         return None
 
     def _on_start(self, step: Step) -> None:
@@ -364,7 +385,12 @@ class StructuredTimeline(_BaseTimeline):
         )
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self._emit(
             "timeline_end",
             self._title or "",
@@ -393,7 +419,12 @@ class QuietTimeline(_BaseTimeline):
     def __enter__(self) -> QuietTimeline:
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         return None
 
 
@@ -413,7 +444,12 @@ class _BaseProgressRun:
     def __enter__(self) -> _BaseProgressRun:
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         return None
 
     def record(self, label: str, *, status: str, detail: str = "") -> None:
@@ -481,11 +517,16 @@ class LiveProgressRun(_BaseProgressRun):
         self._task = self._progress.add_task(self.title, total=self.total, tally="")
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         progress = self._progress
         self._progress = None
         if progress is not None:
-            progress.__exit__(*exc_info)
+            progress.__exit__(exc_type, exc, traceback)
             self._console.print()
 
     def _render(self, label: str, status: str, detail: str) -> None:
@@ -555,7 +596,12 @@ class StructuredProgressRun(_BaseProgressRun):
         self._emit("progress_start", self.title, {"total": self.total})
         return self
 
-    def __exit__(self, *exc_info: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self._emit("progress_end", self.title, {"total": self.total, **self.tally})
 
     def _render(self, label: str, status: str, detail: str) -> None:

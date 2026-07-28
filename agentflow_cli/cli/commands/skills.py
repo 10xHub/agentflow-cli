@@ -287,7 +287,9 @@ class SkillsCommand(BaseCommand):
                         skipped.append(target.name)
                         continue
                     try:
-                        paths = self._install_one(templates_root, project_root, target, force=force)
+                        written = self._install_one(
+                            templates_root, project_root, target, force=force
+                        )
                     except (FileOperationError, OSError, UnicodeError) as exc:
                         # Record and continue: one unwritable target should not
                         # cancel the agents the user also asked for.
@@ -296,7 +298,7 @@ class SkillsCommand(BaseCommand):
                         step.fail(str(exc))
                         continue
                     installed.append(target.name)
-                    step.detail(paths[0])
+                    step.detail(written[0])
 
         for target in targets:
             if target.name in installed:

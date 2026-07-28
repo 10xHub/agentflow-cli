@@ -503,9 +503,7 @@ class EvalCommand(BaseCommand):
             seen.add(pc.file_name)
 
             if isinstance(pc, _PendingSimulation):
-                blocks.append(
-                    f"Criteria  {pc.file_name}  (source: user-simulator goals)"
-                )
+                blocks.append(f"Criteria  {pc.file_name}  (source: user-simulator goals)")
                 continue
 
             source = pc.config_source
@@ -650,9 +648,7 @@ class EvalCommand(BaseCommand):
                 detail=self._case_detail(result),
             )
 
-        title = "Running evaluation cases" + (
-            f" ({max_concurrency} at a time)" if parallel else ""
-        )
+        title = "Running evaluation cases" + (f" ({max_concurrency} at a time)" if parallel else "")
 
         if not parallel:
             results: list[tuple[str, str, str, EvalCaseResult]] = []

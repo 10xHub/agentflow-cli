@@ -89,8 +89,6 @@ agentflow build --docker-compose
 ## 🖥️ CLI Commands
 
 Run `agentflow --help` or `agentflow COMMAND --help` for the generated command reference.
-The modernization architecture and delivery roadmap are documented in
-[`CLI_UX_IMPLEMENTATION_PLAN.md`](./CLI_UX_IMPLEMENTATION_PLAN.md).
 
 ### `agentflow init`
 
@@ -122,30 +120,40 @@ agentflow dev --no-open --no-reload        # API only, without auto-reload
 ### Adaptive and structured output
 
 ```bash
-agentflow play                         # animated in an interactive terminal
-agentflow demo                         # preview every animation theme safely
-agentflow demo --style typing          # full-screen AGENTFLOW typing reveal
+agentflow play                         # full-screen surface in an interactive terminal
+agentflow demo                         # preview the animation and progress states safely
 agentflow demo --style build           # preview one command theme
+agentflow --no-fullscreen play         # keep output in your normal scrollback
 agentflow --no-animation play          # accessible/static workflow
-agentflow --animation doctor           # force the animation showcase
 agentflow --format plain --no-color doctor
 agentflow --format jsonl eval --parallel
 agentflow --quiet build
 agentflow --cwd ../my-agent dev
 ```
 
-Interactive commands use a short terminal-native Agentflow reveal, animated
-activity states, and polished completion panels. Motion is automatically
-disabled for redirected output, CI, `TERM=dumb`, JSON/JSONL, and
-`AGENTFLOW_NO_SPINNER=1`. Use `--no-animation` for a stable screen-reader
-friendly experience or `--animation` to force motion in a compatible terminal.
+On an interactive terminal a command runs on its own full-screen surface: a
+pinned header (identity, version, subtitle), a pinned footer status bar, and the
+command's output scrolling between them. The intro reveals the Agentflow
+wordmark on the full canvas and collapses into that header, and each command
+shows its own pipeline — `play`/`dev` config→runtime→server→playground, `init`
+template→graph→config→project, `build` source→deps→image→ship, `eval`
+discover→load→score→report.
 
-Every animated command owns one themed alternate-screen workspace for its full
-lifetime. `play` and `dev` type the Agentflow identity and remain on that
-background while the server runs; `api` animates a live graph network, `init`
-assembles a project scaffold, `build` advances a delivery pipeline, and
-`test`/`eval` scan through completion states. The original terminal buffer is
-restored only after the command exits or is interrupted.
+The surface is held until you press Enter, so a fast command cannot erase its
+own result. Pass `--no-fullscreen` (or set `AGENTFLOW_NO_FULLSCREEN=1`) to keep
+everything in your normal scrollback instead — useful when you want to scroll
+back or copy a path afterwards.
+
+Long-running work reports through a live step timeline: stages are declared up
+front, pending ones stay dimmed, and the running one animates with an elapsed
+timer. `agentflow eval` uses a determinate progress bar with a running pass/fail
+tally.
+
+Motion is disabled automatically for redirected output, CI, `TERM=dumb`,
+JSON/JSONL, and `AGENTFLOW_NO_SPINNER=1`. Use `--no-animation` for a stable
+screen-reader friendly experience, or `--animation` to force motion in a
+compatible terminal. Every animated surface has a plain line-per-transition
+renderer and a versioned JSON/JSONL event renderer.
 
 ### `agentflow build`
 
@@ -172,10 +180,16 @@ agentflow test --coverage
 Install bundled coding-agent skills (Codex, Claude, GitHub Copilot) into your project so your AI assistant knows how to build with Agentflow.
 
 ```bash
+agentflow skills                # pick agents interactively (space toggles, enter confirms)
 agentflow skills --all          # install for every supported agent
 agentflow skills --agent claude # install for one
 agentflow skills --list         # show supported agents
+agentflow skills --force        # overwrite an existing install
 ```
+
+Run without flags to get a checklist of the supported agents. Each row shows
+where it installs, agents that are already set up are labelled and pre-checked,
+and picking one that exists offers to overwrite rather than failing.
 
 ### `agentflow version`
 
