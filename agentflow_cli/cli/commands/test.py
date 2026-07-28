@@ -25,53 +25,67 @@ class TestCommand(BaseCommand):
         **kwargs: Any,
     ) -> int:
         project_root = Path.cwd()
+        self.output.command_header("test", f"Running the project test suite in {project_root}")
 
-        # Load optional overrides from agentflow.json
-        cfg: dict[str, Any] = {}
-        config_manager = ConfigManager()
-        discovered = config_manager.auto_discover_config()
-        if discovered:
-            try:
-                config_manager.load_config(str(discovered))
-                cfg = config_manager.get_test_config()
-            except Exception:  # nosec: B110
-                self.logger.warning("Failed to load test configuration from %s", discovered)
+        timeline = self.output.timeline(
+            "Preparing the test run",
+            steps=(
+                ("config", "Resolving test configuration"),
+                ("command", "Building the pytest command"),
+            ),
+        )
+        with timeline:
+            with timeline.step("config") as step:
+                # Load optional overrides from agentflow.json
+                cfg: dict[str, Any] = {}
+                config_manager = ConfigManager()
+                discovered = config_manager.auto_discover_config()
+                if discovered:
+                    try:
+                        config_manager.load_config(str(discovered))
+                        cfg = config_manager.get_test_config()
+                        step.detail(str(discovered))
+                    except Exception:  # nosec: B110
+                        self.logger.warning("Failed to load test configuration from %s", discovered)
+                        step.detail(f"ignored unreadable config at {discovered}")
+                else:
+                    step.detail("no agentflow.json found — using pytest defaults")
 
-        # Explicit CLI path wins; fall back to agentflow.json; None = pytest auto-discovery
-        resolved_path: str | None = path or cfg.get("path") or None
-        resolved_coverage = coverage or cfg.get("coverage", False)
-        coverage_threshold: int | None = cfg.get("coverage_threshold")
+                # Explicit CLI path wins; agentflow.json next; None = pytest auto-discovery
+                resolved_path: str | None = path or cfg.get("path") or None
+                resolved_coverage = coverage or cfg.get("coverage", False)
+                coverage_threshold: int | None = cfg.get("coverage_threshold")
+                location = str(project_root / resolved_path) if resolved_path else str(project_root)
 
-        location = str(project_root / resolved_path) if resolved_path else str(project_root)
-        self.output.command_header("test", f"Running tests in {location}")
+            with timeline.step("command") as step:
+                cmd = [sys.executable, "-m", "pytest"]
+                if resolved_path:
+                    cmd.append(resolved_path)
 
-        cmd = [sys.executable, "-m", "pytest"]
-        if resolved_path:
-            cmd.append(resolved_path)
+                if quiet and not verbose:
+                    cmd.append("-q")
+                else:
+                    cmd.append("-v")
 
-        if verbose:
-            cmd.append("-v")
-        elif quiet:
-            cmd.append("-q")
-        else:
-            cmd.append("-v")
+                if resolved_coverage:
+                    cmd += [
+                        "--cov=.",
+                        "--cov-report=term-missing",
+                        "--cov-report=html:htmlcov",
+                    ]
+                    if coverage_threshold is not None:
+                        cmd.append(f"--cov-fail-under={coverage_threshold}")
 
-        if resolved_coverage:
-            cmd += [
-                "--cov=.",
-                "--cov-report=term-missing",
-                "--cov-report=html:htmlcov",
-            ]
-            if coverage_threshold is not None:
-                cmd.append(f"--cov-fail-under={coverage_threshold}")
+                if keyword:
+                    cmd += ["-k", keyword]
 
-        if keyword:
-            cmd += ["-k", keyword]
-
-        cmd += list(extra_args)
+                cmd += list(extra_args)
+                step.detail(" ".join(["pytest", *cmd[3:]]))
 
         self.logger.info("Running: %s", " ".join(cmd))
 
+        # No spinner around this: pytest owns the terminal while it streams its
+        # own progress, and a live region would fight it for the cursor.
         result = subprocess.run(cmd, cwd=project_root, check=False)  # nosec: B603  # noqa: S603
 
         if result.returncode == 0:

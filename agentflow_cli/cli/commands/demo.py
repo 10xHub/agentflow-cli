@@ -15,6 +15,21 @@ class DemoCommand(BaseCommand):
     _STYLES = ("typing", "network", "init", "build", "eval")
     _ALIASES = {"play": "typing", "api": "network"}
 
+    _SUBTITLES = {
+        "typing": "Full-screen Agentflow identity and workspace transition",
+        "network": "Live agent network and playground connection",
+        "init": "Project scaffold assembly",
+        "build": "Container delivery pipeline",
+        "eval": "Evaluation scan and completion states",
+    }
+    _COMMAND_NAMES = {
+        "typing": "typing",
+        "network": "api",
+        "init": "init",
+        "build": "build",
+        "eval": "eval",
+    }
+
     def execute(self, style: str = "all", **kwargs: Any) -> int:
         normalized = self._ALIASES.get(style.strip().lower(), style.strip().lower())
         if normalized != "all" and normalized not in self._STYLES:
@@ -27,31 +42,11 @@ class DemoCommand(BaseCommand):
             )
 
         selected = self._STYLES if normalized == "all" else (normalized,)
-        subtitles = {
-            "typing": "Full-screen Agentflow identity and workspace transition",
-            "network": "Live agent network and playground connection",
-            "init": "Project scaffold assembly",
-            "build": "Container delivery pipeline",
-            "eval": "Evaluation scan and completion states",
-        }
-        command_names = {
-            "typing": "typing",
-            "network": "api",
-            "init": "init",
-            "build": "build",
-            "eval": "eval",
-        }
         for theme in selected:
-            self.output.command_header(command_names[theme], subtitles[theme])
+            self.output.command_header(self._COMMAND_NAMES[theme], self._SUBTITLES[theme])
 
-        stages = (
-            ("Resolving graph topology", "Graph topology resolved", "aesthetic"),
-            ("Assembling runtime pipeline", "Runtime pipeline assembled", "bouncingBar"),
-            ("Connecting developer experience", "Developer experience connected", "moon"),
-        )
-        for message, done, spinner in stages:
-            with self.output.activity(message, done=done, spinner=spinner):
-                time.sleep(0.35)
+        self._preview_timeline()
+        self._preview_progress()
 
         self.output.completion_screen(
             "Animation showcase",
@@ -64,6 +59,35 @@ class DemoCommand(BaseCommand):
             next_steps=[
                 "Run `agentflow play` to see the network theme in a real workflow.",
                 "Use `agentflow --no-animation COMMAND` for static accessible output.",
+                "Use `agentflow --fullscreen COMMAND` to hold a dedicated screen.",
             ],
         )
         return 0
+
+    def _preview_timeline(self) -> None:
+        stages = (
+            ("topology", "Resolving graph topology", "3 nodes, 2 edges"),
+            ("pipeline", "Assembling runtime pipeline", "checkpointer + store bound"),
+            ("experience", "Connecting developer experience", "playground reachable"),
+        )
+        timeline = self.output.timeline(
+            "Timeline preview",
+            steps=tuple((key, title) for key, title, _ in stages),
+        )
+        with timeline:
+            for key, _title, detail in stages:
+                with timeline.step(key) as step:
+                    time.sleep(0.35)
+                    step.detail(detail)
+
+    def _preview_progress(self) -> None:
+        samples = (
+            ("weather_eval::forecast_tokyo", "passed"),
+            ("weather_eval::forecast_oslo", "passed"),
+            ("weather_eval::unknown_city", "failed"),
+            ("weather_eval::rate_limited", "passed"),
+        )
+        with self.output.progress_run("Progress preview", total=len(samples)) as progress:
+            for label, status in samples:
+                time.sleep(0.18)
+                progress.record(label, status=status, detail="0.42s")

@@ -525,25 +525,19 @@ class EvalCommand(BaseCommand):
     # Progress printing
     # ------------------------------------------------------------------
 
-    def _print_case_progress(
-        self,
-        file_name: str,
-        case_name: str,
-        result: EvalCaseResult,
-        index: int,
-        total: int,
-    ) -> None:
-        status = "PASSED" if result.passed else ("ERROR" if result.is_error else "FAILED")
-        duration = f"{result.duration_seconds:.2f}s"
-        label = f"{file_name}::{case_name}"
+    @staticmethod
+    def _case_status(result: EvalCaseResult) -> str:
+        if result.passed:
+            return "passed"
+        return "error" if result.is_error else "failed"
+
+    @staticmethod
+    def _case_detail(result: EvalCaseResult) -> str:
+        detail = f"{result.duration_seconds:.2f}s"
         tok = getattr(result, "token_usage", None)
-        tok_str = ""
         if tok and (tok.input_tokens or tok.output_tokens):
-            tok_str = f"  in={tok.input_tokens} out={tok.output_tokens}"
-        self.output.info(
-            f"[{index:3d}/{total}] {label}  {status}  {duration}{tok_str}",
-            emoji=False,
-        )
+            detail += f"  in={tok.input_tokens} out={tok.output_tokens}"
+        return detail
 
     # ------------------------------------------------------------------
     # Flat pool execution — single asyncio event loop for all cases
@@ -560,7 +554,6 @@ class EvalCommand(BaseCommand):
         Returns list of (file_name, eval_set_id, eval_set_name, EvalCaseResult).
         """
         total = len(pending)
-        completed = 0
 
         async def _run_case(pc: _PendingCase) -> tuple[str, str, str, EvalCaseResult]:
             local_collector = TrajectoryCollector(
@@ -649,16 +642,25 @@ class EvalCommand(BaseCommand):
                 return await _run_simulation(item)
             return await _run_case(item)
 
+        def _record(progress: Any, quad: tuple[str, str, str, EvalCaseResult]) -> None:
+            file_name, _, _, result = quad
+            progress.record(
+                f"{file_name}::{result.name or result.eval_id}",
+                status=self._case_status(result),
+                detail=self._case_detail(result),
+            )
+
+        title = "Running evaluation cases" + (
+            f" ({max_concurrency} at a time)" if parallel else ""
+        )
+
         if not parallel:
             results: list[tuple[str, str, str, EvalCaseResult]] = []
-            for item in pending:
-                quad = await _dispatch(item)
-                completed += 1
-                file_name, _, _, result = quad
-                self._print_case_progress(
-                    file_name, result.name or result.eval_id, result, completed, total
-                )
-                results.append(quad)
+            with self.output.progress_run(title, total=total) as progress:
+                for item in pending:
+                    quad = await _dispatch(item)
+                    _record(progress, quad)
+                    results.append(quad)
             return results
 
         semaphore = asyncio.Semaphore(max_concurrency)
@@ -670,15 +672,12 @@ class EvalCommand(BaseCommand):
                 return await _dispatch(item)
 
         output_results: list[tuple[str, str, str, EvalCaseResult]] = []
-        tasks = [asyncio.create_task(_run_one(item)) for item in pending]
-        for coro in asyncio.as_completed(tasks):
-            quad = await coro
-            completed += 1
-            file_name, _, _, result = quad
-            self._print_case_progress(
-                file_name, result.name or result.eval_id, result, completed, total
-            )
-            output_results.append(quad)
+        with self.output.progress_run(title, total=total) as progress:
+            tasks = [asyncio.create_task(_run_one(item)) for item in pending]
+            for coro in asyncio.as_completed(tasks):
+                quad = await coro
+                _record(progress, quad)
+                output_results.append(quad)
 
         return output_results
 

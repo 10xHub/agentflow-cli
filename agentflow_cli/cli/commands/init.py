@@ -3,6 +3,7 @@
 import contextlib
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 from string import Template
 from typing import Any
@@ -96,8 +97,7 @@ class InitCommand(BaseCommand):
                 planned = [
                     str(src.relative_to(template_dir))
                     for src in sorted(template_dir.rglob("*"))
-                    if src.is_file()
-                    and not self._should_skip(src, template_dir, context, is_prod)
+                    if src.is_file() and not self._should_skip(src, template_dir, context, is_prod)
                 ]
                 if "agentflow.json" not in planned:
                     planned.append("agentflow.json")
@@ -105,27 +105,41 @@ class InitCommand(BaseCommand):
                 self.output.info("Dry run complete; no files were written.", emoji=False)
                 return 0
 
-            with self.output.activity(
-                "Scaffolding project files",
-                done="Project files generated",
-                spinner="arc",
-            ):
-                base_path.mkdir(parents=True, exist_ok=True)
-                created = self._copy_template_dir(
-                    template_dir, base_path, context, force=force, is_prod=is_prod
-                )
+            timeline = self.output.timeline(
+                f'Scaffolding "{context["agent_name"]}"',
+                steps=(
+                    ("workspace", "Preparing the project directory"),
+                    ("files", "Writing template files"),
+                    ("config", "Generating agentflow.json"),
+                ),
+            )
+            with timeline:
+                with timeline.step("workspace") as step:
+                    base_path.mkdir(parents=True, exist_ok=True)
+                    step.detail(str(base_path.resolve()))
 
-                # Regenerate agentflow.json from the built config. Force is safe only to
-                # override the copy this run just made; honor --force for a file that was
-                # already there.
-                config = self._build_config(context, is_prod)
-                self._write_file(
-                    config_path,
-                    json.dumps(config, indent=2) + "\n",
-                    force=force or not config_pre_existed,
-                )
-            if config_path not in created:
-                self._print_file_line(config_path, base_path)
+                with timeline.step("files") as step:
+                    created = self._copy_template_dir(
+                        template_dir,
+                        base_path,
+                        context,
+                        force=force,
+                        is_prod=is_prod,
+                        on_file=step.detail,
+                    )
+                    step.detail(f"{len(created)} files from the {template_dir.name} template")
+
+                with timeline.step("config") as step:
+                    # Regenerate agentflow.json from the built config. Force is safe only
+                    # to override the copy this run just made; honor --force for a file
+                    # that was already there.
+                    config = self._build_config(context, is_prod)
+                    self._write_file(
+                        config_path,
+                        json.dumps(config, indent=2) + "\n",
+                        force=force or not config_pre_existed,
+                    )
+                    step.detail(str(config_path))
 
             agent_name = context["agent_name"]
             self.output.completion_screen(
@@ -202,9 +216,7 @@ class InitCommand(BaseCommand):
         return {
             "agent_name": resolved_name,
             "agent_name_slug": slug,
-            "setup_type": "production"
-            if resolved_template == "production"
-            else "quick_start",
+            "setup_type": "production" if resolved_template == "production" else "quick_start",
             "auth": resolved_auth,
             "rate_limit": resolved_rate_limit,
             "rl_requests": 100,
@@ -348,10 +360,6 @@ class InitCommand(BaseCommand):
             title="Project summary",
         )
 
-    def _print_file_line(self, dest: Path, base_path: Path) -> None:
-        rel = dest.relative_to(base_path)
-        self.output.info(f"Created {rel}", emoji=False)
-
     def _print_next_steps(self, context: dict, is_prod: bool) -> None:
         steps: list[tuple[str, str]] = []
 
@@ -462,6 +470,7 @@ class InitCommand(BaseCommand):
         *,
         force: bool,
         is_prod: bool,
+        on_file: Callable[[str], None] | None = None,
     ) -> set[Path]:
         created: set[Path] = set()
         for src in sorted(template_dir.rglob("*")):
@@ -473,7 +482,8 @@ class InitCommand(BaseCommand):
             dest = dest_dir / rel
             content = self._render(src, context, is_prod)
             self._write_file(dest, content, force=force)
-            self._print_file_line(dest, dest_dir)
+            if on_file is not None:
+                on_file(str(rel).replace("\\", "/"))
             created.add(dest)
         return created
 

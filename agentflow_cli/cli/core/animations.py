@@ -1,113 +1,89 @@
-"""Terminal-native animation assets and renderers.
+"""Terminal-native animation engine for the Agentflow CLI.
 
-Frames stay independent from colors so terminal themes and accessibility
-preferences can decide how semantic roles are rendered at runtime.
+The intro deliberately runs on the *alternate* screen and then hands the
+terminal back. An alternate screen is discarded by the terminal when it is
+released, so anything a command prints while holding one is lost the moment the
+process exits. Motion therefore gets the full canvas for as long as it is
+running, and every durable line — headers, timelines, results — is written to
+the normal buffer where it stays in scrollback.
+
+Frames are generated from a normalized ``0.0 -> 1.0`` timeline rather than a
+fixed frame list so the same choreography adapts to terminal width, refresh
+rate, and the reduced-motion budget without being re-authored.
 """
 
 from __future__ import annotations
 
+import math
 import time
-from dataclasses import dataclass
 
 from rich.align import Align
 from rich.console import Console, Group, RenderableType
 from rich.live import Live
 from rich.text import Text
 
-
-@dataclass(frozen=True)
-class AnimationFrame:
-    """One terminal animation frame with its display duration."""
-
-    lines: tuple[str, ...]
-    duration: float = 0.07
-
-
-_BRAND_UNICODE_FRAMES = (
-    AnimationFrame(("                    ", "         ·          ", "                    ")),
-    AnimationFrame(("                    ", "       ·─◆─·        ", "                    ")),
-    AnimationFrame(("       ╭───╮        ", "       │ ◆ │        ", "       ╰───╯        ")),
-    AnimationFrame(("   ◆───╭───╮───◆    ", "       │ A │        ", "   ◆───╰───╯───◆    ")),
-    AnimationFrame(("   ◆───╭───╮───◆    ", "       │ AF│  AGENT ", "   ◆───╰───╯───◆    ")),
-    AnimationFrame(
-        ("   ◆───╭───╮───◆    ", "       │ AF│  AGENTFLOW", "   ◆───╰───╯───◆    "),
-        0.12,
-    ),
+from agentflow_cli.cli.constants import CLI_VERSION
+from agentflow_cli.cli.core.theme import (
+    BRAND_RAMP,
+    Glyphs,
+    dim_hex,
+    glyphs_for,
+    gradient_rule,
+    gradient_text,
+    sample_ramp,
 )
 
-_BRAND_ASCII_FRAMES = (
-    AnimationFrame(("                    ", "         .          ", "                    ")),
-    AnimationFrame(("                    ", "       .-O-.        ", "                    ")),
-    AnimationFrame(("       +---+        ", "       | O |        ", "       +---+        ")),
-    AnimationFrame(("   O---+---+---O    ", "       | A |        ", "   O---+---+---O    ")),
-    AnimationFrame(("   O---+---+---O    ", "       | AF|  AGENT ", "   O---+---+---O    ")),
-    AnimationFrame(
-        ("   O---+---+---O    ", "       | AF|  AGENTFLOW", "   O---+---+---O    "),
-        0.12,
-    ),
-)
 
-_NETWORK_UNICODE_FRAMES = (
-    AnimationFrame(("        ◌          ", "        │          ", "    ◌───◆───◌      ")),
-    AnimationFrame(("        ◉          ", "        ┃          ", "    ◌───◆───◌      ")),
-    AnimationFrame(("        ◌          ", "        │          ", "    ◉━━━◆━━━◉      ")),
-    AnimationFrame(("    ◌───◆───◌      ", "        ┃          ", "    ◉━━━◆━━━◉      ")),
-    AnimationFrame(("    ◉━━━◆━━━◉      ", "        ┃          ", "    ◉━━━◆━━━◉      "), 0.12),
-)
+INTRO_DURATION_SECONDS = 1.25
+INTRO_FPS = 30
+_MIN_CINEMATIC_HEIGHT = 16
+# Column distance over which the reveal front and the shimmer stay lit.
+_REVEAL_FRONT_WIDTH = 1.6
+_SHIMMER_WIDTH = 2.5
+_MIN_CINEMATIC_WIDTH = 62
 
-_NETWORK_ASCII_FRAMES = (
-    AnimationFrame(("        o          ", "        |          ", "    o---O---o      ")),
-    AnimationFrame(("        O          ", "        |          ", "    o---O---o      ")),
-    AnimationFrame(("        o          ", "        |          ", "    O===O===O      ")),
-    AnimationFrame(("    o---O---o      ", "        |          ", "    O===O===O      ")),
-    AnimationFrame(("    O===O===O      ", "        |          ", "    O===O===O      "), 0.12),
-)
+# 5x5 block glyphs. Only the letters in "AGENTFLOW" are needed; anything else
+# falls back to the compact wordmark.
+_BLOCK_FONT: dict[str, tuple[str, ...]] = {
+    "A": (" ███ ", "█   █", "█████", "█   █", "█   █"),
+    "G": (" ████", "█    ", "█  ██", "█   █", " ████"),
+    "E": ("█████", "█    ", "████ ", "█    ", "█████"),
+    "N": ("█   █", "██  █", "█ █ █", "█  ██", "█   █"),
+    "T": ("█████", "  █  ", "  █  ", "  █  ", "  █  "),
+    "F": ("█████", "█    ", "████ ", "█    ", "█    "),
+    "L": ("█    ", "█    ", "█    ", "█    ", "█████"),
+    "O": (" ███ ", "█   █", "█   █", "█   █", " ███ "),
+    "W": ("█   █", "█   █", "█ █ █", "██ ██", "█   █"),
+}
+_WORDMARK = "AGENTFLOW"
+_BLOCK_ROWS = 5
 
-_SCAFFOLD_UNICODE_FRAMES = (
-    AnimationFrame(("    ╭           ╮  ", "                   ", "    ╰           ╯  ")),
-    AnimationFrame(("    ╭───────────╮  ", "    │  +        │  ", "    ╰───────────╯  ")),
-    AnimationFrame(("    ╭───────────╮  ", "    │  + graph/ │  ", "    ╰───────────╯  ")),
-    AnimationFrame(("    ╭───────────╮  ", "    │  ✓ config │  ", "    ╰───────────╯  ")),
-    AnimationFrame(("    ╭───────────╮  ", "    │ ✓ PROJECT │  ", "    ╰───────────╯  "), 0.12),
-)
+# Each command reveals its own pipeline during the intro, so the animation
+# doubles as a preview of what the command is about to do.
+_SIGNATURES: dict[str, tuple[str, ...]] = {
+    "api": ("config", "runtime", "server", "ready"),
+    "dev": ("config", "runtime", "server", "playground"),
+    "play": ("config", "runtime", "server", "playground"),
+    "init": ("template", "graph", "config", "project"),
+    "build": ("source", "deps", "image", "ship"),
+    "test": ("collect", "run", "assert", "report"),
+    "eval": ("discover", "load", "score", "report"),
+    "doctor": ("python", "core", "config", "port"),
+    "skills": ("detect", "resolve", "install", "activate"),
+}
+_DEFAULT_SIGNATURE = ("boot", "load", "ready")
 
-_SCAFFOLD_ASCII_FRAMES = (
-    AnimationFrame(("    +           +  ", "                   ", "    +           +  ")),
-    AnimationFrame(("    +-----------+  ", "    |  +        |  ", "    +-----------+  ")),
-    AnimationFrame(("    +-----------+  ", "    |  + graph/ |  ", "    +-----------+  ")),
-    AnimationFrame(("    +-----------+  ", "    |  OK config|  ", "    +-----------+  ")),
-    AnimationFrame(("    +-----------+  ", "    | OK PROJECT|  ", "    +-----------+  "), 0.12),
-)
-
-_PIPELINE_UNICODE_FRAMES = (
-    AnimationFrame(("  source  ·  image  ·  ship ", "          ░░░░░░░░        ")),
-    AnimationFrame(("  source  ◆  image  ·  ship ", "          ██░░░░░░        ")),
-    AnimationFrame(("  source  ◆  image  ◆  ship ", "          █████░░░        ")),
-    AnimationFrame(("  source  ◆  image  ◆  ship ", "          ████████        "), 0.12),
-)
-
-_PIPELINE_ASCII_FRAMES = (
-    AnimationFrame(("  source  .  image  .  ship ", "          [        ]      ")),
-    AnimationFrame(("  source  O  image  .  ship ", "          [==      ]      ")),
-    AnimationFrame(("  source  O  image  O  ship ", "          [=====   ]      ")),
-    AnimationFrame(("  source  O  image  O  ship ", "          [========]      "), 0.12),
-)
-
-_CHECK_UNICODE_FRAMES = (
-    AnimationFrame(("    ◌  ◌  ◌  ◌       ", "    scanning…          ")),
-    AnimationFrame(("    ●  ◌  ◌  ◌       ", "    evaluating…        ")),
-    AnimationFrame(("    ✓  ●  ◌  ◌       ", "    evaluating…        ")),
-    AnimationFrame(("    ✓  ✓  ●  ◌       ", "    scoring…           ")),
-    AnimationFrame(("    ✓  ✓  ✓  ✓       ", "    all checks complete"), 0.12),
-)
-
-_CHECK_ASCII_FRAMES = (
-    AnimationFrame(("    o  o  o  o       ", "    scanning...        ")),
-    AnimationFrame(("    O  o  o  o       ", "    evaluating...      ")),
-    AnimationFrame(("    OK O  o  o       ", "    evaluating...      ")),
-    AnimationFrame(("    OK OK O  o       ", "    scoring...         ")),
-    AnimationFrame(("    OK OK OK OK      ", "    checks complete    "), 0.12),
-)
+_TAGLINES: dict[str, str] = {
+    "api": "Serving your agent over REST and WebSocket.",
+    "dev": "Local agent runtime with live reload.",
+    "play": "Local agent runtime, wired to the playground.",
+    "init": "Scaffolding a production-shaped agent project.",
+    "build": "Packaging your agent for deployment.",
+    "test": "Exercising your agent's test suite.",
+    "eval": "Scoring your agent against evaluation sets.",
+    "doctor": "Inspecting your Agentflow environment.",
+}
+_DEFAULT_TAGLINE = "Build, run, and inspect intelligent agent systems."
 
 
 def render_command_intro(
@@ -118,162 +94,339 @@ def render_command_intro(
     unicode: bool,
     persistent_screen: bool = False,
 ) -> None:
-    """Play a short best-effort intro and leave a useful static final frame."""
-    if command.lower() in {"play", "dev", "typing"}:
-        render_typing_splash(
+    """Play the command intro on the full canvas.
+
+    ``persistent_screen`` means the caller already owns an alternate screen that
+    it intends to keep. The sequence then plays in place and skips the durable
+    header, because the caller pins its own chrome once the intro finishes.
+    """
+    glyphs = glyphs_for(unicode)
+    if _can_play_cinematic(console):
+        _play_cinematic(
             console,
             command=command,
             subtitle=subtitle,
-            unicode=unicode,
-            persistent_screen=persistent_screen,
+            glyphs=glyphs,
+            own_screen=not persistent_screen,
         )
-        console.print(_final_renderable(command, subtitle, unicode))
+    else:
+        _play_inline(console, command=command, glyphs=glyphs)
+
+    if persistent_screen:
         return
 
-    frames = _frames_for(command, unicode)
-    with Live(
-        _frame_renderable(frames[0], command, subtitle),
-        console=console,
-        refresh_per_second=15,
-        transient=True,
-        redirect_stdout=False,
-        redirect_stderr=False,
-    ) as live:
-        for frame in frames:
-            live.update(_frame_renderable(frame, command, subtitle), refresh=True)
-            time.sleep(frame.duration)
-
-    console.print(_final_renderable(command, subtitle, unicode))
+    render_session_header(
+        console,
+        command=command,
+        subtitle=subtitle,
+        glyphs=glyphs,
+        version=CLI_VERSION,
+    )
 
 
-def render_typing_splash(
+def render_session_header(
     console: Console,
     *,
     command: str,
     subtitle: str | None,
-    unicode: bool,
-    persistent_screen: bool = False,
+    glyphs: Glyphs,
+    version: str | None = None,
 ) -> None:
-    """Use the terminal's alternate screen for a full-canvas typing reveal."""
-    word = "AGENTFLOW"
-    cursor = "▌" if unicode else "|"
-    visible_states = [word[:index] for index in range(len(word) + 1)]
-    visible_states.extend((word, word))
+    """Print the persistent branded band that identifies the running command."""
+    width = _usable_width(console)
+    console.print(gradient_rule(width, glyphs=glyphs))
 
+    identity = Text(" ", style="agentflow.header")
+    identity.append(f"{glyphs.diamond} ", style="agentflow.brand")
+    identity.append_text(gradient_text("agentflow", bold=True))
+    identity.append(f" {glyphs.caret} ", style="agentflow.muted")
+    identity.append(command, style="agentflow.command")
+    if version:
+        identity.append(" " * max(width - identity.cell_len - len(version) - 1, 1))
+        identity.append(version, style="agentflow.muted")
+    _pad_to_width(identity, width)
+    console.print(identity)
+
+    if subtitle:
+        caption = Text(" ", style="agentflow.header")
+        caption.append(subtitle, style="agentflow.muted")
+        _pad_to_width(caption, width)
+        console.print(caption)
+
+    console.print(gradient_rule(width, glyphs=glyphs, thin=True, offset=0.35))
+    console.print()
+
+
+def _can_play_cinematic(console: Console) -> bool:
+    return (
+        console.is_terminal
+        and console.height >= _MIN_CINEMATIC_HEIGHT
+        and console.width >= _MIN_CINEMATIC_WIDTH
+    )
+
+
+def _play_cinematic(
+    console: Console,
+    *,
+    command: str,
+    subtitle: str | None,
+    glyphs: Glyphs,
+) -> None:
+    """Run the full-canvas reveal on a temporary alternate screen."""
+    frame_interval = 1.0 / INTRO_FPS
+    frame_count = max(int(INTRO_DURATION_SECONDS * INTRO_FPS), 1)
+    tagline = _TAGLINES.get(command.lower(), subtitle or _DEFAULT_TAGLINE)
+
+    with (
+        console.screen(style="on #0b0b12", hide_cursor=True),
+        Live(
+            console=console,
+            auto_refresh=False,
+            transient=True,
+            redirect_stdout=False,
+            redirect_stderr=False,
+        ) as live,
+    ):
+        started = time.monotonic()
+        for frame in range(frame_count + 1):
+            progress = frame / frame_count
+            live.update(
+                _cinematic_frame(
+                    console,
+                    command=command,
+                    tagline=tagline,
+                    glyphs=glyphs,
+                    progress=progress,
+                ),
+                refresh=True,
+            )
+            # Sleep against the wall clock so a slow terminal shortens the
+            # sequence instead of stretching it past its motion budget.
+            target = started + (frame + 1) * frame_interval
+            remaining = target - time.monotonic()
+            if remaining > 0:
+                time.sleep(remaining)
+
+
+def _play_inline(console: Console, *, command: str, glyphs: Glyphs) -> None:
+    """Short in-buffer reveal for short terminals and nested screens."""
+    frame_count = 12
     with Live(
-        _typing_renderable(
-            console,
-            visible="",
-            cursor=cursor,
-            show_cursor=True,
-            command=command,
-            subtitle=subtitle,
-            unicode=unicode,
-        ),
         console=console,
-        screen=not persistent_screen,
         auto_refresh=False,
         transient=True,
         redirect_stdout=False,
         redirect_stderr=False,
     ) as live:
-        for index, visible in enumerate(visible_states):
-            show_cursor = index < len(word) or index % 2 == 0
+        for frame in range(frame_count + 1):
+            progress = frame / frame_count
             live.update(
-                _typing_renderable(
-                    console,
-                    visible=visible,
-                    cursor=cursor,
-                    show_cursor=show_cursor,
-                    command=command,
-                    subtitle=subtitle,
-                    unicode=unicode,
+                Group(
+                    Align.center(_compact_wordmark(progress, glyphs)),
+                    Align.center(_signature_nodes(command, progress, glyphs)),
                 ),
                 refresh=True,
             )
-            time.sleep(0.075 if index <= len(word) else 0.16)
+            time.sleep(0.045)
 
 
-def _typing_renderable(
+def _cinematic_frame(
     console: Console,
     *,
-    visible: str,
-    cursor: str,
-    show_cursor: bool,
     command: str,
-    subtitle: str | None,
-    unicode: bool,
+    tagline: str,
+    glyphs: Glyphs,
+    progress: float,
 ) -> RenderableType:
-    node = "◆" if unicode else "O"
-    rail = "━━━━" if unicode else "===="
-    eyebrow = Text(f"{node}{rail} AGENT RUNTIME {rail}{node}", style="bold magenta")
-    typed = Text(" ".join(visible), style="bold bright_cyan")
-    if show_cursor:
-        typed.append(cursor, style="bold white")
-    description = Text(
-        subtitle or "Build, run, and inspect intelligent agent systems.",
-        style="white",
-    )
-    mode = Text(f"agentflow {command}", style="dim cyan")
-    hint = Text("Preparing your interactive workspace…", style="dim white")
-    content = Group(
-        Align.center(eyebrow),
+    """Compose one frame of the intro from its independently timed layers."""
+    width = _usable_width(console)
+    reveal = _ease_out(_phase(progress, 0.05, 0.55))
+    shimmer = _phase(progress, 0.45, 0.9)
+    chrome = _phase(progress, 0.55, 0.85)
+    typing = _phase(progress, 0.6, 0.95)
+    pipeline = _phase(progress, 0.25, 1.0)
+
+    layers: list[RenderableType] = [
+        Align.center(_aurora(width, progress, glyphs, rows=2)),
         Text(""),
-        Align.center(typed),
-        Text(""),
-        Align.center(description),
-        Text(""),
-        Align.center(mode),
-        Text(""),
-        Align.center(hint),
-    )
+    ]
+    layers.extend(Align.center(line) for line in _block_wordmark(reveal, shimmer, glyphs))
+    layers.append(Text(""))
+
+    if chrome > 0:
+        layers.append(Align.center(_command_chip(command, chrome, glyphs)))
+        layers.append(Text(""))
+    if typing > 0:
+        layers.append(Align.center(_typed(tagline, typing, glyphs)))
+        layers.append(Text(""))
+
+    layers.append(Align.center(_signature_nodes(command, pipeline, glyphs)))
+    layers.append(Align.center(_signature_labels(command, pipeline)))
+    layers.append(Text(""))
+    layers.append(Align.center(_load_bar(progress, glyphs, width=min(width - 8, 44))))
+
     return Align.center(
-        content,
+        Group(*layers),
         vertical="middle",
-        height=max(console.height, 12),
-        style="on grey3",
+        height=max(console.height - 1, 12),
+        style="on #0b0b12",
     )
 
 
-def _frames_for(command: str, unicode: bool) -> tuple[AnimationFrame, ...]:
-    normalized = command.lower()
-    if normalized in {"api", "dev", "play"}:
-        return _NETWORK_UNICODE_FRAMES if unicode else _NETWORK_ASCII_FRAMES
-    if normalized == "init":
-        return _SCAFFOLD_UNICODE_FRAMES if unicode else _SCAFFOLD_ASCII_FRAMES
-    if normalized == "build":
-        return _PIPELINE_UNICODE_FRAMES if unicode else _PIPELINE_ASCII_FRAMES
-    if normalized in {"eval", "test"}:
-        return _CHECK_UNICODE_FRAMES if unicode else _CHECK_ASCII_FRAMES
-    return _BRAND_UNICODE_FRAMES if unicode else _BRAND_ASCII_FRAMES
+def _block_wordmark(reveal: float, shimmer: float, glyphs: Glyphs) -> list[Text]:
+    """Render AGENTFLOW as block letters swept in by a moving light front."""
+    if glyphs.block != "█":
+        return [_compact_wordmark(reveal, glyphs)]
+
+    columns = _wordmark_columns()
+    total = len(columns[0])
+    front = reveal * (total + 6) - 3
+    shimmer_front = shimmer * (total + 10) - 5
+
+    lines: list[Text] = []
+    for row in range(_BLOCK_ROWS):
+        line = Text()
+        for index in range(total):
+            character = columns[row][index]
+            if character == " " or index > front:
+                line.append(" ")
+                continue
+            distance = front - index
+            shimmer_distance = abs(shimmer_front - index)
+            if distance < _REVEAL_FRONT_WIDTH:
+                line.append(character, style="bold #ffffff")
+            elif shimmer > 0 and shimmer_distance < _SHIMMER_WIDTH:
+                line.append(character, style="bold #f5f3ff")
+            else:
+                line.append(character, style=f"bold {sample_ramp(index / total)}")
+        lines.append(line)
+    return lines
 
 
-def _frame_renderable(
-    frame: AnimationFrame,
-    command: str,
-    subtitle: str | None,
-) -> RenderableType:
-    art = Text("\n".join(frame.lines), style="agentflow.brand")
-    label = Text.assemble(
-        ("  agentflow ", "agentflow.title"),
-        (command, "agentflow.command"),
-    )
-    parts: list[RenderableType] = [Align.center(art), Align.center(label)]
-    if subtitle:
-        parts.append(Align.center(Text(subtitle, style="agentflow.muted")))
-    return Group(*parts)
+def _wordmark_columns() -> tuple[str, ...]:
+    """Lay the block font out once per row, letters separated by a column."""
+    rows: list[str] = []
+    for row in range(_BLOCK_ROWS):
+        rows.append(" ".join(_BLOCK_FONT[letter][row] for letter in _WORDMARK))
+    return tuple(rows)
 
 
-def _final_renderable(command: str, subtitle: str | None, unicode: bool) -> RenderableType:
-    connector = "◆" if unicode else "O"
-    line = Text.assemble(
-        (f"{connector} ", "agentflow.brand"),
-        ("agentflow", "agentflow.title"),
-        (" / ", "agentflow.muted"),
-        (command, "agentflow.command"),
-        (f" {connector}", "agentflow.brand"),
-    )
-    parts: list[RenderableType] = [Align.center(line)]
-    if subtitle:
-        parts.append(Align.center(Text(subtitle, style="agentflow.muted")))
-    return Group(*parts)
+def _compact_wordmark(reveal: float, glyphs: Glyphs) -> Text:
+    """Spaced wordmark used when block letters do not fit or render."""
+    visible = max(int(reveal * len(_WORDMARK)), 0)
+    text = Text()
+    text.append_text(gradient_text(" ".join(_WORDMARK[:visible]), bold=True))
+    if visible < len(_WORDMARK):
+        text.append(glyphs.cursor, style="bold #ffffff")
+    return text
+
+
+def _command_chip(command: str, intensity: float, glyphs: Glyphs) -> Text:
+    """Pill showing which command the intro belongs to."""
+    color = dim_hex("#4c1d95", 0.35 + 0.65 * intensity)
+    chip = Text(style=f"on {color}")
+    chip.append(f"  {glyphs.diamond} ", style="#a78bfa")
+    chip.append(command.lower(), style="bold #f8fafc")
+    chip.append("  ")
+    return chip
+
+
+def _typed(value: str, progress: float, glyphs: Glyphs) -> Text:
+    """Type ``value`` out one character at a time with a blinking caret."""
+    visible = int(_ease_out(progress) * len(value))
+    text = Text(value[:visible], style="#cbd5f5")
+    if visible < len(value) or int(progress * 12) % 2 == 0:
+        text.append(glyphs.cursor, style="#22d3ee")
+    return text
+
+
+def _aurora(width: int, progress: float, glyphs: Glyphs, *, rows: int) -> Text:
+    """Soft moving shade field that gives the canvas depth behind the logo."""
+    span = min(width, 56)
+    # Skip the blank shade: the band should read as one flowing ribbon rather
+    # than a dotted line with holes punched through it.
+    tiers = glyphs.shades[1:]
+    text = Text()
+    for row in range(rows):
+        for column in range(span):
+            wave = math.sin((column / 7.0) + progress * 6.0 + row * 1.3)
+            level = int((wave + 1.0) / 2.0 * (len(tiers) - 1))
+            tint = dim_hex(sample_ramp(column / span), 0.30 + 0.20 * row)
+            text.append(tiers[level], style=tint)
+        if row < rows - 1:
+            text.append("\n")
+    return text
+
+
+def _signature_for(command: str) -> tuple[str, ...]:
+    return _SIGNATURES.get(command.lower(), _DEFAULT_SIGNATURE)
+
+
+def _signature_nodes(command: str, progress: float, glyphs: Glyphs) -> Text:
+    """Node-and-link chain that fills in as the intro advances."""
+    stages = _signature_for(command)
+    segments = len(stages) * 2 - 1
+    filled = progress * segments
+    text = Text()
+    for index in range(segments):
+        active = index < filled
+        position = index / max(segments - 1, 1)
+        color = sample_ramp(position) if active else "#3f3f56"
+        if index % 2 == 0:
+            text.append(glyphs.node if active else glyphs.pending, style=f"bold {color}")
+        else:
+            text.append(glyphs.rule * 3 if active else glyphs.thin_rule * 3, style=color)
+    return text
+
+
+def _signature_labels(command: str, progress: float) -> Text:
+    """Stage names under the chain, brightening in step with their node."""
+    stages = _signature_for(command)
+    reached = progress * len(stages)
+    text = Text()
+    for index, stage in enumerate(stages):
+        if index:
+            text.append("  ")
+        if index < reached:
+            text.append(stage, style=f"bold {sample_ramp(index / max(len(stages) - 1, 1))}")
+        else:
+            text.append(stage, style="#3f3f56")
+    return text
+
+
+def _load_bar(progress: float, glyphs: Glyphs, *, width: int) -> Text:
+    """Hairline meter showing how much of the intro remains."""
+    span = max(width, 10)
+    filled = int(progress * span)
+    text = Text()
+    for index in range(span):
+        if index < filled:
+            text.append(glyphs.thin_rule, style=sample_ramp(index / span, BRAND_RAMP))
+        else:
+            text.append(glyphs.thin_rule, style="#242438")
+    return text
+
+
+def _phase(progress: float, start: float, end: float) -> float:
+    """Map a global timeline position into one layer's local ``0..1`` window."""
+    if progress <= start:
+        return 0.0
+    if progress >= end:
+        return 1.0
+    return (progress - start) / (end - start)
+
+
+def _ease_out(value: float) -> float:
+    """Cubic ease-out; motion decelerates instead of stopping abruptly."""
+    clamped = min(max(value, 0.0), 1.0)
+    return 1.0 - (1.0 - clamped) ** 3
+
+
+def _usable_width(console: Console) -> int:
+    return max(min(console.width, 100) - 1, 20)
+
+
+def _pad_to_width(text: Text, width: int) -> None:
+    padding = width - text.cell_len
+    if padding > 0:
+        text.append(" " * padding)

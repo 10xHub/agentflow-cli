@@ -1,5 +1,5 @@
+import io
 import os
-from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -7,35 +7,13 @@ import pytest
 import agentflow_cli.cli.commands.api as api_mod
 from agentflow_cli.cli.commands.api import APICommand
 from agentflow_cli.cli.core import validation as validation_module
-
-
-class SilentOutput:
-    def command_header(self, *_, **__):
-        pass
-
-    @contextmanager
-    def activity(self, *_, **__):
-        yield None
-
-    def completion_screen(self, *_, **__):
-        pass
-
-    def error(self, *_):
-        pass
-
-    def success(self, *_):
-        pass
-
-    def info(self, *_):
-        pass
-
-    def warning(self, *_):
-        pass
+from agentflow_cli.cli.core.output import OutputFormatter
 
 
 @pytest.fixture
 def silent_output():
-    return SilentOutput()
+    """A real formatter with output suppressed, so it tracks the live surface."""
+    return OutputFormatter(stream=io.StringIO(), quiet=True)
 
 
 def test_api_command_with_env_file(monkeypatch, tmp_path, silent_output):

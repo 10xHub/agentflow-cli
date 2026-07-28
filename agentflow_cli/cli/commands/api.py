@@ -62,51 +62,72 @@ class APICommand(BaseCommand):
                 "Starting development server via Uvicorn. Not for production use.",
             )
 
-            with self.output.activity(
-                "Discovering and validating the project",
-                done="Project configuration validated",
-                spinner="aesthetic",
-            ):
-                validated_options = validate_cli_options(host, port, config)
-                config_manager = ConfigManager()
-                actual_config_path = config_manager.find_config_file(validated_options["config"])
-                config_manager.load_config(str(actual_config_path))
-
-            with self.output.activity(
-                "Loading environment and graph runtime",
-                done="Runtime environment prepared",
-                spinner="bouncingBar",
-            ):
-                env_file_path = config_manager.resolve_env_file()
-                if env_file_path:
-                    self.logger.info("Loading environment from: %s", env_file_path)
-                    load_dotenv(env_file_path)
-                else:
-                    load_dotenv()
-
-                os.environ["GRAPH_PATH"] = str(actual_config_path)
-
-                # Add project root to sys.path for importing graph modules
-                sys.path.insert(0, str(actual_config_path.parent))
-
-                # Ensure we're using the correct module path
-                sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-            self.logger.info(
-                "Starting API with config: %s, host: %s, port: %d",
-                actual_config_path,
-                validated_options["host"],
-                validated_options["port"],
+            timeline = self.output.timeline(
+                "Preparing the Agentflow runtime",
+                steps=(
+                    ("config", "Validating project configuration"),
+                    ("runtime", "Loading environment and graph runtime"),
+                    ("port", f"Reserving port {port}"),
+                    ("launch", "Starting the development server"),
+                ),
             )
+            with timeline:
+                with timeline.step("config") as step:
+                    validated_options = validate_cli_options(host, port, config)
+                    config_manager = ConfigManager()
+                    actual_config_path = config_manager.find_config_file(
+                        validated_options["config"]
+                    )
+                    config_manager.load_config(str(actual_config_path))
+                    step.detail(str(actual_config_path))
 
-            if open_playground:
-                self._schedule_playground_launch(
-                    host=validated_options["host"],
-                    port=validated_options["port"],
-                    playground_base_url=playground_url,
-                )
+                with timeline.step("runtime") as step:
+                    env_file_path = config_manager.resolve_env_file()
+                    if env_file_path:
+                        self.logger.info("Loading environment from: %s", env_file_path)
+                        load_dotenv(env_file_path)
+                        step.detail(f"environment: {env_file_path}")
+                    else:
+                        load_dotenv()
+                        step.detail("environment: process defaults")
 
-            browser_host = self._normalize_browser_host(validated_options["host"])
+                    os.environ["GRAPH_PATH"] = str(actual_config_path)
+
+                    # Add project root to sys.path for importing graph modules
+                    sys.path.insert(0, str(actual_config_path.parent))
+
+                    # Ensure we're using the correct module path
+                    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+                browser_host = self._normalize_browser_host(validated_options["host"])
+                with timeline.step("port") as step:
+                    # Reported rather than raised: Uvicorn owns the bind, and its
+                    # own error is the authoritative one if the port is taken.
+                    if self._port_in_use(browser_host, validated_options["port"]):
+                        step.detail("already in use — Uvicorn will report the conflict")
+                    else:
+                        step.detail("available")
+
+                with timeline.step("launch") as step:
+                    self.logger.info(
+                        "Starting API with config: %s, host: %s, port: %d",
+                        actual_config_path,
+                        validated_options["host"],
+                        validated_options["port"],
+                    )
+                    launch_url = None
+                    if open_playground:
+                        launch_url = self._schedule_playground_launch(
+                            host=validated_options["host"],
+                            port=validated_options["port"],
+                            playground_base_url=playground_url,
+                        )
+                    step.detail(
+                        f"playground opens at {launch_url} once the API responds"
+                        if launch_url
+                        else f"http://{browser_host}:{validated_options['port']}"
+                    )
+
             self.output.completion_screen(
                 "Ready to serve",
                 "Agentflow runtime configured successfully",
@@ -143,18 +164,21 @@ class APICommand(BaseCommand):
             )
             return self.handle_error(server_error)
 
+    @staticmethod
+    def _port_in_use(host: str, port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.settimeout(0.2)
+            return probe.connect_ex((host, port)) == 0
+
     def _schedule_playground_launch(
         self,
         host: str,
         port: int,
         playground_base_url: str,
-    ) -> None:
+    ) -> str:
+        """Start the readiness watcher and return the URL it will open."""
         browser_host = self._normalize_browser_host(host)
         launch_url = self._build_playground_url(browser_host, port, playground_base_url)
-        self.output.info(
-            f"Playground will open at {launch_url} when the API is ready.",
-            emoji=False,
-        )
         launch_thread = threading.Thread(
             target=self._open_playground_when_ready,
             args=(launch_url, browser_host, port),
@@ -162,6 +186,7 @@ class APICommand(BaseCommand):
             name="agentflow-playground-launcher",
         )
         launch_thread.start()
+        return launch_url
 
     def _open_playground_when_ready(
         self,
@@ -179,12 +204,10 @@ class APICommand(BaseCommand):
         opened = webbrowser.open_new_tab(launch_url)
         if opened:
             self.logger.info("Opened playground URL: %s", launch_url)
-            self.output.completion_screen(
-                "Playground ready",
-                "Local API connected and browser launched",
-                details={"URL": launch_url},
-                next_steps=["Build, test, and inspect your agent in the playground."],
-            )
+            # A plain line, not a panel: this fires from the watcher thread while
+            # Uvicorn is already streaming logs, and a boxed reveal there would
+            # interleave with them.
+            self.output.success(f"Playground opened: {launch_url}")
             return
 
         message = f"Browser launch returned false. Open the playground manually: {launch_url}"

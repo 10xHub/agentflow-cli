@@ -60,7 +60,7 @@ class TerminalCapabilities:
         """Detect terminal behavior while honoring explicit user policy."""
         target = stream or sys.stdout
         is_tty = bool(getattr(target, "isatty", lambda: False)())
-        is_ci = _truthy_env("CI")
+        is_ci = truthy_env("CI")
         term_is_dumb = os.environ.get("TERM", "").lower() == "dumb"
         no_color = "NO_COLOR" in os.environ
 
@@ -88,7 +88,7 @@ class TerminalCapabilities:
         animation = (
             effective_progress == ProgressMode.TTY
             and not structured
-            and not _truthy_env("AGENTFLOW_NO_SPINNER")
+            and not truthy_env("AGENTFLOW_NO_SPINNER")
         )
         encoding = getattr(target, "encoding", None)
         try:
@@ -114,6 +114,7 @@ class TerminalCapabilities:
         )
 
 
-def _truthy_env(name: str) -> bool:
+def truthy_env(name: str) -> bool:
+    """Read an environment variable as an opt-in boolean flag."""
     value = os.environ.get(name, "")
     return value.lower() in {"1", "true", "yes", "on"}

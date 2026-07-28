@@ -163,23 +163,23 @@ def test_forced_tty_header_uses_animation_renderer(monkeypatch) -> None:
 
 
 def test_fullscreen_session_owns_and_restores_alternate_screen(monkeypatch) -> None:
-    class FakeScreen:
-        entered = False
-        exited = False
-
-        def __enter__(self):
-            self.entered = True
-            return self
-
-        def __exit__(self, *_args):
-            self.exited = True
-
     class FakeConsole:
-        def __init__(self) -> None:
-            self.context = FakeScreen()
+        is_terminal = True
+        width = 80
 
-        def screen(self, **_kwargs):
-            return self.context
+        def __init__(self) -> None:
+            self.file = io.StringIO()
+            self.alt_screen_calls: list[bool] = []
+            self.cursor_shown: list[bool] = []
+
+        def set_alt_screen(self, enable: bool) -> None:
+            self.alt_screen_calls.append(enable)
+
+        def show_cursor(self, show: bool) -> None:
+            self.cursor_shown.append(show)
+
+        def print(self, *_args, **_kwargs) -> None:
+            return None
 
     rendered, _stream = formatter(progress_mode=ProgressMode.TTY)
     console = FakeConsole()
@@ -187,12 +187,110 @@ def test_fullscreen_session_owns_and_restores_alternate_screen(monkeypatch) -> N
 
     assert rendered.start_fullscreen_session() is True
     assert rendered.fullscreen_active is True
-    assert console.context.entered is True
+    assert console.alt_screen_calls == [True]
+    # A second call must not stack a nested screen on the first.
     assert rendered.start_fullscreen_session() is False
 
     rendered.end_fullscreen_session()
     assert rendered.fullscreen_active is False
-    assert console.context.exited is True
+    assert console.alt_screen_calls == [True, False]
+    assert console.cursor_shown == [True]
+
+
+def test_fullscreen_session_is_skipped_off_a_terminal(monkeypatch) -> None:
+    class NonTerminalConsole:
+        is_terminal = False
+
+    rendered, _stream = formatter(progress_mode=ProgressMode.TTY)
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: NonTerminalConsole())
+
+    assert rendered.start_fullscreen_session() is False
+    assert rendered.fullscreen_active is False
+
+
+def test_timeline_and_progress_pick_the_renderer_for_the_output_mode() -> None:
+    from agentflow_cli.cli.core.steps import (
+        LiveProgressRun,
+        LiveTimeline,
+        QuietProgressRun,
+        QuietTimeline,
+        StaticProgressRun,
+        StaticTimeline,
+        StructuredProgressRun,
+        StructuredTimeline,
+    )
+
+    quiet, _ = formatter(quiet=True)
+    assert isinstance(quiet.timeline("t"), QuietTimeline)
+    assert isinstance(quiet.progress_run("p", total=1), QuietProgressRun)
+
+    structured, _ = formatter(output_format=OutputFormat.JSONL)
+    assert isinstance(structured.timeline("t"), StructuredTimeline)
+    assert isinstance(structured.progress_run("p", total=1), StructuredProgressRun)
+
+    plain, _ = formatter(output_format=OutputFormat.PLAIN, progress_mode=ProgressMode.PLAIN)
+    assert isinstance(plain.timeline("t"), StaticTimeline)
+    assert isinstance(plain.progress_run("p", total=1), StaticProgressRun)
+
+    animated, _ = formatter(progress_mode=ProgressMode.TTY)
+    assert isinstance(animated.timeline("t"), LiveTimeline)
+    assert isinstance(animated.progress_run("p", total=1), LiveProgressRun)
+
+
+def test_plain_timeline_reports_every_stage_transition() -> None:
+    rendered, stream = formatter(
+        output_format=OutputFormat.PLAIN,
+        progress_mode=ProgressMode.PLAIN,
+    )
+    timeline = rendered.timeline("Working", steps=(("a", "First stage"),))
+    with timeline, timeline.step("a") as step:
+        step.detail("all good")
+
+    value = stream.getvalue()
+    assert "Working" in value
+    assert value.count("First stage") == 2
+    assert "all good" in value
+
+
+def test_structured_timeline_stays_valid_json_per_line() -> None:
+    rendered, stream = formatter(output_format=OutputFormat.JSONL)
+    timeline = rendered.timeline("Working", steps=(("a", "First stage"),))
+    with timeline, timeline.step("a"):
+        pass
+
+    payloads = [json.loads(line) for line in stream.getvalue().splitlines()]
+    assert [payload["type"] for payload in payloads] == [
+        "timeline_start",
+        "step_start",
+        "step_end",
+        "timeline_end",
+    ]
+    assert all(payload["schema"] == "agentflow.cli/v1" for payload in payloads)
+
+
+def test_quiet_timeline_writes_nothing() -> None:
+    rendered, stream = formatter(output_format=OutputFormat.PLAIN, quiet=True)
+    timeline = rendered.timeline("Working", steps=(("a", "First stage"),))
+    with timeline, timeline.step("a") as step:
+        step.detail("hidden")
+    assert stream.getvalue() == ""
+
+
+def test_completion_screen_reveals_rows_progressively() -> None:
+    rendered, _stream = formatter()
+    rows = [("API", "http://localhost:8000"), ("Config", "agentflow.json")]
+    steps = ["Open the docs"]
+
+    first = rendered._completion_panel("Ready", "All set", rows, steps, 0)
+    assert "API" not in first.renderable.plain
+
+    partial = rendered._completion_panel("Ready", "All set", rows, steps, 1)
+    assert "API" in partial.renderable.plain
+    assert "Config" not in partial.renderable.plain
+
+    full = rendered._completion_panel("Ready", "All set", rows, steps, len(rows) + len(steps))
+    assert "Config" in full.renderable.plain
+    assert "Open the docs" in full.renderable.plain
 
 
 def test_structured_activity_emits_lifecycle_events() -> None:
@@ -224,7 +322,9 @@ def test_structured_completion_screen_is_one_event() -> None:
 
 def test_global_convenience_functions_delegate(monkeypatch) -> None:
     calls: list[tuple[str, str]] = []
-    monkeypatch.setattr(output, "print_banner", lambda value, *a, **k: calls.append(("banner", value)))
+    monkeypatch.setattr(
+        output, "print_banner", lambda value, *a, **k: calls.append(("banner", value))
+    )
     monkeypatch.setattr(output, "success", lambda value, *a, **k: calls.append(("success", value)))
     monkeypatch.setattr(output, "error", lambda value, *a, **k: calls.append(("error", value)))
     monkeypatch.setattr(output, "info", lambda value, *a, **k: calls.append(("info", value)))

@@ -24,18 +24,33 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Terminal-native frame animation for interactive commands, plus reusable
-  animated activities, timed state transitions, and completion panels.
-- Command-specific network, scaffold, delivery-pipeline, and evaluation-scan
-  animation themes, with a side-effect-free `agentflow demo` preview command.
-- Alternate-screen `AGENTFLOW` typing reveal and full-canvas background
-  transition for `play` and `dev`, previewable with `demo --style typing`.
-- Invocation-scoped alternate-screen ownership so every animated command keeps
-  its themed background until completion or interruption.
-- Staged startup feedback and connected-playground completion output for
-  `agentflow play` and `agentflow dev`.
+- Full-canvas animated command intro: an eased block-letter `AGENTFLOW` reveal
+  with a moving light front, a flowing gradient field, a typed tagline, and a
+  per-command pipeline that fills in as the intro plays. It runs on a temporary
+  alternate screen and hands the terminal back, so the animation gets the whole
+  canvas while the command's real output stays in scrollback.
+- Persistent branded session header (gradient rules, command, version, and
+  subtitle) printed into the normal buffer after the intro.
+- Live step timelines (`OutputFormatter.timeline`): a command declares its stages
+  up front, so pending work is visible from the first frame while the running
+  stage animates with a spinner, elapsed timer, and a live detail line. Wired
+  into `play`/`dev`/`api`, `init`, `build`, `test`, and `doctor`.
+- Determinate progress with a running pass/fail tally
+  (`OutputFormatter.progress_run`), used by `agentflow eval` so per-case results
+  scroll above a bar that reports completion, counts, and elapsed time.
+- Shared brand palette and glyph sets (`cli/core/theme.py`) with continuous
+  gradient sampling and a complete ASCII fallback set.
+- Command-specific intro signatures and taglines for `play`, `dev`, `api`,
+  `init`, `build`, `test`, `eval`, `doctor`, and `skills`, previewable with the
+  side-effect-free `agentflow demo`.
+- Row-by-row reveal for completion panels.
+- Opt-in `--fullscreen` (or `AGENTFLOW_FULLSCREEN=1`) that runs a command on a
+  painted alternate screen and holds it until you press Enter.
+- Staged startup feedback, a pre-flight port check, and connected-playground
+  completion output for `agentflow play` and `agentflow dev`.
 - Adaptive `--animation` / `--no-animation` controls with CI, pipe, JSON, and
-  accessibility-safe fallbacks.
+  accessibility-safe fallbacks. Every animated surface has a plain
+  line-per-transition renderer and a versioned JSON/JSONL event renderer.
 - Adaptive Rich terminal rendering with TTY/CI detection, plain/JSONL modes,
   `NO_COLOR` support, ASCII fallback, quiet mode, and shared status rendering.
 - Root `--format`, `--json`, `--color`, `--no-color`, `--progress`, `--cwd`,
@@ -66,6 +81,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   working directory.
 - Init, build, and eval status output now flows through the shared renderer instead of
   writing raw ANSI control sequences.
+- The alternate screen is no longer held for a command's whole lifetime. A terminal
+  discards an alternate screen when it is released, so that approach erased each
+  command's output on exit and made short commands look like a flash of nothing.
+  Motion now owns the screen only while it is playing; results are written to the
+  normal buffer. `--fullscreen` restores the held-screen behavior for anyone who
+  wants it, and pauses before releasing so nothing is lost.
+- One Rich `Console` is now reused per stream. Rebuilding it per call meant a live
+  display could not tell that ordinary prints belonged to it, so background output
+  collided with spinners and progress bars instead of scrolling above them.
+- `agentflow init` no longer prints one line per scaffolded file; files stream through
+  the active timeline row instead.
 
 ### Fixed
 

@@ -6,6 +6,7 @@ import importlib
 import json
 import socket
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -26,25 +27,40 @@ class DoctorCommand(BaseCommand):
     """Inspect the local CLI, core package, project config, and default port."""
 
     def execute(self, **kwargs: Any) -> int:
-        diagnostics = [
-            Diagnostic("Python", "pass", sys.version.split()[0]),
-            self._package_check("10xscale-agentflow-cli"),
-            self._package_check("10xscale-agentflow"),
-            self._evaluation_api_check(),
-            self._config_check(),
-            self._port_check(DEFAULT_PORT),
-        ]
         self.output.command_header(
             "doctor",
             "Checking the current Agentflow development environment.",
             color="cyan",
         )
+
+        checks: tuple[tuple[str, str, Callable[[], Diagnostic]], ...] = (
+            (
+                "python",
+                "Python interpreter",
+                lambda: Diagnostic("Python", "pass", sys.version.split()[0]),
+            ),
+            ("cli", "CLI package", lambda: self._package_check("10xscale-agentflow-cli")),
+            ("core", "Core framework", lambda: self._package_check("10xscale-agentflow")),
+            ("evaluation", "Evaluation API", self._evaluation_api_check),
+            ("config", "Project configuration", self._config_check),
+            ("port", f"Port {DEFAULT_PORT}", lambda: self._port_check(DEFAULT_PORT)),
+        )
+
+        diagnostics: list[Diagnostic] = []
+        timeline = self.output.timeline(
+            "Running environment checks",
+            steps=tuple((key, title) for key, title, _ in checks),
+        )
+        with timeline:
+            for key, _title, run in checks:
+                with timeline.step(key) as step:
+                    result = run()
+                    diagnostics.append(result)
+                    step.detail(f"{self._status_label(result.status)}  {result.detail}")
+
         self.output.print_table(
             ["Check", "Status", "Details"],
-            [
-                [item.name, self._status_label(item.status), item.detail]
-                for item in diagnostics
-            ],
+            [[item.name, self._status_label(item.status), item.detail] for item in diagnostics],
             title="Diagnostics",
         )
 

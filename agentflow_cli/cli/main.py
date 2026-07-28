@@ -9,7 +9,7 @@ from typing import Any
 
 import typer
 
-from agentflow_cli.cli.capabilities import ColorMode, OutputFormat, ProgressMode
+from agentflow_cli.cli.capabilities import ColorMode, OutputFormat, ProgressMode, truthy_env
 from agentflow_cli.cli.constants import (
     CLI_VERSION,
     DEFAULT_CONFIG_FILE,
@@ -132,6 +132,15 @@ def root(  # noqa: PLR0913
         help="Enable or disable decorative command animation.",
         rich_help_panel="Global output",
     ),
+    fullscreen: bool = typer.Option(
+        False,
+        "--fullscreen",
+        help=(
+            "Run the command on a dedicated alternate screen and hold it "
+            "until you press Enter."
+        ),
+        rich_help_panel="Global output",
+    ),
     cwd: Path | None = typer.Option(
         None,
         "--cwd",
@@ -239,7 +248,11 @@ def root(  # noqa: PLR0913
         yes=yes,
         non_interactive=non_interactive,
     )
-    if output.start_fullscreen_session():
+    # Opt-in only: an alternate screen is discarded by the terminal when it is
+    # released, so holding one for the whole command would erase that command's
+    # output on exit. The default experience animates on a temporary screen and
+    # writes every durable line to the normal buffer instead.
+    if (fullscreen or truthy_env("AGENTFLOW_FULLSCREEN")) and output.start_fullscreen_session():
         ctx.call_on_close(output.end_fullscreen_session)
 
     if version_flag:

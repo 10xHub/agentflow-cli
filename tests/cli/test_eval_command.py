@@ -91,7 +91,7 @@ def test_print_criteria_block(cmd):
     assert "tool_name_match" in rendered
 
 
-def test_print_case_progress_passed(cmd):
+def test_case_progress_fields_for_a_passing_case(cmd):
     res = EvalCaseResult.success(
         eval_id="c1",
         name="case1",
@@ -99,10 +99,8 @@ def test_print_case_progress_passed(cmd):
         actual_response="",
     )
     res.duration_seconds = 1.23
-    cmd._print_case_progress("file.py", "case1", res, 1, 10)
-    rendered = "\n".join(cmd.output.infos)
-    assert "file.py::case1" in rendered
-    assert "PASSED" in rendered
+    assert cmd._case_status(res) == "passed"
+    assert "1.23s" in cmd._case_detail(res)
 
 
 def test_resolve_eval_dir(cmd):

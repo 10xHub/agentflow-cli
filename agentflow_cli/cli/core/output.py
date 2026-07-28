@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, TextIO
 
+from rich import box
 from rich.console import Console
+from rich.live import Live
 from rich.panel import Panel
 from rich.status import Status
 from rich.table import Table
 from rich.text import Text
-from rich.theme import Theme
 
 from agentflow_cli.cli.capabilities import (
     ColorMode,
@@ -22,22 +24,33 @@ from agentflow_cli.cli.capabilities import (
     ProgressMode,
     TerminalCapabilities,
 )
-from agentflow_cli.cli.core.animations import render_command_intro
-
-
-_THEME = Theme(
-    {
-        "agentflow.success": "bold green",
-        "agentflow.error": "bold red",
-        "agentflow.warning": "bold yellow",
-        "agentflow.info": "cyan",
-        "agentflow.muted": "dim",
-        "agentflow.title": "bold magenta",
-        "agentflow.brand": "bold cyan",
-        "agentflow.command": "bold white",
-        "agentflow.progress": "cyan",
-    }
+from agentflow_cli.cli.constants import CLI_VERSION
+from agentflow_cli.cli.core.animations import render_command_intro, render_session_header
+from agentflow_cli.cli.core.steps import (
+    LiveProgressRun,
+    LiveTimeline,
+    ProgressRun,
+    QuietProgressRun,
+    QuietTimeline,
+    StaticProgressRun,
+    StaticTimeline,
+    StructuredProgressRun,
+    StructuredTimeline,
+    Timeline,
 )
+from agentflow_cli.cli.core.theme import (
+    AGENTFLOW_THEME,
+    Glyphs,
+    glyphs_for,
+    gradient_rule,
+    gradient_text,
+)
+
+
+# Paint the alternate buffer before anything renders into it, so opt-in
+# full-screen mode reads as a dedicated surface rather than a cleared prompt.
+_FULLSCREEN_PAINT = "\x1b[48;2;11;11;18m\x1b[2J\x1b[H"
+_FULLSCREEN_RESET = "\x1b[0m"
 
 
 class OutputFormatter:
@@ -60,7 +73,8 @@ class OutputFormatter:
         self.progress_mode = progress_mode
         self.quiet = quiet
         self._session_console: Console | None = None
-        self._screen_context: Any | None = None
+        self._screen_active: bool = False
+        self._consoles: dict[bool, Console] = {}
         self.capabilities = TerminalCapabilities.detect(
             stream=self.stream,
             output_format=output_format,
@@ -99,6 +113,8 @@ class OutputFormatter:
             self.progress_mode = progress_mode
         if quiet is not None:
             self.quiet = quiet
+        # Color and terminal policy are baked into a Console at construction.
+        self._consoles.clear()
         self.capabilities = TerminalCapabilities.detect(
             stream=self.stream,
             output_format=self.output_format,
@@ -107,45 +123,96 @@ class OutputFormatter:
         )
 
     def _console(self, *, error: bool = False) -> Console:
+        """Return the one console bound to this stream.
+
+        Consoles are cached rather than rebuilt per call because a Rich live
+        display only knows to render ordinary prints *above* itself when those
+        prints go through the same console instance.
+        """
         if self._session_console is not None:
             return self._session_console
-        return Console(
-            file=self.error_stream if error else self.stream,
-            theme=_THEME,
-            no_color=not self.capabilities.color,
-            force_terminal=self.capabilities.color,
-            highlight=False,
-            soft_wrap=False,
-        )
+        cached = self._consoles.get(error)
+        if cached is None:
+            cached = Console(
+                file=self.error_stream if error else self.stream,
+                theme=AGENTFLOW_THEME,
+                no_color=not self.capabilities.color,
+                force_terminal=self.capabilities.color,
+                highlight=False,
+                soft_wrap=False,
+            )
+            self._consoles[error] = cached
+        return cached
+
+    @property
+    def glyphs(self) -> Glyphs:
+        """Symbol set matching this terminal's encoding support."""
+        return glyphs_for(self.capabilities.unicode)
 
     @property
     def fullscreen_active(self) -> bool:
         """Whether this invocation currently owns the alternate screen."""
-        return self._screen_context is not None
+        return self._screen_active
 
     def start_fullscreen_session(self) -> bool:
-        """Enter a themed alternate screen for the full command lifetime."""
+        """Run the whole command on a painted alternate screen.
+
+        This switches the terminal buffer directly instead of wrapping the
+        session in a live display: a live display re-homes the cursor before
+        every write, which would overwrite each line the command prints.
+        """
         if self.fullscreen_active or self.quiet or not self.capabilities.animation:
             return False
         console = self._console()
-        screen_context = console.screen(style="on grey3", hide_cursor=False)
+        if not console.is_terminal:
+            return False
+
+        console.set_alt_screen(True)
+        if self.capabilities.color:
+            console.file.write(_FULLSCREEN_PAINT)
+            console.file.flush()
         self._session_console = console
-        self._screen_context = screen_context
-        try:
-            screen_context.__enter__()
-        except Exception:
-            self._session_console = None
-            self._screen_context = None
-            raise
+        self._screen_active = True
         return True
 
     def end_fullscreen_session(self) -> None:
-        """Restore the user's original terminal after a full-screen command."""
-        screen_context = self._screen_context
-        self._screen_context = None
+        """Hold the alternate screen for review, then restore the terminal.
+
+        Releasing an alternate screen discards everything drawn on it, so the
+        session pauses first — otherwise a fast command would erase its own
+        result before the user could read it.
+        """
+        if not self._screen_active:
+            return
+        console = self._session_console
+        self._screen_active = False
         self._session_console = None
-        if screen_context is not None:
-            screen_context.__exit__(None, None, None)
+        if console is None:
+            return
+
+        self._hold_for_review(console)
+        if self.capabilities.color:
+            console.file.write(_FULLSCREEN_RESET)
+            console.file.flush()
+        console.set_alt_screen(False)
+        console.show_cursor(True)
+
+    def _hold_for_review(self, console: Console) -> None:
+        glyphs = self.glyphs
+        console.print()
+        console.print(
+            gradient_rule(max(min(console.width, 100) - 1, 20), glyphs=glyphs, thin=True)
+        )
+        console.print(
+            Text(
+                f" {glyphs.caret} Press Enter to return to your terminal",
+                style="agentflow.muted",
+            )
+        )
+        if not sys.stdin.isatty():
+            return
+        with contextlib.suppress(Exception):
+            sys.stdin.readline()
 
     @property
     def _structured(self) -> bool:
@@ -195,8 +262,22 @@ class OutputFormatter:
         """Render an animated command identity when the terminal supports it."""
         if self.quiet:
             return
-        if not self.capabilities.animation:
+        if self._structured:
+            self._emit_event("section", command, subtitle=subtitle)
+            return
+        if self.capabilities.output_format == OutputFormat.PLAIN:
             self.print_banner(command.title(), subtitle, color=color)
+            return
+        if not self.capabilities.animation:
+            # Still branded, just motionless — reduced motion should not mean
+            # a downgrade in the information the header carries.
+            render_session_header(
+                self._console(),
+                command=command,
+                subtitle=subtitle,
+                glyphs=self.glyphs,
+                version=CLI_VERSION,
+            )
             return
         render_command_intro(
             self._console(),
@@ -205,6 +286,55 @@ class OutputFormatter:
             unicode=self.capabilities.unicode,
             persistent_screen=self.fullscreen_active,
         )
+
+    def timeline(
+        self,
+        title: str | None = None,
+        *,
+        steps: Sequence[tuple[str, str]] = (),
+    ) -> Timeline:
+        """Create a multi-stage progress timeline for the current output mode.
+
+        Declaring ``steps`` up front lets the user see the whole plan the moment
+        work begins, with pending stages dimmed and the running one animated.
+        """
+        if self.quiet:
+            return QuietTimeline(steps)
+        if self._structured:
+            return StructuredTimeline(emit=self._emit_event_data, title=title, steps=steps)
+        if not self.capabilities.animation:
+            return StaticTimeline(
+                glyphs=self.glyphs,
+                emit=self._write_line,
+                title=title,
+                steps=steps,
+            )
+        return LiveTimeline(self._console(), glyphs=self.glyphs, title=title, steps=steps)
+
+    def progress_run(self, title: str, *, total: int) -> ProgressRun:
+        """Create a determinate progress display with a running pass/fail tally."""
+        if self.quiet:
+            return QuietProgressRun(total=total, title=title)
+        if self._structured:
+            return StructuredProgressRun(total=total, title=title, emit=self._emit_event_data)
+        if not self.capabilities.animation:
+            return StaticProgressRun(
+                total=total,
+                title=title,
+                glyphs=self.glyphs,
+                emit=self._write_line,
+            )
+        return LiveProgressRun(self._console(), total=total, title=title, glyphs=self.glyphs)
+
+    def _emit_event_data(self, event: str, message: str, data: dict[str, Any]) -> None:
+        self._emit_event(event, message, **data)
+
+    def _write_line(self, message: str) -> None:
+        """Write one pre-formatted line without interpreting console markup."""
+        if self.capabilities.output_format == OutputFormat.PLAIN:
+            print(message, file=self.stream)
+            return
+        self._console().print(Text(message))
 
     def success(self, message: str, emoji: bool = True) -> None:
         if self.quiet:
@@ -388,25 +518,73 @@ class OutputFormatter:
                 self.print_list(next_steps, title="Next steps", bullet="->")
             return
 
+        console = self._console()
+        rows = list((details or {}).items())
+        steps = list(next_steps or [])
+        total = len(rows) + len(steps)
+
+        if not self.capabilities.animation or not total:
+            console.print(self._completion_panel(title, message, rows, steps, total))
+            return
+
+        # Reveal one row at a time so the result reads as an outcome landing
+        # rather than a wall of text appearing at once.
+        with Live(
+            console=console,
+            auto_refresh=False,
+            transient=False,
+            redirect_stdout=False,
+            redirect_stderr=False,
+        ) as live:
+            for visible in range(total + 1):
+                live.update(
+                    self._completion_panel(title, message, rows, steps, visible),
+                    refresh=True,
+                )
+                time.sleep(0.05)
+
+    def _completion_panel(
+        self,
+        title: str,
+        message: str,
+        rows: list[tuple[str, Any]],
+        steps: list[str],
+        visible: int,
+    ) -> Panel:
+        """Build the completion panel with only its first ``visible`` rows shown."""
+        glyphs = self.glyphs
         body = Text()
-        symbol = "✓" if self.capabilities.unicode else "OK"
-        body.append(f"{symbol} {message}", style="agentflow.success")
-        if details:
-            for key, value in details.items():
-                body.append(f"\n{key:<12}", style="agentflow.muted")
+        body.append(f"{glyphs.check} ", style="agentflow.success")
+        body.append(message, style="agentflow.command")
+
+        shown = 0
+        if rows:
+            label_width = max(len(str(key)) for key, _ in rows) + 2
+            body.append("\n")
+            for key, value in rows:
+                if shown >= visible:
+                    break
+                body.append(f"\n  {key!s:<{label_width}}", style="agentflow.muted")
                 body.append(str(value), style="agentflow.command")
-        if next_steps:
-            body.append("\n\nNext steps", style="bold")
-            arrow = "→" if self.capabilities.unicode else "->"
-            for step in next_steps:
-                body.append(f"\n  {arrow} {step}")
-        self._console().print(
-            Panel(
-                body,
-                title=f"[agentflow.title]{title}[/agentflow.title]",
-                border_style="green",
-                padding=(1, 2),
-            )
+                shown += 1
+
+        if steps and visible > len(rows):
+            body.append("\n\n")
+            body.append("Next", style="bold #a78bfa")
+            for step in steps:
+                if shown >= visible:
+                    break
+                body.append(f"\n  {glyphs.arrow} ", style="agentflow.accent")
+                body.append(step, style="agentflow.command")
+                shown += 1
+
+        return Panel(
+            body,
+            title=gradient_text(f" {title} ", bold=True),
+            title_align="left",
+            box=box.ROUNDED,
+            border_style="#7c3aed",
+            padding=(1, 2),
         )
 
 
