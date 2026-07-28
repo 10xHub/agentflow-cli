@@ -38,6 +38,8 @@ from agentflow_cli.cli.core.theme import (
 # Background painted across the alternate screen, so the frame reads as its own
 # surface rather than a cleared prompt.
 BACKGROUND = "#0b0b12"
+_BACKGROUND_RGB = tuple(int(BACKGROUND[index : index + 2], 16) for index in (1, 3, 5))
+_PAINT = "\x1b[48;2;{};{};{}m".format(*_BACKGROUND_RGB)
 
 _SAVE_CURSOR = "\x1b7"
 _RESTORE_CURSOR = "\x1b8"
@@ -90,7 +92,7 @@ class AppFrame:
 
     def open(self) -> bool:
         """Enter and paint the alternate screen. Returns False if unsupported."""
-        if self._open or not self._console.is_terminal:
+        if self._open or not self._console.is_terminal or not self._color:
             return False
 
         self._height = self._console.height
@@ -98,8 +100,13 @@ class AppFrame:
         if self._height < _MIN_FRAME_HEIGHT or self._width < _MIN_FRAME_WIDTH:
             return False
 
-        self._console.set_alt_screen(True)
-        self._write(f"\x1b[48;2;11;11;18m{_CLEAR_SCREEN}{_at(1)}")
+        # A legacy console reports itself as a terminal but refuses the alternate
+        # buffer. Bail before painting, or the scrolling region below would be
+        # applied to the user's real scrollback and outlive the process.
+        if not self._console.set_alt_screen(True):
+            return False
+
+        self._write(_PAINT + _CLEAR_SCREEN + _at(1))
         self._open = True
         return True
 
@@ -116,7 +123,7 @@ class AppFrame:
             return
 
         self._command = command
-        self._hint = hint or "Ctrl+C to stop"
+        self._hint = hint or "Ctrl+C to cancel"
         body_top = _HEADER_ROWS + 1
         body_bottom = self._height - _FOOTER_ROWS
 
@@ -207,7 +214,9 @@ class AppFrame:
             status.append(label, style="agentflow.muted")
         _pad(status, width)
 
-        buffer = _SAVE_CURSOR
+        # An anchored footer keeps the cursor parked on it, so there is nothing
+        # to save and restore around the write.
+        buffer = "" if anchored else _SAVE_CURSOR
         buffer += _at(self._height - 1) + self._to_ansi(
             gradient_rule(width, glyphs=glyphs, thin=True, offset=0.6)
         )

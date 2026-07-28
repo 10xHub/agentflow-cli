@@ -60,6 +60,7 @@ class APICommand(BaseCommand):
             self.output.command_header(
                 "play" if open_playground else "api",
                 "Starting development server via Uvicorn. Not for production use.",
+                hint="Ctrl+C to stop the development server",
             )
 
             timeline = self.output.timeline(

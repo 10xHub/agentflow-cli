@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 import sys
 import time
@@ -26,6 +25,7 @@ from agentflow_cli.cli.capabilities import (
 )
 from agentflow_cli.cli.constants import CLI_VERSION
 from agentflow_cli.cli.core.animations import render_command_intro, render_session_header
+from agentflow_cli.cli.core.screen import AppFrame
 from agentflow_cli.cli.core.steps import (
     LiveProgressRun,
     LiveTimeline,
@@ -42,15 +42,8 @@ from agentflow_cli.cli.core.theme import (
     AGENTFLOW_THEME,
     Glyphs,
     glyphs_for,
-    gradient_rule,
     gradient_text,
 )
-
-
-# Paint the alternate buffer before anything renders into it, so opt-in
-# full-screen mode reads as a dedicated surface rather than a cleared prompt.
-_FULLSCREEN_PAINT = "\x1b[48;2;11;11;18m\x1b[2J\x1b[H"
-_FULLSCREEN_RESET = "\x1b[0m"
 
 
 class OutputFormatter:
@@ -73,7 +66,8 @@ class OutputFormatter:
         self.progress_mode = progress_mode
         self.quiet = quiet
         self._session_console: Console | None = None
-        self._screen_active: bool = False
+        self._frame: AppFrame | None = None
+        self._fullscreen_requested = False
         self._consoles: dict[bool, Console] = {}
         self.capabilities = TerminalCapabilities.detect(
             stream=self.stream,
@@ -152,67 +146,40 @@ class OutputFormatter:
     @property
     def fullscreen_active(self) -> bool:
         """Whether this invocation currently owns the alternate screen."""
-        return self._screen_active
+        return self._frame is not None and self._frame.active
+
+    def request_fullscreen(self, enabled: bool) -> None:
+        """Record whether this invocation may claim a full-screen surface.
+
+        The screen is not taken here. It is claimed lazily by the first
+        ``command_header`` call, so script-shaped commands — ``--version``,
+        ``config get`` — never take over the terminal or pause on exit.
+        """
+        self._fullscreen_requested = enabled
 
     def start_fullscreen_session(self) -> bool:
-        """Run the whole command on a painted alternate screen.
-
-        This switches the terminal buffer directly instead of wrapping the
-        session in a live display: a live display re-homes the cursor before
-        every write, which would overwrite each line the command prints.
-        """
+        """Claim the alternate screen for the whole command."""
         if self.fullscreen_active or self.quiet or not self.capabilities.animation:
             return False
+
         console = self._console()
-        if not console.is_terminal:
+        frame = AppFrame(console, glyphs=self.glyphs, color=self.capabilities.color)
+        if not frame.open():
             return False
 
-        console.set_alt_screen(True)
-        if self.capabilities.color:
-            console.file.write(_FULLSCREEN_PAINT)
-            console.file.flush()
+        # Bind every later render to this console so chrome, live displays, and
+        # ordinary prints all agree on where the cursor is.
         self._session_console = console
-        self._screen_active = True
+        self._frame = frame
         return True
 
     def end_fullscreen_session(self) -> None:
-        """Hold the alternate screen for review, then restore the terminal.
-
-        Releasing an alternate screen discards everything drawn on it, so the
-        session pauses first — otherwise a fast command would erase its own
-        result before the user could read it.
-        """
-        if not self._screen_active:
-            return
-        console = self._session_console
-        self._screen_active = False
+        """Pause on the closing hint, then restore the user's terminal."""
+        frame = self._frame
+        self._frame = None
         self._session_console = None
-        if console is None:
-            return
-
-        self._hold_for_review(console)
-        if self.capabilities.color:
-            console.file.write(_FULLSCREEN_RESET)
-            console.file.flush()
-        console.set_alt_screen(False)
-        console.show_cursor(True)
-
-    def _hold_for_review(self, console: Console) -> None:
-        glyphs = self.glyphs
-        console.print()
-        console.print(
-            gradient_rule(max(min(console.width, 100) - 1, 20), glyphs=glyphs, thin=True)
-        )
-        console.print(
-            Text(
-                f" {glyphs.caret} Press Enter to return to your terminal",
-                style="agentflow.muted",
-            )
-        )
-        if not sys.stdin.isatty():
-            return
-        with contextlib.suppress(Exception):
-            sys.stdin.readline()
+        if frame is not None:
+            frame.close()
 
     @property
     def _structured(self) -> bool:
@@ -258,8 +225,13 @@ class OutputFormatter:
         subtitle: str | None = None,
         *,
         color: str = "cyan",
+        hint: str | None = None,
     ) -> None:
-        """Render an animated command identity when the terminal supports it."""
+        """Render an animated command identity when the terminal supports it.
+
+        ``hint`` is the closing line pinned in the full-screen footer; it should
+        say how to leave whatever the command is about to do.
+        """
         if self.quiet:
             return
         if self._structured:
@@ -279,6 +251,8 @@ class OutputFormatter:
                 version=CLI_VERSION,
             )
             return
+        if self._fullscreen_requested:
+            self.start_fullscreen_session()
         render_command_intro(
             self._console(),
             command=command,
@@ -286,6 +260,15 @@ class OutputFormatter:
             unicode=self.capabilities.unicode,
             persistent_screen=self.fullscreen_active,
         )
+        if self._frame is not None:
+            # The intro owned the whole canvas; pin the chrome it collapses into
+            # and hand the body region over to the command's output.
+            self._frame.install_chrome(
+                command=command,
+                subtitle=subtitle,
+                version=CLI_VERSION,
+                hint=hint,
+            )
 
     def timeline(
         self,
@@ -371,7 +354,9 @@ class OutputFormatter:
         if self.capabilities.output_format == OutputFormat.PLAIN:
             print(f"{prefix}{message}", file=self.error_stream if error else self.stream)
             return
-        self._console(error=error).print(f"[agentflow.{level}]{prefix}{message}[/agentflow.{level}]")
+        self._console(error=error).print(
+            f"[agentflow.{level}]{prefix}{message}[/agentflow.{level}]"
+        )
 
     def emphasize(self, message: str) -> None:
         if self.quiet:

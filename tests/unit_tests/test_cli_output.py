@@ -162,26 +162,34 @@ def test_forced_tty_header_uses_animation_renderer(monkeypatch) -> None:
     assert calls == [("play", "Start the playground", True, False)]
 
 
+class FakeConsole:
+    """Minimal console double that records the terminal control it receives."""
+
+    is_terminal = True
+    width = 100
+    height = 30
+
+    def __init__(self) -> None:
+        self.file = io.StringIO()
+        self.alt_screen_calls: list[bool] = []
+        self.cursor_shown: list[bool] = []
+
+    # Mirrors Rich: True when the alternate buffer was actually entered.
+    alt_screen_supported = True
+
+    def set_alt_screen(self, enable: bool) -> bool:
+        self.alt_screen_calls.append(enable)
+        return self.alt_screen_supported
+
+    def show_cursor(self, show: bool) -> None:
+        self.cursor_shown.append(show)
+
+    def print(self, *_args, **_kwargs) -> None:
+        return None
+
+
 def test_fullscreen_session_owns_and_restores_alternate_screen(monkeypatch) -> None:
-    class FakeConsole:
-        is_terminal = True
-        width = 80
-
-        def __init__(self) -> None:
-            self.file = io.StringIO()
-            self.alt_screen_calls: list[bool] = []
-            self.cursor_shown: list[bool] = []
-
-        def set_alt_screen(self, enable: bool) -> None:
-            self.alt_screen_calls.append(enable)
-
-        def show_cursor(self, show: bool) -> None:
-            self.cursor_shown.append(show)
-
-        def print(self, *_args, **_kwargs) -> None:
-            return None
-
-    rendered, _stream = formatter(progress_mode=ProgressMode.TTY)
+    rendered, _stream = formatter(progress_mode=ProgressMode.TTY, color_mode=ColorMode.ALWAYS)
     console = FakeConsole()
     monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
 
@@ -195,10 +203,12 @@ def test_fullscreen_session_owns_and_restores_alternate_screen(monkeypatch) -> N
     assert rendered.fullscreen_active is False
     assert console.alt_screen_calls == [True, False]
     assert console.cursor_shown == [True]
+    # The scrolling region must be released, or the user's shell inherits it.
+    assert "\x1b[r" in console.file.getvalue()
 
 
 def test_fullscreen_session_is_skipped_off_a_terminal(monkeypatch) -> None:
-    class NonTerminalConsole:
+    class NonTerminalConsole(FakeConsole):
         is_terminal = False
 
     rendered, _stream = formatter(progress_mode=ProgressMode.TTY)
@@ -206,6 +216,115 @@ def test_fullscreen_session_is_skipped_off_a_terminal(monkeypatch) -> None:
 
     assert rendered.start_fullscreen_session() is False
     assert rendered.fullscreen_active is False
+
+
+def test_fullscreen_session_is_skipped_on_a_terminal_too_short_for_chrome(monkeypatch) -> None:
+    class ShortConsole(FakeConsole):
+        height = 8
+
+    rendered, _stream = formatter(progress_mode=ProgressMode.TTY, color_mode=ColorMode.ALWAYS)
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: ShortConsole())
+
+    assert rendered.start_fullscreen_session() is False
+
+
+def test_fullscreen_session_writes_nothing_when_the_console_refuses(monkeypatch) -> None:
+    """A legacy console claims to be a terminal but rejects the alternate buffer.
+
+    Painting anyway would leave a scrolling region on the user's real scrollback,
+    which outlives the process.
+    """
+
+    class RefusingConsole(FakeConsole):
+        alt_screen_supported = False
+
+    rendered, _stream = formatter(progress_mode=ProgressMode.TTY, color_mode=ColorMode.ALWAYS)
+    console = RefusingConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+
+    assert rendered.start_fullscreen_session() is False
+    assert rendered.fullscreen_active is False
+    assert console.file.getvalue() == ""
+
+
+class TTYStream(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
+def tty_formatter() -> OutputFormatter:
+    """A formatter that stays in human mode, as it would on a real terminal."""
+    return OutputFormatter(
+        stream=TTYStream(),
+        progress_mode=ProgressMode.TTY,
+        color_mode=ColorMode.ALWAYS,
+    )
+
+
+def test_requesting_fullscreen_does_not_claim_the_screen_on_its_own(monkeypatch) -> None:
+    """Script-shaped commands print and exit without ever taking the terminal."""
+    rendered = tty_formatter()
+    console = FakeConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+
+    rendered.request_fullscreen(True)
+    rendered.success("done")
+
+    assert rendered.fullscreen_active is False
+    assert console.alt_screen_calls == []
+    # Closing without a session must stay a no-op, including the Enter pause.
+    rendered.end_fullscreen_session()
+    assert console.alt_screen_calls == []
+
+
+def test_command_header_claims_the_screen_when_fullscreen_was_requested(monkeypatch) -> None:
+    rendered = tty_formatter()
+    console = FakeConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+    monkeypatch.setattr(
+        "agentflow_cli.cli.core.output.render_command_intro",
+        lambda *_args, **_kwargs: None,
+    )
+
+    rendered.request_fullscreen(True)
+    rendered.command_header("play", "Serve it")
+    assert rendered.fullscreen_active is True
+    assert console.alt_screen_calls == [True]
+
+
+def test_command_header_stays_in_the_normal_buffer_without_fullscreen(monkeypatch) -> None:
+    rendered = tty_formatter()
+    console = FakeConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+    monkeypatch.setattr(
+        "agentflow_cli.cli.core.output.render_command_intro",
+        lambda *_args, **_kwargs: None,
+    )
+
+    rendered.request_fullscreen(False)
+    rendered.command_header("play", "Serve it")
+    assert rendered.fullscreen_active is False
+    assert console.alt_screen_calls == []
+
+
+def test_command_header_pins_chrome_inside_a_fullscreen_session(monkeypatch) -> None:
+    # A real TTY stream, so the formatter stays in human mode and reaches the frame.
+    rendered = tty_formatter()
+    console = FakeConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+    monkeypatch.setattr(
+        "agentflow_cli.cli.core.output.render_command_intro",
+        lambda *_args, **_kwargs: None,
+    )
+
+    assert rendered.start_fullscreen_session() is True
+    rendered.command_header("play", "Serve it", hint="Ctrl+C to stop")
+
+    written = console.file.getvalue()
+    # Header, footer, and a scrolling region confining output between them.
+    assert "play" in written
+    assert "Ctrl+C to stop" in written
+    assert f"\x1b[5;{console.height - 2}r" in written
 
 
 def test_timeline_and_progress_pick_the_renderer_for_the_output_mode() -> None:

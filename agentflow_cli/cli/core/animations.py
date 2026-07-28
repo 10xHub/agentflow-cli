@@ -1,11 +1,12 @@
 """Terminal-native animation engine for the Agentflow CLI.
 
-The intro deliberately runs on the *alternate* screen and then hands the
-terminal back. An alternate screen is discarded by the terminal when it is
-released, so anything a command prints while holding one is lost the moment the
-process exits. Motion therefore gets the full canvas for as long as it is
-running, and every durable line — headers, timelines, results — is written to
-the normal buffer where it stays in scrollback.
+The intro always plays on the full canvas; what differs is who owns that canvas.
+Inside an :class:`~agentflow_cli.cli.core.screen.AppFrame` the frame already
+holds the alternate screen and keeps it, so the sequence renders in place and
+collapses into the frame's pinned chrome. Without a frame the intro claims a
+temporary screen of its own and hands the terminal back, then prints a durable
+header — because a released alternate screen is discarded, and everything the
+command goes on to print has to survive in the normal buffer.
 
 Frames are generated from a normalized ``0.0 -> 1.0`` timeline rather than a
 fixed frame list so the same choreography adapts to terminal width, refresh
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import math
 import time
+from contextlib import nullcontext
 
 from rich.align import Align
 from rich.console import Console, Group, RenderableType
@@ -23,6 +25,7 @@ from rich.live import Live
 from rich.text import Text
 
 from agentflow_cli.cli.constants import CLI_VERSION
+from agentflow_cli.cli.core.screen import BACKGROUND
 from agentflow_cli.cli.core.theme import (
     BRAND_RAMP,
     Glyphs,
@@ -171,14 +174,15 @@ def _play_cinematic(
     command: str,
     subtitle: str | None,
     glyphs: Glyphs,
+    own_screen: bool = True,
 ) -> None:
-    """Run the full-canvas reveal on a temporary alternate screen."""
+    """Run the full-canvas reveal, optionally claiming a screen of its own."""
     frame_interval = 1.0 / INTRO_FPS
     frame_count = max(int(INTRO_DURATION_SECONDS * INTRO_FPS), 1)
     tagline = _TAGLINES.get(command.lower(), subtitle or _DEFAULT_TAGLINE)
 
     with (
-        console.screen(style="on #0b0b12", hide_cursor=True),
+        console.screen(style=f"on {BACKGROUND}", hide_cursor=True) if own_screen else nullcontext(),
         Live(
             console=console,
             auto_refresh=False,
@@ -269,7 +273,7 @@ def _cinematic_frame(
         Group(*layers),
         vertical="middle",
         height=max(console.height - 1, 12),
-        style="on #0b0b12",
+        style=f"on {BACKGROUND}",
     )
 
 

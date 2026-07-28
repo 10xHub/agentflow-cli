@@ -24,13 +24,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Persistent full-screen application surface.** On an interactive terminal a
+  command now runs on its own screen with branded chrome pinned in place: a
+  header (gradient rule, identity, version, subtitle) at the top, a footer
+  status bar at the bottom, and the command's output scrolling between them.
+  Pinning uses a DEC scrolling region, so it survives output from child
+  processes — pytest, Uvicorn, Questionary prompts — without routing any of it
+  through a renderer. The screen is held until you press Enter, and released
+  through a `finally` guard so a crash can never leave your shell on an
+  alternate buffer or inside a scrolling region. Opt out with `--no-fullscreen`
+  or `AGENTFLOW_NO_FULLSCREEN=1`.
 - Full-canvas animated command intro: an eased block-letter `AGENTFLOW` reveal
   with a moving light front, a flowing gradient field, a typed tagline, and a
-  per-command pipeline that fills in as the intro plays. It runs on a temporary
-  alternate screen and hands the terminal back, so the animation gets the whole
-  canvas while the command's real output stays in scrollback.
-- Persistent branded session header (gradient rules, command, version, and
-  subtitle) printed into the normal buffer after the intro.
+  per-command pipeline that fills in as the intro plays. Inside the full-screen
+  surface it collapses into the pinned header; with `--no-fullscreen` it plays
+  on a temporary screen and leaves a durable header in your scrollback.
 - Live step timelines (`OutputFormatter.timeline`): a command declares its stages
   up front, so pending work is visible from the first frame while the running
   stage animates with a spinner, elapsed timer, and a live detail line. Wired
@@ -44,8 +52,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `init`, `build`, `test`, `eval`, `doctor`, and `skills`, previewable with the
   side-effect-free `agentflow demo`.
 - Row-by-row reveal for completion panels.
-- Opt-in `--fullscreen` (or `AGENTFLOW_FULLSCREEN=1`) that runs a command on a
-  painted alternate screen and holds it until you press Enter.
 - Staged startup feedback, a pre-flight port check, and connected-playground
   completion output for `agentflow play` and `agentflow dev`.
 - Adaptive `--animation` / `--no-animation` controls with CI, pipe, JSON, and
@@ -81,12 +87,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   working directory.
 - Init, build, and eval status output now flows through the shared renderer instead of
   writing raw ANSI control sequences.
-- The alternate screen is no longer held for a command's whole lifetime. A terminal
-  discards an alternate screen when it is released, so that approach erased each
-  command's output on exit and made short commands look like a flash of nothing.
-  Motion now owns the screen only while it is playing; results are written to the
-  normal buffer. `--fullscreen` restores the held-screen behavior for anyone who
-  wants it, and pauses before releasing so nothing is lost.
+- **The full-screen session no longer erases the command's output.** It used to
+  hold the alternate screen through a Rich live display, which re-homes the
+  cursor before every write — so each line overwrote the last — and then released
+  the screen on exit, which a terminal handles by discarding everything drawn on
+  it. Short commands showed a flash of nothing. The frame now switches the buffer
+  directly and pauses on a closing hint before letting go.
+- The screen is claimed lazily, by the first command that renders a header.
+  Script-shaped invocations (`--version`, `config get`, `--format json`) never
+  take over the terminal or pause on exit.
+- A console that reports itself as a terminal but refuses the alternate buffer
+  (legacy Windows console) now aborts the frame before anything is written,
+  rather than leaving a scrolling region on the user's real scrollback.
 - One Rich `Console` is now reused per stream. Rebuilding it per call meant a live
   display could not tell that ordinary prints belonged to it, so background output
   collided with spinners and progress bars instead of scrolling above them.

@@ -132,12 +132,12 @@ def root(  # noqa: PLR0913
         help="Enable or disable decorative command animation.",
         rich_help_panel="Global output",
     ),
-    fullscreen: bool = typer.Option(
-        False,
-        "--fullscreen",
+    fullscreen: bool | None = typer.Option(
+        None,
+        "--fullscreen/--no-fullscreen",
         help=(
-            "Run the command on a dedicated alternate screen and hold it "
-            "until you press Enter."
+            "Run the command on a dedicated full-screen surface with pinned "
+            "header and footer. Enabled by default on an interactive terminal."
         ),
         rich_help_panel="Global output",
     ),
@@ -248,12 +248,15 @@ def root(  # noqa: PLR0913
         yes=yes,
         non_interactive=non_interactive,
     )
-    # Opt-in only: an alternate screen is discarded by the terminal when it is
-    # released, so holding one for the whole command would erase that command's
-    # output on exit. The default experience animates on a temporary screen and
-    # writes every durable line to the normal buffer instead.
-    if (fullscreen or truthy_env("AGENTFLOW_FULLSCREEN")) and output.start_fullscreen_session():
-        ctx.call_on_close(output.end_fullscreen_session)
+    # A terminal discards an alternate screen when it is released, so the frame
+    # pauses on a closing hint before letting go. Anyone who wants output left in
+    # their scrollback — to copy a path, or scroll back after the fact — opts out
+    # with --no-fullscreen or AGENTFLOW_NO_FULLSCREEN=1. The screen itself is
+    # claimed lazily, by the first command that renders a header.
+    if fullscreen is None:
+        fullscreen = not truthy_env("AGENTFLOW_NO_FULLSCREEN")
+    output.request_fullscreen(fullscreen)
+    ctx.call_on_close(output.end_fullscreen_session)
 
     if version_flag:
         typer.echo(CLI_VERSION)
@@ -968,6 +971,12 @@ def main() -> None:
         sys.exit(130)
     except Exception as e:
         sys.exit(handle_exception(e))
+    finally:
+        # Last line of defence. A full-screen session leaves the terminal on an
+        # alternate buffer with a restricted scrolling region; if any path skips
+        # the normal teardown, the user's shell inherits both. Closing here is
+        # idempotent, so the usual context callback still owns the happy path.
+        output.end_fullscreen_session()
 
 
 if __name__ == "__main__":
