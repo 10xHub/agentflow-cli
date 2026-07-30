@@ -71,7 +71,7 @@ _SIGNATURES: dict[str, tuple[str, ...]] = {
     "build": ("source", "deps", "image", "ship"),
     "test": ("collect", "run", "assert", "report"),
     "eval": ("discover", "load", "score", "report"),
-    "doctor": ("python", "core", "config", "port"),
+    "audit": ("python", "core", "config", "port"),
     "skills": ("detect", "resolve", "install", "activate"),
 }
 _DEFAULT_SIGNATURE = ("boot", "load", "ready")
@@ -84,7 +84,7 @@ _TAGLINES: dict[str, str] = {
     "build": "Packaging your agent for deployment.",
     "test": "Exercising your agent's test suite.",
     "eval": "Scoring your agent against evaluation sets.",
-    "doctor": "Inspecting your Agentflow environment.",
+    "audit": "Auditing your Agentflow environment.",
 }
 _DEFAULT_TAGLINE = "Build, run, and inspect intelligent agent systems."
 

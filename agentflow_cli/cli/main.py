@@ -43,7 +43,7 @@ def _lazy_command(module_name: str, class_name: str) -> type:
                 raise DependencyError(
                     f"The {feature} command could not load its required dependencies: {exc}",
                     hints=(
-                        "Run `agentflow doctor` to inspect installed package compatibility.",
+                        "Run `agentflow audit` to inspect installed package compatibility.",
                         "Upgrade with `python -m pip install --upgrade "
                         '"10xscale-agentflow>=0.9,<2"`.',
                     ),
@@ -57,10 +57,10 @@ def _lazy_command(module_name: str, class_name: str) -> type:
 
 
 APICommand = _lazy_command("agentflow_cli.cli.commands.api", "APICommand")
+AuditCommand = _lazy_command("agentflow_cli.cli.commands.audit", "AuditCommand")
 BuildCommand = _lazy_command("agentflow_cli.cli.commands.build", "BuildCommand")
 DemoCommand = _lazy_command("agentflow_cli.cli.commands.demo", "DemoCommand")
 EvalCommand = _lazy_command("agentflow_cli.cli.commands.eval", "EvalCommand")
-DoctorCommand = _lazy_command("agentflow_cli.cli.commands.doctor", "DoctorCommand")
 InitCommand = _lazy_command("agentflow_cli.cli.commands.init", "InitCommand")
 SkillsCommand = _lazy_command("agentflow_cli.cli.commands.skills", "SkillsCommand")
 TestCommand = _lazy_command("agentflow_cli.cli.commands.test", "TestCommand")
@@ -508,36 +508,15 @@ def play(
         sys.exit(handle_exception(e))
 
 
-@app.command()
-def dev(
-    config: str = typer.Option(
-        DEFAULT_CONFIG_FILE,
-        "--config",
-        "-c",
-        help="Path to the project configuration file.",
+@app.command(
+    epilog=(
+        "Examples:\n"
+        "  agentflow audit\n"
+        "  agentflow --format json audit\n"
+        "  agentflow --no-animation audit"
     ),
-    host: str = typer.Option(
-        DEFAULT_HOST,
-        "--host",
-        "-H",
-        help="Host interface for the local development server.",
-    ),
-    port: int = typer.Option(
-        DEFAULT_PORT,
-        "--port",
-        "-p",
-        help="Port for the local development server.",
-    ),
-    reload: bool = typer.Option(
-        True,
-        "--reload/--no-reload",
-        help="Reload the server when project files change.",
-    ),
-    open_playground: bool = typer.Option(
-        True,
-        "--open/--no-open",
-        help="Open the hosted playground when the API is ready.",
-    ),
+)
+def audit(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging."),
     quiet: bool = typer.Option(
         False,
@@ -546,37 +525,21 @@ def dev(
         help="Suppress all output except errors.",
     ),
 ) -> None:
-    """Start the local Agentflow development server."""
-    _configure_command(verbose=verbose, quiet=quiet)
+    """Audit package compatibility and the current project environment.
 
-    try:
-        command = APICommand(output)
-        exit_code = command.execute(
-            config=config,
-            host=host,
-            port=port,
-            reload=reload,
-            open_playground=open_playground,
-        )
-        sys.exit(exit_code)
-    except Exception as e:
-        sys.exit(handle_exception(e))
+    Runs six read-only checks and prints them as a table: the Python
+    interpreter, the installed CLI and core packages, whether the core exposes
+    the evaluation API this CLI expects, whether `agentflow.json` is present
+    and declares a valid `agent` key, and whether the default port is free.
 
-
-@app.command()
-def doctor(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging."),
-    quiet: bool = typer.Option(
-        False,
-        "--quiet",
-        "-q",
-        help="Suppress all output except errors.",
-    ),
-) -> None:
-    """Diagnose package compatibility and the current project environment."""
+    Nothing is written or changed, so it is safe to run anywhere. Exits 1 if
+    any check fails and 0 otherwise, which makes it usable as a CI gate;
+    warnings (no project config, port already bound) are reported without
+    failing the run.
+    """
     _configure_command(verbose=verbose, quiet=quiet)
     try:
-        sys.exit(DoctorCommand(output).execute())
+        sys.exit(AuditCommand(output).execute())
     except Exception as e:
         sys.exit(handle_exception(e))
 

@@ -25,7 +25,7 @@ def test_root_help_does_not_import_command_implementations(monkeypatch) -> None:
     assert result.exit_code == 0
     assert imported == []
     assert "dev" in result.output
-    assert "doctor" in result.output
+    assert "audit" in result.output
 
 
 def test_root_version_is_script_friendly() -> None:
@@ -42,9 +42,9 @@ def test_plain_and_no_color_global_options() -> None:
 
 
 def test_no_animation_alias_selects_static_output() -> None:
-    result = runner.invoke(main_mod.app, ["--no-animation", "doctor"])
+    result = runner.invoke(main_mod.app, ["--no-animation", "audit"])
     assert result.exit_code == 0
-    assert "Doctor" in result.output
+    assert "Audit" in result.output
 
 
 def test_dev_delegates_to_api_with_open_policy(monkeypatch) -> None:
@@ -73,7 +73,7 @@ def test_lazy_dependency_error_has_recovery_code(monkeypatch) -> None:
     result = runner.invoke(main_mod.app, ["eval"])
     assert result.exit_code == 4
     assert "AF-DEPS-001" in result.output
-    assert "agentflow doctor" in result.output
+    assert "agentflow audit" in result.output
 
 
 def test_config_commands_round_trip(monkeypatch, tmp_path) -> None:

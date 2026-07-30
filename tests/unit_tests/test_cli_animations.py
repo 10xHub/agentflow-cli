@@ -85,7 +85,7 @@ def test_intro_does_not_claim_a_second_screen_when_one_is_already_held() -> None
 
 def test_intro_uses_ascii_only_output_when_unicode_is_unavailable() -> None:
     console, stream = terminal()
-    anim.render_command_intro(console, command="doctor", subtitle="Check it", unicode=False)
+    anim.render_command_intro(console, command="audit", subtitle="Check it", unicode=False)
 
     assert ANSI.sub("", stream.getvalue()).isascii()
 
