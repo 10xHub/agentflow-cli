@@ -508,6 +508,61 @@ def play(
         sys.exit(handle_exception(e))
 
 
+@app.command()
+def dev(
+    config: str = typer.Option(
+        DEFAULT_CONFIG_FILE,
+        "--config",
+        "-c",
+        help="Path to the project configuration file.",
+    ),
+    host: str = typer.Option(
+        DEFAULT_HOST,
+        "--host",
+        "-H",
+        help="Host interface for the local development server.",
+    ),
+    port: int = typer.Option(
+        DEFAULT_PORT,
+        "--port",
+        "-p",
+        help="Port for the local development server.",
+    ),
+    reload: bool = typer.Option(
+        True,
+        "--reload/--no-reload",
+        help="Reload the server when project files change.",
+    ),
+    open_playground: bool = typer.Option(
+        True,
+        "--open/--no-open",
+        help="Open the hosted playground when the API is ready.",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging."),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress all output except errors.",
+    ),
+) -> None:
+    """Start the local Agentflow development server."""
+    _configure_command(verbose=verbose, quiet=quiet)
+
+    try:
+        command = APICommand(output)
+        exit_code = command.execute(
+            config=config,
+            host=host,
+            port=port,
+            reload=reload,
+            open_playground=open_playground,
+        )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
 @app.command(
     epilog=(
         "Examples:\n"
