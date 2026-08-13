@@ -1,43 +1,376 @@
-"""Professional Agentflow CLI main entry point."""
+"""Agentflow CLI entry point and lightweight command registry."""
 
+import importlib
+import json
+import os
 import sys
+from pathlib import Path
+from typing import Any
 
 import typer
-from dotenv import load_dotenv
 
-from agentflow_cli.cli.commands.api import APICommand
-from agentflow_cli.cli.commands.build import BuildCommand
-from agentflow_cli.cli.commands.eval import EvalCommand
-from agentflow_cli.cli.commands.init import InitCommand
-from agentflow_cli.cli.commands.skills import SkillsCommand
-from agentflow_cli.cli.commands.test import TestCommand
-from agentflow_cli.cli.commands.version import VersionCommand
+from agentflow_cli.cli.capabilities import ColorMode, OutputFormat, ProgressMode, truthy_env
 from agentflow_cli.cli.constants import (
+    CLI_VERSION,
     DEFAULT_CONFIG_FILE,
     DEFAULT_HOST,
     DEFAULT_PORT,
 )
+from agentflow_cli.cli.context import CLIContext
 from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow_cli.cli.exceptions import AgentflowCLIError
+from agentflow_cli.cli.exceptions import AgentflowCLIError, ConfigurationError, DependencyError
 from agentflow_cli.cli.logger import setup_cli_logging
+from agentflow_cli.cli.user_config import UserConfigStore, parse_config_value
 
 
-# Load environment variables
-load_dotenv()
+def _lazy_command(module_name: str, class_name: str) -> type:
+    """Create a compatibility-preserving lazy command adapter.
+
+    Only the selected command's implementation and heavy dependencies are imported.
+    Keeping these class-shaped adapters also preserves the public monkeypatch surface
+    used by downstream tests and integrations.
+    """
+
+    class LazyCommand:
+        def __init__(self, output: OutputFormatter | None = None) -> None:
+            self.output = output
+
+        def execute(self, *args: Any, **kwargs: Any) -> int:
+            try:
+                module = importlib.import_module(module_name)
+            except ImportError as exc:
+                feature = class_name.removesuffix("Command").lower()
+                raise DependencyError(
+                    f"The {feature} command could not load its required dependencies: {exc}",
+                    hints=(
+                        "Run `agentflow audit` to inspect installed package compatibility.",
+                        "Upgrade with `python -m pip install --upgrade "
+                        '"10xscale-agentflow>=0.9,<2"`.',
+                    ),
+                ) from exc
+            implementation = getattr(module, class_name)
+            return implementation(self.output).execute(*args, **kwargs)
+
+    LazyCommand.__name__ = class_name
+    LazyCommand.__qualname__ = class_name
+    return LazyCommand
+
+
+APICommand = _lazy_command("agentflow_cli.cli.commands.api", "APICommand")
+AuditCommand = _lazy_command("agentflow_cli.cli.commands.audit", "AuditCommand")
+BuildCommand = _lazy_command("agentflow_cli.cli.commands.build", "BuildCommand")
+DemoCommand = _lazy_command("agentflow_cli.cli.commands.demo", "DemoCommand")
+EvalCommand = _lazy_command("agentflow_cli.cli.commands.eval", "EvalCommand")
+InitCommand = _lazy_command("agentflow_cli.cli.commands.init", "InitCommand")
+SkillsCommand = _lazy_command("agentflow_cli.cli.commands.skills", "SkillsCommand")
+TestCommand = _lazy_command("agentflow_cli.cli.commands.test", "TestCommand")
+VersionCommand = _lazy_command("agentflow_cli.cli.commands.version", "VersionCommand")
 
 # Create the main Typer app
 app = typer.Typer(
     name="agentflow",
-    help=(
-        "Agentflow API CLI - Professional tool for managing Agentflow API "
-        "servers and configurations"
+    help="Build, run, test, and evaluate production-ready Agentflow agents.",
+    epilog=(
+        "Examples:\n"
+        "  agentflow init\n"
+        "  agentflow dev\n"
+        "  agentflow test --coverage\n"
+        "  agentflow eval --parallel"
     ),
     context_settings={"help_option_names": ["-h", "--help"]},
     no_args_is_help=True,
+    rich_markup_mode="rich",
+    pretty_exceptions_enable=False,
 )
+config_app = typer.Typer(
+    name="config",
+    help="Inspect and manage user-level Agentflow CLI preferences.",
+    no_args_is_help=True,
+)
+app.add_typer(config_app, name="config", rich_help_panel="Manage")
 
 # Initialize global output formatter
 output = OutputFormatter()
+
+
+@app.callback(invoke_without_command=True)
+def root(  # noqa: PLR0913
+    ctx: typer.Context,
+    output_format: OutputFormat | None = typer.Option(
+        None,
+        "--format",
+        help="Output format: human, plain, json, or jsonl.",
+        rich_help_panel="Global output",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit versioned JSON output; shorthand for --format json.",
+        rich_help_panel="Global output",
+    ),
+    color: ColorMode | None = typer.Option(
+        None,
+        "--color",
+        help="Color policy: auto, always, or never.",
+        rich_help_panel="Global output",
+    ),
+    no_color: bool = typer.Option(
+        False,
+        "--no-color",
+        help="Disable ANSI color; shorthand for --color never.",
+        rich_help_panel="Global output",
+    ),
+    progress: ProgressMode | None = typer.Option(
+        None,
+        "--progress",
+        help="Progress mode: auto, tty, plain, json, or quiet.",
+        rich_help_panel="Global output",
+    ),
+    animation: bool | None = typer.Option(
+        None,
+        "--animation/--no-animation",
+        help="Enable or disable decorative command animation.",
+        rich_help_panel="Global output",
+    ),
+    fullscreen: bool | None = typer.Option(
+        None,
+        "--fullscreen/--no-fullscreen",
+        help=(
+            "Run the command on a dedicated full-screen surface with pinned "
+            "header and footer. Enabled by default on an interactive terminal."
+        ),
+        rich_help_panel="Global output",
+    ),
+    cwd: Path | None = typer.Option(
+        None,
+        "--cwd",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        resolve_path=True,
+        help="Run as if Agentflow was started in this directory.",
+        rich_help_panel="Global context",
+    ),
+    verbose: int = typer.Option(
+        0,
+        "--verbose",
+        "-v",
+        count=True,
+        help="Increase diagnostic verbosity; repeat for more detail.",
+        rich_help_panel="Diagnostics",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress informational, progress, and success output.",
+        rich_help_panel="Global output",
+    ),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="Enable debug diagnostics.",
+        rich_help_panel="Diagnostics",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Accept recommended defaults for supported workflows.",
+        rich_help_panel="Global context",
+    ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Never prompt for input.",
+        rich_help_panel="Global context",
+    ),
+    version_flag: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        is_eager=True,
+        help="Show the CLI version and exit.",
+        rich_help_panel="Global options",
+    ),
+) -> None:
+    """Resolve invocation-wide terminal, logging, and working-directory policy."""
+    if cwd is not None:
+        os.chdir(cwd)
+
+    preferences = UserConfigStore()
+    try:
+        if json_output and output_format not in {None, OutputFormat.JSON}:
+            raise typer.BadParameter("--json cannot be combined with a different --format.")
+        if no_color and color not in {None, ColorMode.NEVER}:
+            raise typer.BadParameter("--no-color cannot be combined with a different --color.")
+        if animation is not None and progress is not None:
+            expected = ProgressMode.TTY if animation else ProgressMode.PLAIN
+            if progress != expected:
+                raise typer.BadParameter(
+                    "--animation/--no-animation conflicts with the selected --progress mode."
+                )
+        resolved_format = output_format or OutputFormat(
+            preferences.get("output.format", OutputFormat.HUMAN)
+        )
+        resolved_color = color or ColorMode(preferences.get("output.color", ColorMode.AUTO))
+        resolved_progress = progress or ProgressMode(
+            preferences.get("output.progress", ProgressMode.AUTO)
+        )
+        if json_output:
+            resolved_format = OutputFormat.JSON
+        if no_color:
+            resolved_color = ColorMode.NEVER
+        if animation is not None:
+            resolved_progress = ProgressMode.TTY if animation else ProgressMode.PLAIN
+    except (ConfigurationError, ValueError) as exc:
+        if ctx.invoked_subcommand != "config":
+            raise typer.BadParameter(
+                f"Invalid user output configuration: {exc}. Run `agentflow config validate`."
+            ) from exc
+        resolved_format = output_format or OutputFormat.HUMAN
+        resolved_color = color or ColorMode.AUTO
+        resolved_progress = progress or ProgressMode.AUTO
+
+    output.configure(
+        output_format=resolved_format,
+        color_mode=resolved_color,
+        progress_mode=resolved_progress,
+        quiet=quiet,
+    )
+    setup_cli_logging(verbose=verbose > 0 or debug, quiet=quiet)
+    ctx.obj = CLIContext.create(
+        capabilities=output.capabilities,
+        cwd=Path.cwd(),
+        verbosity=verbose,
+        quiet=quiet,
+        debug=debug,
+        yes=yes,
+        non_interactive=non_interactive,
+    )
+    # A terminal discards an alternate screen when it is released, so the frame
+    # pauses on a closing hint before letting go. Anyone who wants output left in
+    # their scrollback — to copy a path, or scroll back after the fact — opts out
+    # with --no-fullscreen or AGENTFLOW_NO_FULLSCREEN=1. The screen itself is
+    # claimed lazily, by the first command that renders a header.
+    if fullscreen is None:
+        fullscreen = not truthy_env("AGENTFLOW_NO_FULLSCREEN")
+    output.request_fullscreen(fullscreen)
+    ctx.call_on_close(output.end_fullscreen_session)
+
+    if version_flag:
+        typer.echo(CLI_VERSION)
+        raise typer.Exit()
+
+
+@config_app.command("path")
+def config_path() -> None:
+    """Print the user configuration file path."""
+    typer.echo(UserConfigStore().path)
+
+
+@config_app.command("list")
+def config_list() -> None:
+    """List all user-level CLI preferences."""
+    store = UserConfigStore()
+    try:
+        values = store.load()
+    except ConfigurationError as exc:
+        raise typer.Exit(handle_exception(exc)) from exc
+    output.print_key_value_pairs(_flatten_mapping(values), title="User configuration")
+
+
+@config_app.command("get")
+def config_get(key: str = typer.Argument(..., help="Dot-separated preference key.")) -> None:
+    """Read one user-level CLI preference."""
+    store = UserConfigStore()
+    try:
+        value = store.get(key)
+    except ConfigurationError as exc:
+        raise typer.Exit(handle_exception(exc)) from exc
+    if value is None:
+        raise typer.Exit(
+            handle_exception(
+                ConfigurationError(
+                    f"Configuration key '{key}' is not set.",
+                    config_path=str(store.path),
+                )
+            )
+        )
+    if isinstance(value, dict | list):
+        typer.echo(json.dumps(value, indent=2, ensure_ascii=False))
+    else:
+        typer.echo(value)
+
+
+@config_app.command("set")
+def config_set(
+    key: str = typer.Argument(..., help="Dot-separated preference key."),
+    value: str = typer.Argument(..., help="JSON value or plain string."),
+) -> None:
+    """Set one user-level CLI preference."""
+    store = UserConfigStore()
+    try:
+        store.set(key, parse_config_value(value))
+    except ConfigurationError as exc:
+        raise typer.Exit(handle_exception(exc)) from exc
+    output.success(f"Set {key} in {store.path}")
+
+
+@config_app.command("unset")
+def config_unset(key: str = typer.Argument(..., help="Dot-separated preference key.")) -> None:
+    """Remove one user-level CLI preference."""
+    store = UserConfigStore()
+    try:
+        removed = store.unset(key)
+    except ConfigurationError as exc:
+        raise typer.Exit(handle_exception(exc)) from exc
+    if not removed:
+        raise typer.Exit(
+            handle_exception(
+                ConfigurationError(
+                    f"Configuration key '{key}' is not set.",
+                    config_path=str(store.path),
+                )
+            )
+        )
+    output.success(f"Removed {key} from {store.path}")
+
+
+@config_app.command("validate")
+def config_validate() -> None:
+    """Validate the user configuration and supported output preferences."""
+    store = UserConfigStore()
+    try:
+        store.load()
+        OutputFormat(store.get("output.format", OutputFormat.HUMAN))
+        ColorMode(store.get("output.color", ColorMode.AUTO))
+        ProgressMode(store.get("output.progress", ProgressMode.AUTO))
+    except (ConfigurationError, ValueError) as exc:
+        raise typer.Exit(handle_exception(ConfigurationError(str(exc)))) from exc
+    output.success(f"User configuration is valid: {store.path}")
+
+
+def _flatten_mapping(
+    values: dict[str, Any],
+    *,
+    prefix: str = "",
+) -> dict[str, Any]:
+    flattened: dict[str, Any] = {}
+    for key, value in values.items():
+        dotted = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            flattened.update(_flatten_mapping(value, prefix=dotted))
+        else:
+            flattened[dotted] = value
+    return flattened
+
+
+def _configure_command(*, verbose: bool, quiet: bool) -> None:
+    """Apply legacy per-command flags without overriding root output choices."""
+    setup_cli_logging(verbose=verbose, quiet=quiet)
+    if quiet:
+        output.configure(quiet=True)
 
 
 def handle_exception(e: Exception) -> int:
@@ -50,10 +383,14 @@ def handle_exception(e: Exception) -> int:
         Appropriate exit code
     """
     if isinstance(e, AgentflowCLIError):
-        output.error(e.message)
+        output.error(f"Error [{e.code}]: {e.message}", emoji=False)
+        for hint in e.hints:
+            output.info(f"Try: {hint}", emoji=False)
+        if e.docs_url:
+            output.info(f"Docs: {e.docs_url}", emoji=False)
         return e.exit_code
 
-    output.error(f"Unexpected error: {e}")
+    output.error(f"Error [AF-INTERNAL-001]: Unexpected error: {e}", emoji=False)
     return 1
 
 
@@ -98,7 +435,7 @@ def api(
 ) -> None:
     """Start the Agentflow API server."""
     # Setup logging
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
 
     try:
         command = APICommand(output)
@@ -155,7 +492,7 @@ def play(
     ),
 ) -> None:
     """Start the API server and open the hosted playground."""
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
 
     try:
         command = APICommand(output)
@@ -167,6 +504,112 @@ def play(
             open_playground=True,
         )
         sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command()
+def dev(
+    config: str = typer.Option(
+        DEFAULT_CONFIG_FILE,
+        "--config",
+        "-c",
+        help="Path to the project configuration file.",
+    ),
+    host: str = typer.Option(
+        DEFAULT_HOST,
+        "--host",
+        "-H",
+        help="Host interface for the local development server.",
+    ),
+    port: int = typer.Option(
+        DEFAULT_PORT,
+        "--port",
+        "-p",
+        help="Port for the local development server.",
+    ),
+    reload: bool = typer.Option(
+        True,
+        "--reload/--no-reload",
+        help="Reload the server when project files change.",
+    ),
+    open_playground: bool = typer.Option(
+        True,
+        "--open/--no-open",
+        help="Open the hosted playground when the API is ready.",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging."),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress all output except errors.",
+    ),
+) -> None:
+    """Start the local Agentflow development server."""
+    _configure_command(verbose=verbose, quiet=quiet)
+
+    try:
+        command = APICommand(output)
+        exit_code = command.execute(
+            config=config,
+            host=host,
+            port=port,
+            reload=reload,
+            open_playground=open_playground,
+        )
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command(
+    epilog=(
+        "Examples:\n"
+        "  agentflow audit\n"
+        "  agentflow --format json audit\n"
+        "  agentflow --no-animation audit"
+    ),
+)
+def audit(
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging."),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress all output except errors.",
+    ),
+) -> None:
+    """Audit package compatibility and the current project environment.
+
+    Runs six read-only checks and prints them as a table: the Python
+    interpreter, the installed CLI and core packages, whether the core exposes
+    the evaluation API this CLI expects, whether `agentflow.json` is present
+    and declares a valid `agent` key, and whether the default port is free.
+
+    Nothing is written or changed, so it is safe to run anywhere. Exits 1 if
+    any check fails and 0 otherwise, which makes it usable as a CI gate;
+    warnings (no project config, port already bound) are reported without
+    failing the run.
+    """
+    _configure_command(verbose=verbose, quiet=quiet)
+    try:
+        sys.exit(AuditCommand(output).execute())
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command(rich_help_panel="Diagnostics")
+def demo(
+    style: str = typer.Option(
+        "all",
+        "--style",
+        help="Animation theme: all, typing, network, init, build, or eval.",
+    ),
+) -> None:
+    """Preview Agentflow terminal animations without changing project state."""
+    try:
+        sys.exit(DemoCommand(output).execute(style=style))
     except Exception as e:
         sys.exit(handle_exception(e))
 
@@ -188,7 +631,7 @@ def version(
 ) -> None:
     """Show the CLI version."""
     # Setup logging
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
 
     try:
         command = VersionCommand(output)
@@ -199,7 +642,8 @@ def version(
 
 
 @app.command()
-def init(
+def init(  # noqa: PLR0913
+    ctx: typer.Context,
     path: str = typer.Option(
         ".",
         "--path",
@@ -211,6 +655,42 @@ def init(
         "--force",
         "-f",
         help="Overwrite existing files if they exist",
+    ),
+    name: str | None = typer.Option(
+        None,
+        "--name",
+        help="Agent name; required only when a default cannot be inferred.",
+    ),
+    template: str | None = typer.Option(
+        None,
+        "--template",
+        help="Project template: quick-start or production.",
+    ),
+    auth: str | None = typer.Option(
+        None,
+        "--auth",
+        help="Production authentication: none, jwt, or custom.",
+    ),
+    rate_limit: str | None = typer.Option(
+        None,
+        "--rate-limit",
+        help="Rate limiting: none, memory, or redis.",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Accept recommended defaults and do not prompt.",
+    ),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Fail instead of prompting; suitable for CI and coding agents.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the scaffold without writing files.",
     ),
     verbose: bool = typer.Option(
         False,
@@ -226,11 +706,25 @@ def init(
     ),
 ) -> None:
     """Interactively initialize a new agent project."""
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
+    runtime = ctx.find_root().obj
+    if isinstance(runtime, CLIContext):
+        yes = yes or runtime.yes
+        non_interactive = non_interactive or runtime.non_interactive
 
     try:
         command = InitCommand(output)
-        exit_code = command.execute(path=path, force=force)
+        exit_code = command.execute(
+            path=path,
+            force=force,
+            agent_name=name,
+            template=template,
+            auth=auth,
+            rate_limit=rate_limit,
+            yes=yes,
+            non_interactive=non_interactive,
+            dry_run=dry_run,
+        )
         sys.exit(exit_code)
     except Exception as e:
         sys.exit(handle_exception(e))
@@ -294,7 +788,7 @@ def build(
 ) -> None:
     """Generate a Dockerfile for the Agentflow API application."""
     # Setup logging
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
 
     try:
         command = BuildCommand(output)
@@ -357,7 +851,7 @@ def skills(
     ),
 ) -> None:
     """Install bundled Agentflow skills for Codex, Claude, or GitHub."""
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
 
     try:
         command = SkillsCommand(output)
@@ -393,7 +887,7 @@ def test(
 
     Any arguments after -- are forwarded verbatim to pytest.
     """
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
 
     try:
         command = TestCommand(output)
@@ -466,7 +960,7 @@ def eval_cmd(
       EVAL_CONFIG + get_eval_set()       # same, config as a constant
       any function returning EvalSet     # auto-discovered, pytest-style
     """
-    setup_cli_logging(verbose=verbose, quiet=quiet)
+    _configure_command(verbose=verbose, quiet=quiet)
 
     try:
         command = EvalCommand(output)
@@ -495,6 +989,12 @@ def main() -> None:
         sys.exit(130)
     except Exception as e:
         sys.exit(handle_exception(e))
+    finally:
+        # Last line of defence. A full-screen session leaves the terminal on an
+        # alternate buffer with a restricted scrolling region; if any path skips
+        # the normal teardown, the user's shell inherits both. Closing here is
+        # idempotent, so the usual context callback still owns the happy path.
+        output.end_fullscreen_session()
 
 
 if __name__ == "__main__":

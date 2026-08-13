@@ -24,6 +24,62 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Persistent full-screen application surface.** On an interactive terminal a
+  command now runs on its own screen with branded chrome pinned in place: a
+  header (gradient rule, identity, version, subtitle) at the top, a footer
+  status bar at the bottom, and the command's output scrolling between them.
+  Pinning uses a DEC scrolling region, so it survives output from child
+  processes — pytest, Uvicorn, Questionary prompts — without routing any of it
+  through a renderer. The screen is held until you press Enter, and released
+  through a `finally` guard so a crash can never leave your shell on an
+  alternate buffer or inside a scrolling region. Opt out with `--no-fullscreen`
+  or `AGENTFLOW_NO_FULLSCREEN=1`.
+- Full-canvas animated command intro: an eased block-letter `AGENTFLOW` reveal
+  with a moving light front, a flowing gradient field, a typed tagline, and a
+  per-command pipeline that fills in as the intro plays. Inside the full-screen
+  surface it collapses into the pinned header; with `--no-fullscreen` it plays
+  on a temporary screen and leaves a durable header in your scrollback.
+- Live step timelines (`OutputFormatter.timeline`): a command declares its stages
+  up front, so pending work is visible from the first frame while the running
+  stage animates with a spinner, elapsed timer, and a live detail line. Wired
+  into `play`/`dev`/`api`, `init`, `build`, `test`, and `doctor`.
+- Determinate progress with a running pass/fail tally
+  (`OutputFormatter.progress_run`), used by `agentflow eval` so per-case results
+  scroll above a bar that reports completion, counts, and elapsed time.
+- Shared brand palette and glyph sets (`cli/core/theme.py`) with continuous
+  gradient sampling and a complete ASCII fallback set.
+- Command-specific intro signatures and taglines for `play`, `dev`, `api`,
+  `init`, `build`, `test`, `eval`, `doctor`, and `skills`, previewable with the
+  side-effect-free `agentflow demo`.
+- Row-by-row reveal for completion panels.
+- **Shared guided-prompt layer** (`cli/core/prompts.py`). Every interactive
+  question now runs through one themed service, so prompts share a palette, a
+  cancellation contract (Ctrl+C returns to a clean exit rather than a
+  traceback), and one non-interactive policy.
+- `agentflow skills` picks agents with an arrow-key list where **space toggles**
+  and enter confirms, instead of typing a menu number. Each row shows its
+  install path, already-installed agents are labelled and pre-checked, and
+  choosing one that exists offers to overwrite rather than failing.
+- `agentflow skills` reports installs through a timeline and a completion
+  screen, matching every other command.
+- `agentflow init` prompts now explain each option inline — what Quick Start
+  versus Production scaffolds, what each auth mode requires, what each rate
+  limit backend costs.
+- Staged startup feedback, a pre-flight port check, and connected-playground
+  completion output for `agentflow play` and `agentflow dev`.
+- Adaptive `--animation` / `--no-animation` controls with CI, pipe, JSON, and
+  accessibility-safe fallbacks. Every animated surface has a plain
+  line-per-transition renderer and a versioned JSON/JSONL event renderer.
+- Adaptive Rich terminal rendering with TTY/CI detection, plain/JSONL modes,
+  `NO_COLOR` support, ASCII fallback, quiet mode, and shared status rendering.
+- Root `--format`, `--json`, `--color`, `--no-color`, `--progress`, `--cwd`,
+  `--yes`, `--non-interactive`, `--debug`, and `-V/--version` options.
+- `agentflow dev` as the goal-oriented local development command; `api` and `play`
+  remain available for compatibility.
+- `agentflow doctor` package, evaluation API, project configuration, and port checks.
+- Cross-platform `agentflow config list|get|set|unset|path|validate` user preferences.
+- Reproducible `agentflow init --non-interactive` recipes and `--dry-run` previews.
+- Stable CLI error codes and dependency recovery suggestions.
 - `py.typed` marker, so type information now reaches consumers (PEP 561).
 - `--integration` pytest flag gating tests marked `integration` that require real
   Redis/Postgres, so a default `pytest` run needs no external services.
@@ -33,6 +89,43 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Community health files: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
   `RELEASE_NOTES.md`, issue forms, and a pull request template.
 - `Changelog` entry in project URLs.
+
+### Changed
+
+- Command implementations are loaded lazily, so a broken optional feature no longer
+  prevents root help, version, completion, or unrelated commands from starting.
+- CLI logging now uses one invocation-wide handler, so quiet and verbose levels apply
+  consistently without duplicate records.
+- Project configuration discovery now walks parent directories from the current
+  working directory.
+- Init, build, and eval status output now flows through the shared renderer instead of
+  writing raw ANSI control sequences.
+- **The full-screen session no longer erases the command's output.** It used to
+  hold the alternate screen through a Rich live display, which re-homes the
+  cursor before every write — so each line overwrote the last — and then released
+  the screen on exit, which a terminal handles by discarding everything drawn on
+  it. Short commands showed a flash of nothing. The frame now switches the buffer
+  directly and pauses on a closing hint before letting go.
+- The screen is claimed lazily, by the first command that renders a header.
+  Script-shaped invocations (`--version`, `config get`, `--format json`) never
+  take over the terminal or pause on exit.
+- A console that reports itself as a terminal but refuses the alternate buffer
+  (legacy Windows console) now aborts the frame before anything is written,
+  rather than leaving a scrolling region on the user's real scrollback.
+- **A terminal that cannot host a prompt no longer crashes the command.**
+  `stdin.isatty()` is true under MSYS/Cygwin shells on Windows, but
+  prompt-toolkit cannot attach to a console there and raises — which surfaced as
+  `AF-INTERNAL-001: Unexpected error: Found xterm-256color, while expecting a
+  Windows console`. Prompt availability is now probed, so such a terminal counts
+  as non-interactive and gets the usual "pass --agent or --all" guidance.
+- Pinned chrome is repainted after each prompt. Prompt-toolkit erases from the
+  cursor to the end of the *screen*, which reaches past the scrolling region and
+  took the footer with it.
+- One Rich `Console` is now reused per stream. Rebuilding it per call meant a live
+  display could not tell that ordinary prints belonged to it, so background output
+  collided with spinners and progress bars instead of scrolling above them.
+- `agentflow init` no longer prints one line per scaffolded file; files stream through
+  the active timeline row instead.
 
 ### Fixed
 

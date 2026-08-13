@@ -2,26 +2,16 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 from agentflow_cli.cli.commands.init import InitCommand
+from agentflow_cli.cli.core.output import OutputFormatter
 
 
-class SilentOutput:
-    def print_banner(self, *a, **kw):
-        pass
-
-    def success(self, *a, **kw):
-        pass
-
-    def info(self, *a, **kw):
-        pass
-
-    def warning(self, *a, **kw):
-        pass
-
-    def error(self, *a, **kw):
-        pass
+def SilentOutput() -> OutputFormatter:
+    """A real formatter with output suppressed, so it tracks the live surface."""
+    return OutputFormatter(stream=io.StringIO(), quiet=True)
 
 
 def _skip_binary(original):

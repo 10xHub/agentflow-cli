@@ -424,7 +424,7 @@ class EvalCommand(BaseCommand):
             source = "built-in defaults"
             criteria = self._default_config().criteria
 
-        print(f"Criteria  source: {source}", flush=True)  # noqa: T201
+        lines = [f"Criteria  source: {source}"]
         for name in criteria.model_fields:
             cfg = getattr(criteria, name)
             if cfg is None:
@@ -436,8 +436,8 @@ class EvalCommand(BaseCommand):
                 parts.append(f"judge={cfg.judge_model}")
             if cfg.num_samples and cfg.num_samples != 1:
                 parts.append(f"samples={cfg.num_samples}")
-            print(f"  {name:<40} {'  '.join(parts)}", flush=True)  # noqa: T201
-        print("", flush=True)  # noqa: T201
+            lines.append(f"  {name:<40} {'  '.join(parts)}")
+        self.output.info("\n".join(lines), emoji=False)
 
     def _criteria_rows(self, config: EvalConfig) -> list[tuple[str, str, dict[str, Any]]]:
         """Return (name, human_summary, machine_dict) for each active criterion."""
@@ -496,50 +496,46 @@ class EvalCommand(BaseCommand):
         (per-file > confeval.py > built-in defaults).
         """
         seen: set[str] = set()
+        blocks: list[str] = []
         for pc in pending:
             if pc.file_name in seen:
                 continue
             seen.add(pc.file_name)
 
             if isinstance(pc, _PendingSimulation):
-                print(  # noqa: T201
-                    f"Criteria  {pc.file_name}  (source: user-simulator goals)", flush=True
-                )
-                print("", flush=True)  # noqa: T201
+                blocks.append(f"Criteria  {pc.file_name}  (source: user-simulator goals)")
                 continue
 
             source = pc.config_source
             if source == "confeval.py" and confeval_path:
                 source = str(confeval_path)
-            print(f"Criteria  {pc.file_name}  (source: {source})", flush=True)  # noqa: T201
+            lines = [f"Criteria  {pc.file_name}  (source: {source})"]
             rows = self._criteria_rows(pc.config)
             if not rows:
-                print("  (no active criteria)", flush=True)  # noqa: T201
+                lines.append("  (no active criteria)")
             for name, summary, _ in rows:
-                print(f"  {name:<40} {summary}", flush=True)  # noqa: T201
-            print("", flush=True)  # noqa: T201
+                lines.append(f"  {name:<40} {summary}")
+            blocks.append("\n".join(lines))
+        if blocks:
+            self.output.info("\n\n".join(blocks), emoji=False)
 
     # ------------------------------------------------------------------
     # Progress printing
     # ------------------------------------------------------------------
 
-    def _print_case_progress(
-        self,
-        file_name: str,
-        case_name: str,
-        result: EvalCaseResult,
-        index: int,
-        total: int,
-    ) -> None:
-        status = "PASSED" if result.passed else ("ERROR" if result.is_error else "FAILED")
-        duration = f"{result.duration_seconds:.2f}s"
-        label = f"{file_name}::{case_name}"
-        status_colored = f"\033[32m{status}\033[0m" if result.passed else f"\033[31m{status}\033[0m"
+    @staticmethod
+    def _case_status(result: EvalCaseResult) -> str:
+        if result.passed:
+            return "passed"
+        return "error" if result.is_error else "failed"
+
+    @staticmethod
+    def _case_detail(result: EvalCaseResult) -> str:
+        detail = f"{result.duration_seconds:.2f}s"
         tok = getattr(result, "token_usage", None)
-        tok_str = ""
         if tok and (tok.input_tokens or tok.output_tokens):
-            tok_str = f"  in={tok.input_tokens} out={tok.output_tokens}"
-        print(f"[{index:3d}/{total}] {label}  {status_colored}  {duration}{tok_str}", flush=True)  # noqa: T201
+            detail += f"  in={tok.input_tokens} out={tok.output_tokens}"
+        return detail
 
     # ------------------------------------------------------------------
     # Flat pool execution — single asyncio event loop for all cases
@@ -556,7 +552,6 @@ class EvalCommand(BaseCommand):
         Returns list of (file_name, eval_set_id, eval_set_name, EvalCaseResult).
         """
         total = len(pending)
-        completed = 0
 
         async def _run_case(pc: _PendingCase) -> tuple[str, str, str, EvalCaseResult]:
             local_collector = TrajectoryCollector(
@@ -645,16 +640,23 @@ class EvalCommand(BaseCommand):
                 return await _run_simulation(item)
             return await _run_case(item)
 
+        def _record(progress: Any, quad: tuple[str, str, str, EvalCaseResult]) -> None:
+            file_name, _, _, result = quad
+            progress.record(
+                f"{file_name}::{result.name or result.eval_id}",
+                status=self._case_status(result),
+                detail=self._case_detail(result),
+            )
+
+        title = "Running evaluation cases" + (f" ({max_concurrency} at a time)" if parallel else "")
+
         if not parallel:
             results: list[tuple[str, str, str, EvalCaseResult]] = []
-            for item in pending:
-                quad = await _dispatch(item)
-                completed += 1
-                file_name, _, _, result = quad
-                self._print_case_progress(
-                    file_name, result.name or result.eval_id, result, completed, total
-                )
-                results.append(quad)
+            with self.output.progress_run(title, total=total) as progress:
+                for item in pending:
+                    quad = await _dispatch(item)
+                    _record(progress, quad)
+                    results.append(quad)
             return results
 
         semaphore = asyncio.Semaphore(max_concurrency)
@@ -666,15 +668,12 @@ class EvalCommand(BaseCommand):
                 return await _dispatch(item)
 
         output_results: list[tuple[str, str, str, EvalCaseResult]] = []
-        tasks = [asyncio.create_task(_run_one(item)) for item in pending]
-        for coro in asyncio.as_completed(tasks):
-            quad = await coro
-            completed += 1
-            file_name, _, _, result = quad
-            self._print_case_progress(
-                file_name, result.name or result.eval_id, result, completed, total
-            )
-            output_results.append(quad)
+        with self.output.progress_run(title, total=total) as progress:
+            tasks = [asyncio.create_task(_run_one(item)) for item in pending]
+            for coro in asyncio.as_completed(tasks):
+                quad = await coro
+                _record(progress, quad)
+                output_results.append(quad)
 
         return output_results
 
@@ -814,8 +813,8 @@ class EvalCommand(BaseCommand):
             parts.append(f"{n_cases} eval case(s)")
         if n_sims:
             parts.append(f"{n_sims} simulation scenario(s)")
-        self.output.print_banner(
-            "Eval",
+        self.output.command_header(
+            "eval",
             f"Found {', '.join(parts)} across {n_files} file(s) in {target_path}",
         )
 
@@ -892,7 +891,7 @@ class EvalCommand(BaseCommand):
                     self.output.warning(f"Reporter error [{name}]: {err}")
 
             if open_report and report_result.html_path:
-                webbrowser.open(Path(report_result.html_path).as_uri())
+                webbrowser.open(Path(report_result.html_path).resolve().as_uri())
 
         summary = merged.summary
         self.output.info(

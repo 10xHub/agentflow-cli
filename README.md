@@ -88,7 +88,7 @@ agentflow build --docker-compose
 
 ## 🖥️ CLI Commands
 
-For detailed command documentation, see the **[CLI Guide](./docs/cli-guide.md)**.
+Run `agentflow --help` or `agentflow COMMAND --help` for the generated command reference.
 
 ### `agentflow init`
 
@@ -98,29 +98,62 @@ Initialize a new project with configuration and a sample graph.
 agentflow init                  # interactive (chooses dev vs production setup)
 agentflow init --path ./my-app  # custom directory
 agentflow init --force          # overwrite existing files
+agentflow init --path ./my-app --name MyAgent --template quick-start \
+  --non-interactive            # reproducible CI/agent workflow
+agentflow init --path ./my-app --template production --auth jwt \
+  --rate-limit redis --yes --dry-run
 ```
 
-### `agentflow api`
+### `agentflow dev`
 
-Start the development API server.
+Start the development API server and open the hosted playground when it is ready.
 
 ```bash
-agentflow api                              # defaults (127.0.0.1:8000)
-agentflow api --host 127.0.0.1 --port 9000 # custom host/port
-agentflow api --config production.json     # custom config file
-agentflow api --no-reload                  # disable auto-reload
-agentflow api --verbose                    # verbose logging
+agentflow dev                              # defaults (127.0.0.1:8000)
+agentflow dev --host 127.0.0.1 --port 9000 # custom host/port
+agentflow dev --config production.json     # custom config file
+agentflow dev --no-open --no-reload        # API only, without auto-reload
 ```
 
-### `agentflow play`
+`agentflow api` and `agentflow play` remain available as compatibility commands.
 
-Start the dev server and open the hosted playground with your local backend URL preconfigured.
+### Adaptive and structured output
 
 ```bash
-agentflow play
-agentflow play --host 127.0.0.1 --port 9000
-agentflow play --config production.json
+agentflow play                         # full-screen surface in an interactive terminal
+agentflow demo                         # preview the animation and progress states safely
+agentflow demo --style build           # preview one command theme
+agentflow --no-fullscreen play         # keep output in your normal scrollback
+agentflow --no-animation play          # accessible/static workflow
+agentflow --format plain --no-color doctor
+agentflow --format jsonl eval --parallel
+agentflow --quiet build
+agentflow --cwd ../my-agent dev
 ```
+
+On an interactive terminal a command runs on its own full-screen surface: a
+pinned header (identity, version, subtitle), a pinned footer status bar, and the
+command's output scrolling between them. The intro reveals the Agentflow
+wordmark on the full canvas and collapses into that header, and each command
+shows its own pipeline — `play`/`dev` config→runtime→server→playground, `init`
+template→graph→config→project, `build` source→deps→image→ship, `eval`
+discover→load→score→report.
+
+The surface is held until you press Enter, so a fast command cannot erase its
+own result. Pass `--no-fullscreen` (or set `AGENTFLOW_NO_FULLSCREEN=1`) to keep
+everything in your normal scrollback instead — useful when you want to scroll
+back or copy a path afterwards.
+
+Long-running work reports through a live step timeline: stages are declared up
+front, pending ones stay dimmed, and the running one animates with an elapsed
+timer. `agentflow eval` uses a determinate progress bar with a running pass/fail
+tally.
+
+Motion is disabled automatically for redirected output, CI, `TERM=dumb`,
+JSON/JSONL, and `AGENTFLOW_NO_SPINNER=1`. Use `--no-animation` for a stable
+screen-reader friendly experience, or `--animation` to force motion in a
+compatible terminal. Every animated surface has a plain line-per-transition
+renderer and a versioned JSON/JSONL event renderer.
 
 ### `agentflow build`
 
@@ -147,17 +180,36 @@ agentflow test --coverage
 Install bundled coding-agent skills (Codex, Claude, GitHub Copilot) into your project so your AI assistant knows how to build with Agentflow.
 
 ```bash
+agentflow skills                # pick agents interactively (space toggles, enter confirms)
 agentflow skills --all          # install for every supported agent
 agentflow skills --agent claude # install for one
 agentflow skills --list         # show supported agents
+agentflow skills --force        # overwrite an existing install
 ```
+
+Run without flags to get a checklist of the supported agents. Each row shows
+where it installs, agents that are already set up are labelled and pre-checked,
+and picking one that exists offers to overwrite rather than failing.
 
 ### `agentflow version`
 
 Display CLI and package version information.
 
 ```bash
+agentflow --version            # script-friendly CLI version only
 agentflow version
+```
+
+### `agentflow doctor` / `agentflow config`
+
+Diagnose the local package/project environment and manage cross-platform user preferences.
+
+```bash
+agentflow doctor
+agentflow config path
+agentflow config set output.format plain
+agentflow config get output.format
+agentflow config validate
 ```
 
 ---

@@ -3,8 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-import typer
-
 from agentflow_cli.cli.commands import BaseCommand
 from agentflow_cli.cli.constants import DEFAULT_PORT, DEFAULT_PYTHON_VERSION, DEFAULT_SERVICE_NAME
 from agentflow_cli.cli.core.validation import Validator
@@ -47,78 +45,105 @@ class BuildCommand(BaseCommand):
             Exit code
         """
         try:
-            # Print banner
-            self.output.print_banner(
-                "Build",
+            self.output.command_header(
+                "build",
                 "Generate Dockerfile (and optional docker-compose.yml) for production image",
                 color="yellow",
             )
 
-            # Validate inputs
-            validated_port = Validator.validate_port(port)
-            validated_python_version = Validator.validate_python_version(python_version)
-            validated_service_name = Validator.validate_service_name(service_name)
-            output_path = Validator.validate_path(output_file)
-
-            current_dir = Path.cwd()
-
-            # Check if Dockerfile already exists
-            if output_path.exists() and not force:
-                raise FileOperationError(
-                    f"Dockerfile already exists at {output_path}. Use --force to overwrite.",
-                    file_path=str(output_path),
-                )
-
-            # Discover requirements files
-            requirements_files, requirements_file = self._discover_requirements(current_dir)
-
-            # Generate Dockerfile content
-            dockerfile_content = generate_dockerfile_content(
-                python_version=validated_python_version,
-                port=validated_port,
-                requirements_file=requirements_file,
-                has_requirements=bool(requirements_files),
-                omit_cmd=docker_compose,
-            )
-
-            # Write Dockerfile
-            self._write_dockerfile(output_path, dockerfile_content)
-            self.output.success(f"Successfully generated Dockerfile at {output_path}")
-
-            # Write .dockerignore in the same directory
-            dockerignore_path = output_path.parent / ".dockerignore"
-            if not dockerignore_path.exists() or force:
-                try:
-                    dockerignore_content = generate_dockerignore_content()
-                    dockerignore_path.write_text(dockerignore_content, encoding="utf-8")
-                    self.output.success(
-                        f"Successfully generated .dockerignore at {dockerignore_path}"
-                    )
-                except Exception as e:
-                    self.output.warning(f"Could not generate .dockerignore: {e}")
-
-            # Show requirements info
-            if requirements_files:
-                self.output.info(f"Using requirements file: {requirements_files[0]}")
-            else:
-                self.output.warning(
-                    "No requirements.txt found - will install agentflow-cli from PyPI"
-                )
-
-            # Generate docker-compose.yml if requested
+            steps: list[tuple[str, str]] = [
+                ("validate", "Validating build options"),
+                ("sources", "Discovering project sources"),
+                ("dockerfile", "Generating Dockerfile"),
+                ("dockerignore", "Generating .dockerignore"),
+            ]
             if docker_compose:
-                self._write_docker_compose(
-                    force=force, service_name=validated_service_name, port=validated_port
-                )
-
-            # Generate a Kubernetes manifest if requested
+                steps.append(("compose", "Generating docker-compose.yml"))
             if k8s:
-                self._write_k8s_manifest(
-                    force=force, service_name=validated_service_name, port=validated_port
-                )
+                steps.append(("k8s", "Generating k8s.yaml"))
 
-            # Show next steps
-            self._show_next_steps(docker_compose)
+            generated = ["Dockerfile", ".dockerignore"]
+            timeline = self.output.timeline("Assembling deployment assets", steps=tuple(steps))
+            with timeline:
+                with timeline.step("validate") as step:
+                    validated_port = Validator.validate_port(port)
+                    validated_python_version = Validator.validate_python_version(python_version)
+                    validated_service_name = Validator.validate_service_name(service_name)
+                    output_path = Validator.validate_path(output_file)
+                    if output_path.exists() and not force:
+                        raise FileOperationError(
+                            f"Dockerfile already exists at {output_path}. "
+                            "Use --force to overwrite.",
+                            file_path=str(output_path),
+                        )
+                    step.detail(
+                        f"python {validated_python_version} · port {validated_port} · "
+                        f"service {validated_service_name}"
+                    )
+
+                with timeline.step("sources") as step:
+                    requirements_files, requirements_file = self._discover_requirements(Path.cwd())
+                    step.detail(
+                        f"requirements: {requirements_files[0]}"
+                        if requirements_files
+                        else "no requirements.txt — installing agentflow-cli from PyPI"
+                    )
+
+                with timeline.step("dockerfile") as step:
+                    dockerfile_content = generate_dockerfile_content(
+                        python_version=validated_python_version,
+                        port=validated_port,
+                        requirements_file=requirements_file,
+                        has_requirements=bool(requirements_files),
+                        omit_cmd=docker_compose,
+                    )
+                    self._write_dockerfile(output_path, dockerfile_content)
+                    step.detail(str(output_path))
+
+                dockerignore_path = output_path.parent / ".dockerignore"
+                with timeline.step("dockerignore") as step:
+                    if dockerignore_path.exists() and not force:
+                        step.skip(f"{dockerignore_path} already exists")
+                    else:
+                        dockerignore_path.write_text(
+                            generate_dockerignore_content(), encoding="utf-8"
+                        )
+                        step.detail(str(dockerignore_path))
+
+                if docker_compose:
+                    with timeline.step("compose") as step:
+                        self._write_docker_compose(
+                            force=force,
+                            service_name=validated_service_name,
+                            port=validated_port,
+                        )
+                        generated.append("docker-compose.yml")
+                        step.detail("docker-compose.yml")
+
+                if k8s:
+                    with timeline.step("k8s") as step:
+                        self._write_k8s_manifest(
+                            force=force,
+                            service_name=validated_service_name,
+                            port=validated_port,
+                        )
+                        generated.append("k8s.yaml")
+                        step.detail("k8s.yaml")
+
+            self.output.completion_screen(
+                "Build assets ready",
+                "Deployment files generated successfully",
+                details={
+                    "Files": ", ".join(generated),
+                    "Service": validated_service_name,
+                    "Port": validated_port,
+                },
+                next_steps=(
+                    ["docker compose up --build"]
+                    if docker_compose
+                    else [f"docker build -t {validated_service_name} ."]
+                ),
+            )
 
             return 0
 
@@ -200,7 +225,6 @@ class BuildCommand(BaseCommand):
 
         try:
             manifest_path.write_text(content, encoding="utf-8")
-            self.output.success(f"Generated k8s.yaml at {manifest_path}")
         except OSError as e:
             raise FileOperationError(
                 f"Failed to write k8s.yaml: {e}", file_path=str(manifest_path)
@@ -229,7 +253,6 @@ class BuildCommand(BaseCommand):
 
         try:
             compose_path.write_text(compose_content, encoding="utf-8")
-            self.output.success(f"Generated docker-compose.yml at {compose_path}")
         except OSError as e:
             raise FileOperationError(
                 f"Failed to write docker-compose.yml: {e}", file_path=str(compose_path)
@@ -241,8 +264,6 @@ class BuildCommand(BaseCommand):
         Args:
             docker_compose: Whether docker-compose was generated
         """
-        self.output.info("\n🚀 Next steps:")
-
         if docker_compose:
             steps = [
                 "Review the generated Dockerfile and docker-compose.yml",
@@ -258,10 +279,12 @@ class BuildCommand(BaseCommand):
                 "Access your API at: http://localhost:8000",
             ]
 
-        for i, step in enumerate(steps, 1):
-            typer.echo(f"{i}. {step}")
+        self.output.print_list(
+            [f"{index}. {step}" for index, step in enumerate(steps, 1)],
+            title="Next steps",
+            bullet="→",
+        )
 
-        self.output.info("\n💡 For production deployment, consider:")
         production_tips = [
             "Using a multi-stage build to reduce image size",
             "Setting up proper environment variables",
@@ -269,5 +292,8 @@ class BuildCommand(BaseCommand):
             "Using a reverse proxy like nginx",
         ]
 
-        for tip in production_tips:
-            typer.echo(f"   • {tip}")
+        self.output.print_list(
+            production_tips,
+            title="Production considerations",
+            bullet="•",
+        )

@@ -45,13 +45,11 @@ class ConfigManager:
                 )
             return config_path_obj
 
-        # Search locations in order of preference
+        # Search the working directory and its parents first so commands invoked
+        # from a nested package still resolve the nearest Agentflow project.
         search_locations = [
-            # Current working directory
-            Path.cwd() / config_path,
-            # Relative to the CLI script location
+            *(directory / config_path for directory in self._working_tree()),
             Path(__file__).parent.parent / config_path,
-            # Project root
             PROJECT_ROOT / config_path,
         ]
 
@@ -83,10 +81,7 @@ class ConfigManager:
         Returns:
             Path to discovered config file or None if not found
         """
-        search_dirs = [
-            Path.cwd(),
-            PROJECT_ROOT,
-        ]
+        search_dirs = [*self._working_tree(), PROJECT_ROOT]
 
         for search_dir in search_dirs:
             for config_name in CONFIG_FILENAMES:
@@ -95,6 +90,12 @@ class ConfigManager:
                     return config_path
 
         return None
+
+    @staticmethod
+    def _working_tree() -> tuple[Path, ...]:
+        """Return cwd followed by its ancestors, nearest first."""
+        cwd = Path.cwd().resolve()
+        return (cwd, *cwd.parents)
 
     def load_config(self, config_path: str | None = None) -> dict[str, Any]:
         """Load configuration from file.

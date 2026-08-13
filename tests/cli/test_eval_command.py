@@ -79,19 +79,19 @@ def test_load_agent_from_config_invalid_spec(cmd):
             cmd._load_agent_from_config()
 
 
-def test_print_criteria_block(cmd, capsys):
+def test_print_criteria_block(cmd):
     cfg = EvalConfig(
         criteria=CriteriaConfig(
             tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
         )
     )
     cmd._print_criteria_block(cfg, Path("some_dir"))
-    captured = capsys.readouterr()
-    assert "Criteria  source:" in captured.out
-    assert "tool_name_match" in captured.out
+    rendered = "\n".join(cmd.output.infos)
+    assert "Criteria  source:" in rendered
+    assert "tool_name_match" in rendered
 
 
-def test_print_case_progress_passed(cmd, capsys):
+def test_case_progress_fields_for_a_passing_case(cmd):
     res = EvalCaseResult.success(
         eval_id="c1",
         name="case1",
@@ -99,10 +99,8 @@ def test_print_case_progress_passed(cmd, capsys):
         actual_response="",
     )
     res.duration_seconds = 1.23
-    cmd._print_case_progress("file.py", "case1", res, 1, 10)
-    captured = capsys.readouterr()
-    assert "file.py::case1" in captured.out
-    assert "PASSED" in captured.out
+    assert cmd._case_status(res) == "passed"
+    assert "1.23s" in cmd._case_detail(res)
 
 
 def test_resolve_eval_dir(cmd):
@@ -467,7 +465,7 @@ def test_make_pending_loads_agent_from_config(cmd):
         assert res[0].evaluator.graph is mock_agent
 
 
-def test_print_criteria_block_custom(cmd, capsys):
+def test_print_criteria_block_custom(cmd):
     cfg_match = CriterionConfig.tool_name_match(threshold=1.0)
     cfg_match.num_samples = 3
     cfg_match.judge_model = "gpt-4"
@@ -477,9 +475,9 @@ def test_print_criteria_block_custom(cmd, capsys):
         )
     )
     cmd._print_criteria_block(cfg, Path("some_dir"))
-    captured = capsys.readouterr()
-    assert "samples=3" in captured.out
-    assert "judge=gpt-4" in captured.out
+    rendered = "\n".join(cmd.output.infos)
+    assert "samples=3" in rendered
+    assert "judge=gpt-4" in rendered
 
 
 def _pending_case(file_name, config, source):
@@ -494,7 +492,7 @@ def _pending_case(file_name, config, source):
     )
 
 
-def test_print_criteria_per_file_shows_each_files_criteria(cmd, capsys):
+def test_print_criteria_per_file_shows_each_files_criteria(cmd):
     tool_cfg = EvalConfig(
         criteria=CriteriaConfig(tool_name_match=CriterionConfig.tool_name_match(threshold=0.6))
     )
@@ -506,11 +504,11 @@ def test_print_criteria_per_file_shows_each_files_criteria(cmd, capsys):
         _pending_case("weather_agents_eval.py", rouge_cfg, "confeval.py"),
     ]
     cmd._print_criteria_per_file(pending, Path("evals/confeval.py"))
-    out = capsys.readouterr().out
+    out = "\n".join(cmd.output.infos)
     # Each file is listed with its own criteria and resolved source.
     assert "eval_tool_agents.py  (source: per-file)" in out
     assert "tool_name_match" in out
-    assert "weather_agents_eval.py  (source: evals/confeval.py)" in out
+    assert f"weather_agents_eval.py  (source: {Path('evals/confeval.py')})" in out
     assert "rouge_match" in out
 
 

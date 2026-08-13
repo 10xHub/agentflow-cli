@@ -18,9 +18,8 @@ class VersionCommand(BaseCommand):
             Exit code
         """
         try:
-            # Print banner
-            self.output.print_banner(
-                "Version",
+            self.output.command_header(
+                "version",
                 "Show Agentflow CLI and package version info",
                 color="green",
             )

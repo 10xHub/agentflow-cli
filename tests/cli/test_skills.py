@@ -12,6 +12,7 @@ import pytest
 from agentflow_cli.cli.commands.skills import SkillsCommand
 from agentflow_cli.cli.constants import CLI_VERSION
 from agentflow_cli.cli.core.output import OutputFormatter
+from agentflow_cli.cli.core.prompts import Choice, PromptService
 
 
 class _CapturingOutput(OutputFormatter):
@@ -25,6 +26,7 @@ class _CapturingOutput(OutputFormatter):
         self.infos: list[str] = []
         self.tables: list[tuple[list[str], list[list[str]]]] = []
         self.lists: list[tuple[str | None, list[str]]] = []
+        self.completions: list[dict[str, object]] = []
 
     def print_banner(self, *args, **kwargs) -> None:  # type: ignore[override]
         return
@@ -46,6 +48,16 @@ class _CapturingOutput(OutputFormatter):
 
     def print_list(self, items, title=None, bullet="-") -> None:  # type: ignore[override]
         self.lists.append((title, list(items)))
+
+    def completion_screen(  # type: ignore[override]
+        self, title, message, *, details=None, next_steps=None
+    ) -> None:
+        self.completions.append({"title": title, "message": message, "details": details or {}})
+
+    @property
+    def last_completion(self) -> dict[str, object]:
+        assert self.completions, "expected the command to render a completion screen"
+        return self.completions[-1]
 
 
 @pytest.fixture
@@ -186,15 +198,16 @@ def test_all_skips_existing_without_force(
     cmd: SkillsCommand, out: _CapturingOutput, tmp_path: Path
 ) -> None:
     cmd.execute(agent="claude", path=str(tmp_path))
-    out.successes.clear()
+    out.completions.clear()
 
     exit_code = cmd.execute(all_agents=True, path=str(tmp_path))
     assert exit_code == 0
     # Codex and GitHub were installed, Claude was skipped
-    installed = " ".join(out.successes)
-    assert "Codex" in installed
-    assert "GitHub" in installed
-    assert "Claude" not in installed
+    details = out.last_completion["details"]
+    assert "Codex" in details["Installed"]
+    assert "GitHub" in details["Installed"]
+    assert "Claude" not in details["Installed"]
+    assert details["Skipped"] == "Claude"
     assert any("Skipped existing" in w and "Claude" in w for w in out.warnings)
 
 
@@ -234,3 +247,88 @@ def test_no_agent_with_non_tty_stdin_errors(
         exit_code = cmd.execute(path=str(tmp_path))
     assert exit_code != 0
     assert any("stdin is not interactive" in e for e in out.errors)
+
+
+# --- interactive multi-select --------------------------------------------
+
+
+def _answer_checkbox(monkeypatch, selection: list[str] | None) -> list[list[Choice]]:
+    """Capture the offered choices and reply with a fixed selection."""
+    offered: list[list[Choice]] = []
+
+    def fake_checkbox(self, message, choices, **kwargs):
+        offered.append(list(choices))
+        return selection
+
+    monkeypatch.setattr(PromptService, "checkbox", fake_checkbox)
+    monkeypatch.setattr(PromptService, "require_interactive", lambda self, **kwargs: None)
+    return offered
+
+
+def test_multi_select_installs_every_chosen_agent(
+    cmd: SkillsCommand, monkeypatch, tmp_path: Path
+) -> None:
+    _answer_checkbox(monkeypatch, ["Codex", "GitHub"])
+
+    assert cmd.execute(path=str(tmp_path)) == 0
+    assert (tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md").is_file()
+    assert (tmp_path / ".github" / "skills" / "agentflow" / "SKILL.md").is_file()
+    assert not (tmp_path / ".claude").exists()
+
+
+def test_multi_select_marks_already_installed_agents(
+    cmd: SkillsCommand, monkeypatch, tmp_path: Path
+) -> None:
+    cmd.execute(agent="claude", path=str(tmp_path))
+    offered = _answer_checkbox(monkeypatch, ["Codex"])
+
+    cmd.execute(path=str(tmp_path))
+
+    by_name = {choice.value: choice for choice in offered[0]}
+    # An existing install is pre-checked and labelled, so confirming as-is
+    # reinstalls exactly what is already there rather than silently dropping it.
+    assert by_name["Claude"].checked is True
+    assert "(installed)" in by_name["Claude"].description
+    assert by_name["Codex"].checked is False
+    assert "(installed)" not in by_name["Codex"].description
+
+
+def test_cancelling_the_multi_select_writes_nothing(
+    cmd: SkillsCommand, monkeypatch, tmp_path: Path
+) -> None:
+    _answer_checkbox(monkeypatch, None)
+
+    assert cmd.execute(path=str(tmp_path)) == 0
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_declining_the_overwrite_prompt_skips_that_agent(
+    cmd: SkillsCommand, out: _CapturingOutput, monkeypatch, tmp_path: Path
+) -> None:
+    cmd.execute(agent="claude", path=str(tmp_path))
+    sentinel = tmp_path / ".claude" / "skills" / "agentflow" / "SENTINEL.txt"
+    sentinel.write_text("mine", encoding="utf-8")
+
+    _answer_checkbox(monkeypatch, ["Claude"])
+    monkeypatch.setattr(PromptService, "confirm", lambda self, message, **kwargs: False)
+    monkeypatch.setattr(PromptService, "interactive", property(lambda self: True))
+    out.completions.clear()
+
+    assert cmd.execute(path=str(tmp_path)) == 0
+    assert sentinel.exists(), "declining the overwrite must leave existing files alone"
+    assert out.last_completion["details"]["Skipped"] == "Claude"
+
+
+def test_accepting_the_overwrite_prompt_reinstalls(
+    cmd: SkillsCommand, monkeypatch, tmp_path: Path
+) -> None:
+    cmd.execute(agent="claude", path=str(tmp_path))
+    sentinel = tmp_path / ".claude" / "skills" / "agentflow" / "SENTINEL.txt"
+    sentinel.write_text("mine", encoding="utf-8")
+
+    _answer_checkbox(monkeypatch, ["Claude"])
+    monkeypatch.setattr(PromptService, "confirm", lambda self, message, **kwargs: True)
+    monkeypatch.setattr(PromptService, "interactive", property(lambda self: True))
+
+    assert cmd.execute(path=str(tmp_path)) == 0
+    assert not sentinel.exists()
