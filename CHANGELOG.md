@@ -42,15 +42,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Live step timelines (`OutputFormatter.timeline`): a command declares its stages
   up front, so pending work is visible from the first frame while the running
   stage animates with a spinner, elapsed timer, and a live detail line. Wired
-  into `play`/`dev`/`api`, `init`, `build`, `test`, and `doctor`.
+  into `play`/`dev`/`api`, `init`, `build`, `test`, and `audit`.
 - Determinate progress with a running pass/fail tally
   (`OutputFormatter.progress_run`), used by `agentflow eval` so per-case results
   scroll above a bar that reports completion, counts, and elapsed time.
 - Shared brand palette and glyph sets (`cli/core/theme.py`) with continuous
   gradient sampling and a complete ASCII fallback set.
 - Command-specific intro signatures and taglines for `play`, `dev`, `api`,
-  `init`, `build`, `test`, `eval`, `doctor`, and `skills`, previewable with the
-  side-effect-free `agentflow demo`.
+  `init`, `build`, `test`, `eval`, `audit`, and `skills`, previewable with the
+  side-effect-free `agentflow demo` (`--style all|typing|network|init|build|eval`).
 - Row-by-row reveal for completion panels.
 - **Shared guided-prompt layer** (`cli/core/prompts.py`). Every interactive
   question now runs through one themed service, so prompts share a palette, a
@@ -72,12 +72,25 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   line-per-transition renderer and a versioned JSON/JSONL event renderer.
 - Adaptive Rich terminal rendering with TTY/CI detection, plain/JSONL modes,
   `NO_COLOR` support, ASCII fallback, quiet mode, and shared status rendering.
-- Root `--format`, `--json`, `--color`, `--no-color`, `--progress`, `--cwd`,
+- Root `--format`, `--json`, `--color`, `--no-color`, `--progress`,
+  `--animation/--no-animation`, `--fullscreen/--no-fullscreen`, `--cwd`,
   `--yes`, `--non-interactive`, `--debug`, and `-V/--version` options.
-- `agentflow dev` as the goal-oriented local development command; `api` and `play`
-  remain available for compatibility.
-- `agentflow doctor` package, evaluation API, project configuration, and port checks.
-- Cross-platform `agentflow config list|get|set|unset|path|validate` user preferences.
+- `agentflow dev` as the goal-oriented local development command (config, host,
+  port, `--reload/--no-reload`, `--open/--no-open`); `api` and `play` remain
+  available for compatibility.
+- `agentflow audit`: six read-only checks — Python interpreter, installed
+  `10xscale-agentflow-cli`, installed `10xscale-agentflow`, whether the installed
+  core still exposes the evaluation API `agentflow eval` imports, whether
+  `agentflow.json` exists and declares a valid `agent` key, and whether the
+  default port is free. Reported live through the timeline and again as a summary
+  table. Exits `1` on any failure and `0` otherwise (warnings do not fail the
+  run), so it works as a CI gate; nothing is written or changed.
+- `agentflow demo`: preview the animation, timeline, and progress states without
+  touching project state.
+- Cross-platform `agentflow config list|get|set|unset|path|validate` user
+  preferences, stored as JSON in the per-user config directory. `output.format`,
+  `output.color`, and `output.progress` are read at startup as defaults; explicit
+  flags still win.
 - Reproducible `agentflow init --non-interactive` recipes and `--dry-run` previews.
 - Stable CLI error codes and dependency recovery suggestions.
 - `py.typed` marker, so type information now reaches consumers (PEP 561).

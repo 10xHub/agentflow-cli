@@ -40,15 +40,28 @@ Public exports from the package root (`from agentflow_cli import ...`): `BaseAut
 |---|---|---|
 | `agentflow api` | Start the API server | `--config/-c` (default `agentflow.json`), `--host/-H`, `--port/-p` (8000), `--reload/--no-reload`, `-v/-q` |
 | `agentflow play` | Start the server and open the hosted playground | same as `api` |
-| `agentflow init` | Interactively scaffold a project (questionary prompts pick dev vs production, auth, rate limit) | `--path/-p`, `--force/-f`. There is **no `--prod` flag**; setup type is chosen interactively |
-| `agentflow build` | Generate a `Dockerfile` (and optionally `docker-compose.yml`) | `--output/-o`, `--python-version` (3.13), `--port`, `--docker-compose/--no-docker-compose`, `--service-name` |
+| `agentflow dev` | Goal-oriented local dev server: same runner as `api`, opens the playground by default. `api`/`play` stay for compatibility | same as `api`, plus `--open/--no-open` |
+| `agentflow init` | Interactively scaffold a project (guided prompts pick dev vs production, auth, rate limit) | `--path/-p`, `--force/-f`, `--name`, `--template` (quick-start\|production), `--auth` (none\|jwt\|custom), `--rate-limit` (none\|memory\|redis), `--yes/-y`, `--non-interactive`, `--dry-run`. There is **no `--prod` flag** |
+| `agentflow build` | Generate a `Dockerfile` (and optionally `docker-compose.yml` / `k8s.yaml`) | `--output/-o`, `--force/-f`, `--python-version` (3.13), `--port`, `--docker-compose/--no-docker-compose`, `--k8s/--no-k8s`, `--service-name` |
 | `agentflow eval` | Run agent evaluations; discovers `*_eval.py`/`eval_*.py`, runs cases (optionally `--parallel`), writes HTML+JSON to `eval_reports/` | `--output/-o`, `--no-report`, `--threshold/-t`, `--open`, `--parallel/-p`, `--max-concurrency/-c` |
 | `agentflow test` | Run project tests via pytest (args after `--` forwarded verbatim) | `--coverage/-C`, `--html`, `-k`, path arg |
 | `agentflow skills` | Install bundled Agentflow skills for Codex/Claude/GitHub | `--agent/-a`, `--path/-p`, `--force/-f`, `--all`, `--list/-l` |
 | `agentflow version` | Show CLI + core framework version | both resolve from installed distribution metadata |
+| `agentflow audit` | Read-only audit of the interpreter, installed CLI/core packages, evaluation-API compatibility, `agentflow.json`, and the default port. Exits `1` on failure, `0` on warnings only, so it works as a CI gate | `-v/--verbose`, `-q/--quiet` |
+| `agentflow demo` | Preview the animation/timeline/progress themes with no side effects (`Diagnostics` help panel) | `--style` (all\|typing\|network\|init\|build\|eval; `play`/`api` alias to typing/network) |
+| `agentflow config <path\|list\|get\|set\|unset\|validate>` | Sub-app (`Manage` panel) for user-level preferences in `user_config.py` | dotted keys; `set` parses a JSON value, falling back to a plain string |
 
 Defaults (from `cli/constants.py`): `DEFAULT_HOST="127.0.0.1"`, `DEFAULT_PORT=8000`,
 `DEFAULT_CONFIG_FILE="agentflow.json"`.
+
+Root options apply to every command and are resolved in `main.root`:
+`--format` (human\|plain\|json\|jsonl), `--json`, `--color` (auto\|always\|never),
+`--no-color`, `--progress` (auto\|tty\|plain\|json\|quiet),
+`--animation/--no-animation`, `--fullscreen/--no-fullscreen`, `--cwd`, `-v/--verbose`
+(counted), `-q/--quiet`, `--debug`, `-y/--yes`, `--non-interactive`, `-V/--version`.
+`output.format`, `output.color`, and `output.progress` from the user config file
+(`platformdirs`, e.g. `~/.config/agentflow/config.json`) supply the defaults; explicit
+flags win. `AGENTFLOW_NO_FULLSCREEN=1` opts out of the alternate-screen surface.
 
 ## `agentflow.json` (the config contract)
 
@@ -156,12 +169,11 @@ ruff check . && ruff format .
   it) resolve from installed distribution metadata. `agentflow version` prints the CLI version and
   the installed core `10xscale-agentflow` version; the old `pyproject.toml` path read - which
   printed `unknown` from a wheel - is gone.
-- **README shows `agentflow init --prod`** — that flag does not exist. `init` is interactive and
-  only accepts `--path` / `--force`.
-- **`api`/`play` help text claims default host `0.0.0.0`** but `DEFAULT_HOST` is `127.0.0.1`.
-- **"Pyagenity" branding leftovers.** The CLI app help, `agentflow_cli.__init__` docstring, the
-  `version` banner, and several router docstrings still say "Pyagenity" (the framework's former
-  name). Cosmetic but pervasive; rename to Agentflow when touching those files.
+- **There is no `agentflow doctor`.** The environment check shipped as `agentflow audit`; earlier
+  README/CHANGELOG copy called it `doctor`. Anything still saying `doctor` is stale.
+- **README links to `./docs/`** (`configuration.md`, `authentication.md`, `deployment.md`,
+  `id-generation.md`, `thread-name-generator.md`) but there is no `docs/` directory in this
+  package — every one of those links is broken.
 - **a2a / a2ui routers no longer exist.** Don't document a2a HTTP endpoints as live; restore the
   files from git history if that surface is actually built.
 - **`pyproject.toml` URLs** point at `github.com/10xHub/agentflow-cli` with docs at

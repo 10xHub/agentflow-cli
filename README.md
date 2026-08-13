@@ -74,15 +74,18 @@ Requires **Python ≥ 3.12**. Depends on the core `10xscale-agentflow` framework
 # 1. Scaffold a project (interactive: dev vs production, auth, rate limiting)
 agentflow init
 
-# 2. Start the dev API server (127.0.0.1:8000)
-agentflow api
+# 2. Start the local development server and open the playground (127.0.0.1:8000)
+agentflow dev
 
-# 3. Or start the server and open the hosted playground
-agentflow play
+# 3. Check the environment if anything looks wrong
+agentflow audit
 
 # 4. Generate production Docker files
 agentflow build --docker-compose
 ```
+
+`agentflow api` (server only) and `agentflow play` (server + playground) remain
+available; `dev` is the goal-oriented wrapper around them.
 
 ---
 
@@ -121,11 +124,11 @@ agentflow dev --no-open --no-reload        # API only, without auto-reload
 
 ```bash
 agentflow play                         # full-screen surface in an interactive terminal
-agentflow demo                         # preview the animation and progress states safely
-agentflow demo --style build           # preview one command theme
+agentflow demo                         # preview every animation theme safely
+agentflow demo --style build           # one theme: typing, network, init, build, or eval
 agentflow --no-fullscreen play         # keep output in your normal scrollback
 agentflow --no-animation play          # accessible/static workflow
-agentflow --format plain --no-color doctor
+agentflow --format plain --no-color audit
 agentflow --format jsonl eval --parallel
 agentflow --quiet build
 agentflow --cwd ../my-agent dev
@@ -137,7 +140,7 @@ command's output scrolling between them. The intro reveals the Agentflow
 wordmark on the full canvas and collapses into that header, and each command
 shows its own pipeline — `play`/`dev` config→runtime→server→playground, `init`
 template→graph→config→project, `build` source→deps→image→ship, `eval`
-discover→load→score→report.
+discover→load→score→report, `audit` python→core→config→port.
 
 The surface is held until you press Enter, so a fast command cannot erase its
 own result. Pass `--no-fullscreen` (or set `AGENTFLOW_NO_FULLSCREEN=1`) to keep
@@ -162,8 +165,10 @@ Generate production Docker files.
 ```bash
 agentflow build                            # Dockerfile
 agentflow build --docker-compose           # Dockerfile + docker-compose.yml
+agentflow build --k8s                      # Dockerfile + k8s.yaml (Deployment + Service)
 agentflow build --python-version 3.12 --port 9000
-agentflow build --force
+agentflow build --service-name my-agent    # name used in docker-compose.yml / k8s.yaml
+agentflow build --force                    # overwrite an existing Dockerfile
 ```
 
 ### `agentflow eval` / `agentflow test`
@@ -200,16 +205,49 @@ agentflow --version            # script-friendly CLI version only
 agentflow version
 ```
 
-### `agentflow doctor` / `agentflow config`
+### `agentflow audit`
 
-Diagnose the local package/project environment and manage cross-platform user preferences.
+Read-only check of everything that has to be true before `dev`, `eval`, or `build`
+can work here: the Python interpreter, the installed `10xscale-agentflow-cli` and
+`10xscale-agentflow` packages, whether the installed core still exposes the
+evaluation API this CLI imports, whether `agentflow.json` is present and declares a
+valid `agent` key, and whether the default port is free.
 
 ```bash
-agentflow doctor
-agentflow config path
+agentflow audit                    # table of six checks
+agentflow --format json audit      # machine-readable, for CI
+agentflow --no-animation audit     # static output
+```
+
+Nothing is written or changed. It exits `1` if any check fails and `0` otherwise —
+warnings (no project config, port already bound) are reported without failing the
+run — so it works as a CI gate.
+
+### `agentflow config`
+
+Manage cross-platform user-level CLI preferences, stored as JSON in the per-user
+config directory (`platformdirs`, e.g. `~/.config/agentflow/config.json` on Linux).
+Keys are dot-separated; the output preferences read at startup are
+`output.format` (`human`, `plain`, `json`, `jsonl`), `output.color` (`auto`,
+`always`, `never`), and `output.progress` (`auto`, `tty`, `plain`, `json`, `quiet`).
+Command-line flags always win over the stored values.
+
+```bash
+agentflow config path                      # where preferences are stored
+agentflow config list                      # every stored preference
 agentflow config set output.format plain
 agentflow config get output.format
-agentflow config validate
+agentflow config unset output.format
+agentflow config validate                  # parse the file and check known keys
+```
+
+### `agentflow demo`
+
+Preview the terminal animations and progress states without touching project state.
+
+```bash
+agentflow demo                  # every theme
+agentflow demo --style eval     # one of: typing, network, init, build, eval
 ```
 
 ---
