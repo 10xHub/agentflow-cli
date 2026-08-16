@@ -495,7 +495,8 @@ git tag v0.3.2.9 && git push origin v0.3.2.9
 
 ## 📄 License
 
-MIT License - see [LICENSE](https://github.com/10xHub/agentflow-cli/blob/main/LICENSE) for details.
+Agentflow is [MIT licensed](https://github.com/10xHub/agentflow-cli/blob/main/LICENSE) and made by
+[10xScale](https://10xscale.ai). Contributions are accepted under the same license.
 
 ---
 

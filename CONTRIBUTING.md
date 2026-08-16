@@ -102,3 +102,8 @@ Maintainers only. See the release procedure in
 [PRODUCTION_READINESS.md](../PRODUCTION_READINESS.md) and `RELEASE_NOTES.md`. Releases are
 cut by pushing a `vX.Y.Z` tag matching `pyproject.toml`; the workflow refuses to build if
 they disagree. Publishing to PyPI is a deliberate manual `make publish`.
+
+## License
+
+Agentflow is [MIT licensed](LICENSE) and made by [10xScale](https://10xscale.ai). Contributions
+are accepted under the same license.
