@@ -20,6 +20,16 @@ OpenAI:
 
 - `OPENAI_API_KEY`
 
+Anthropic:
+
+- `ANTHROPIC_API_KEY`
+- An unset key does not mean no credentials: the SDK also resolves
+  `ANTHROPIC_AUTH_TOKEN`, an `ant auth login` profile, and Workload Identity
+  Federation.
+- Requires `pip install "10xscale-agentflow[anthropic]"`. For Claude on Vertex or
+  Bedrock use the `anthropic-vertex` / `anthropic-bedrock` extra and pass
+  `anthropic_backend="vertex"` or `"bedrock"` to the `Agent`.
+
 Google Gemini API:
 
 - `GEMINI_API_KEY`

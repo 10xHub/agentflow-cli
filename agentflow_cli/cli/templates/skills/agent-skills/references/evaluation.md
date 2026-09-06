@@ -410,7 +410,7 @@ simulator = UserSimulator(config=UserSimulatorConfig(
 ))
 ```
 
-Model routing: model strings starting with `gemini/` or matching a Google model name use Google GenAI; others use OpenAI. Falls back to the other provider if the primary call fails.
+Model routing: model strings starting with `gemini/` or matching a Google model name use Google GenAI; `anthropic/`, `claude/`, or a `claude-*` name use Anthropic; everything else uses OpenAI. A recognised `provider/` prefix is stripped before the name reaches the SDK. Falls back to the other provider if the primary call fails.
 
 **SimulationResult:**
 
