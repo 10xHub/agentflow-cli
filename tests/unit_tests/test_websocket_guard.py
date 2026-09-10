@@ -193,3 +193,20 @@ class TestWebSocketConfig:
     def test_negative_rejected(self):
         with pytest.raises(ValueError):
             WebSocketConfig.from_dict({"max_connections": -1})
+
+    def test_enabled_by_default_when_absent(self):
+        assert WebSocketConfig.from_dict({}).enabled is True
+
+    def test_enabled_false(self):
+        assert WebSocketConfig.from_dict({"enabled": False}).enabled is False
+
+    def test_enabled_true_explicit(self):
+        assert WebSocketConfig.from_dict({"enabled": True, "max_connections": 5}).enabled is True
+
+    def test_enabled_accepts_string_boolean(self):
+        # Consistent with the other booleans in agentflow.json (rate_limit.enabled etc.).
+        assert WebSocketConfig.from_dict({"enabled": "false"}).enabled is False
+
+    def test_enabled_non_bool_rejected(self):
+        with pytest.raises(ValueError):
+            WebSocketConfig.from_dict({"enabled": "maybe"})

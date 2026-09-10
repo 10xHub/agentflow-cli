@@ -57,6 +57,14 @@ router = APIRouter(
     tags=["Graph"],
 )
 
+# The streaming WebSocket endpoint lives on its own router so it can be left unmounted when
+# ``websocket.enabled`` is false in agentflow.json (see ``init_routes``). Keeping it separate
+# means a disabled deployment never registers the route at all, rather than registering it
+# and rejecting at the handshake.
+ws_router = APIRouter(
+    tags=["Graph"],
+)
+
 
 async def _bind_ws_container() -> None:
     """Set the active InjectQ container for a WebSocket handshake.
@@ -416,7 +424,7 @@ async def _ws_thread_authorized(
     return await authz.authorize(user, "graph", action, resource_id=str(thread_id))
 
 
-@router.websocket("/v1/graph/ws")
+@ws_router.websocket("/v1/graph/ws")
 async def websocket_graph(
     websocket: WebSocket,
     _bind: None = Depends(_bind_ws_container),

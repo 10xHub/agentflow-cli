@@ -167,7 +167,7 @@ init_logger(settings.LOG_LEVEL)
 init_errors_handler(app)
 
 # init routes
-init_routes(app)
+init_routes(app, graph_config)
 
 # Secure by construction: refuse to boot if any non-public route forgot its
 # RequirePermission guard (a forgotten guard would otherwise ship an open endpoint).
