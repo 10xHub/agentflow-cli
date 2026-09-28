@@ -16,6 +16,8 @@ from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.auth.request_config import (
     client_config,
     normalize_thread_id,
+    tool_result_ids,
+    unanswered_tool_calls,
 )
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
@@ -342,6 +344,39 @@ class GraphService:
         if node is not None and isinstance(getattr(node, "func", None), ToolNode):
             raise ValueError(f"current_node '{node_name}' is a tool node; runs cannot start there")
 
+    def _remote_tool_names(self) -> set[str]:
+        """Names of the tools the client runs (remote tools), across every ToolNode."""
+        from agentflow.core.graph import ToolNode
+
+        state_graph = getattr(self._graph, "_state_graph", None)
+        nodes = getattr(state_graph, "nodes", {}) if state_graph else {}
+        names: set[str] = set()
+        for node in nodes.values():
+            tool_node = getattr(node, "func", None)
+            if isinstance(tool_node, ToolNode):
+                names.update(n for n in getattr(tool_node, "remote_tool_names", None) or [] if n)
+        return names
+
+    async def _check_tool_results(self, messages: list[Any], config: dict[str, Any]) -> None:
+        """Accept a tool result only as the answer to a remote tool call awaiting one.
+
+        Remote tools run on the client, which sends their results back to resume the run.
+        Anything else is a forged result: an answer to a call the model never made, a second
+        answer to the same call, or an answer to a server tool the client never ran.
+        """
+        result_ids = tool_result_ids(messages)
+        if not result_ids:
+            return
+        if len(set(result_ids)) != len(result_ids):
+            raise ValueError("Each tool call can be answered only once")
+
+        state = await self.checkpointer.aget_state(config) if self.checkpointer else None
+        pending = unanswered_tool_calls(getattr(state, "context", None))
+        remote = self._remote_tool_names()
+        for call_id in result_ids:
+            if call_id not in pending or pending[call_id] not in remote:
+                raise ValueError(f"No remote tool call '{call_id}' is waiting for a result")
+
     async def _prepare_input(
         self,
         graph_input: GraphInputSchema,
@@ -409,6 +444,7 @@ class GraphService:
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
+            await self._check_tool_results(input_data["messages"], config)
 
             # Try to save thread info in the db even for existing threads
             # this will help in updating last accessed time
@@ -515,6 +551,7 @@ class GraphService:
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
+            await self._check_tool_results(input_data["messages"], config)
 
             # Try to save thread info in the db even for existing threads
             # this will help in updating last accessed time

@@ -2,6 +2,8 @@
 
 Routes:
     GET  /               the editor page
+    GET  /app.js         the page's bundled script (built from config-editor-ui/)
+    GET  /app.css        the page's compiled Tailwind stylesheet
     GET  /api/state      current file, schema, and validation issues
     POST /api/validate   validate a config without saving it
     POST /api/save       validate, then write the config file
@@ -33,9 +35,17 @@ TOKEN_HEADER = "X-Agentflow-Token"  # noqa: S105 - a header name, not a secret
 MAX_BODY_BYTES = 1_000_000
 NEW_FILE_TEMPLATE: dict[str, Any] = {"agent": "graph.agent:app", "env": ".env"}
 
+# Static files the page loads: route -> (file under static/, content type).
+_STATIC_FILES: dict[str, tuple[str, str]] = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    "/app.css": ("app.css", "text/css; charset=utf-8"),
+}
+
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "script-src 'self'; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src https://fonts.gstatic.com; "
     "img-src 'self' data:; "
@@ -141,9 +151,10 @@ class _Handler(BaseHTTPRequestHandler):
         if not self._host_allowed():
             return
         route = self.path.split("?", 1)[0]
-        if route in ("/", "/index.html"):
-            page = files("agentflow_cli.cli.config_editor").joinpath("static", "index.html")
-            self._send(HTTPStatus.OK, page.read_bytes(), "text/html; charset=utf-8")
+        if route in _STATIC_FILES:
+            name, content_type = _STATIC_FILES[route]
+            asset = files("agentflow_cli.cli.config_editor").joinpath("static", name)
+            self._send(HTTPStatus.OK, asset.read_bytes(), content_type)
         elif route == "/api/state":
             if self._authorized():
                 self._send_json(HTTPStatus.OK, self.editor.state())

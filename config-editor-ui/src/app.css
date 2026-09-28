@@ -1,0 +1,189 @@
+@import "tailwindcss";
+@source "./";
+
+/* Agentflow tokens (see agentflow-docs/src/css/tokens.css). Dark is canonical. */
+:root {
+  color-scheme: light;
+  --af-canvas: #f5f7fb;
+  --af-surface: #ffffff;
+  --af-raised: #f1f5f9;
+  --af-hover: #e8eef6;
+  --af-sunken: #ffffff;
+  --af-line: rgba(15, 23, 42, 0.09);
+  --af-line-strong: rgba(15, 23, 42, 0.17);
+  --af-ink: #0b1220;
+  --af-body: #1e293b;
+  --af-muted: #475569;
+  --af-faint: #64748b;
+  --af-brand: #2563eb;
+  --af-brand-solid: #2563eb;
+  --af-brand-solid-hover: #1d4ed8;
+  --af-brand-soft: rgba(37, 99, 235, 0.08);
+  --af-brand-ring: rgba(37, 99, 235, 0.22);
+  --af-ok: #047857;
+  --af-ok-soft: rgba(16, 185, 129, 0.1);
+  --af-warn: #b45309;
+  --af-warn-soft: rgba(245, 158, 11, 0.12);
+  --af-danger: #dc2626;
+  --af-danger-soft: rgba(239, 68, 68, 0.09);
+  --af-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --af-shadow-pop: 0 12px 32px rgba(15, 23, 42, 0.14);
+  --af-scrollbar: rgba(15, 23, 42, 0.2);
+  --af-scrollbar-hover: rgba(15, 23, 42, 0.35);
+  --af-json-key: #1d4ed8;
+  --af-json-string: #047857;
+  --af-json-number: #b45309;
+  --af-json-literal: #7c3aed;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --af-canvas: #08111f;
+    --af-surface: #0c1727;
+    --af-raised: #131e33;
+    --af-hover: #1a2741;
+    --af-sunken: #07101d;
+    --af-line: rgba(148, 163, 184, 0.14);
+    --af-line-strong: rgba(148, 163, 184, 0.26);
+    --af-ink: #f8fafc;
+    --af-body: #e2e8f0;
+    --af-muted: #a3b1c6;
+    --af-faint: #8391a7;
+    --af-brand: #60a5fa;
+    --af-brand-solid: #2563eb;
+    --af-brand-solid-hover: #3b82f6;
+    --af-brand-soft: rgba(59, 130, 246, 0.14);
+    --af-brand-ring: rgba(59, 130, 246, 0.35);
+    --af-ok: #34d399;
+    --af-ok-soft: rgba(16, 185, 129, 0.14);
+    --af-warn: #fbbf24;
+    --af-warn-soft: rgba(245, 158, 11, 0.13);
+    --af-danger: #f87171;
+    --af-danger-soft: rgba(239, 68, 68, 0.13);
+    --af-shadow: 0 1px 2px rgba(2, 6, 23, 0.4);
+    --af-shadow-pop: 0 16px 40px rgba(2, 6, 23, 0.55);
+    --af-scrollbar: rgba(148, 163, 184, 0.22);
+    --af-scrollbar-hover: rgba(148, 163, 184, 0.4);
+    --af-json-key: #93c5fd;
+    --af-json-string: #6ee7b7;
+    --af-json-number: #fcd34d;
+    --af-json-literal: #c4b5fd;
+  }
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --color-canvas: var(--af-canvas);
+  --color-surface: var(--af-surface);
+  --color-raised: var(--af-raised);
+  --color-hover: var(--af-hover);
+  --color-sunken: var(--af-sunken);
+  --color-line: var(--af-line);
+  --color-line-strong: var(--af-line-strong);
+  --color-ink: var(--af-ink);
+  --color-body: var(--af-body);
+  --color-muted: var(--af-muted);
+  --color-faint: var(--af-faint);
+  --color-brand: var(--af-brand);
+  --color-brand-solid: var(--af-brand-solid);
+  --color-brand-solid-hover: var(--af-brand-solid-hover);
+  --color-brand-soft: var(--af-brand-soft);
+  --color-brand-ring: var(--af-brand-ring);
+  --color-ok: var(--af-ok);
+  --color-ok-soft: var(--af-ok-soft);
+  --color-warn: var(--af-warn);
+  --color-warn-soft: var(--af-warn-soft);
+  --color-danger: var(--af-danger);
+  --color-danger-soft: var(--af-danger-soft);
+  --shadow-card: var(--af-shadow);
+  --shadow-pop: var(--af-shadow-pop);
+}
+
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+  body {
+    @apply bg-canvas font-sans text-body antialiased;
+  }
+  /* One thin, theme-coloured scrollbar style everywhere (the window and the inspector). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--af-scrollbar) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background: var(--af-scrollbar) padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--af-scrollbar-hover) padding-box;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .input {
+    @apply block h-10 w-full rounded-lg border border-line-strong bg-sunken px-3 text-base text-ink
+      transition-[border-color,box-shadow] duration-150 placeholder:text-faint
+      hover:border-faint/60 focus:border-brand focus:ring-4 focus:ring-brand-ring focus:outline-none
+      sm:h-9 sm:text-sm;
+  }
+  .input-invalid {
+    @apply border-danger focus:border-danger focus:ring-danger-soft;
+  }
+  .btn {
+    @apply inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-3.5
+      text-sm font-medium whitespace-nowrap transition-colors duration-150
+      focus-visible:ring-4 focus-visible:ring-brand-ring focus-visible:outline-none
+      disabled:cursor-not-allowed disabled:opacity-45 sm:h-9;
+  }
+  .btn-primary {
+    @apply bg-brand-solid text-white shadow-card hover:bg-brand-solid-hover;
+  }
+  .btn-outline {
+    @apply border border-line-strong bg-surface text-body hover:bg-raised;
+  }
+  .btn-ghost {
+    @apply text-muted hover:bg-raised hover:text-ink;
+  }
+  .icon-btn {
+    @apply inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted
+      transition-colors duration-150 hover:bg-raised hover:text-ink
+      focus-visible:ring-4 focus-visible:ring-brand-ring focus-visible:outline-none sm:size-9;
+  }
+  .panel {
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+  .kbd {
+    @apply inline-flex h-5 items-center rounded border border-white/25 px-1.5 font-mono text-[11px]
+      font-medium text-white/80;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold tracking-wide text-faint uppercase;
+  }
+  .focus-ring {
+    @apply focus-visible:ring-4 focus-visible:ring-brand-ring focus-visible:outline-none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

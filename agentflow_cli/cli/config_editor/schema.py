@@ -44,7 +44,7 @@ from typing import Any
 
 DOCS_URL = "https://agentflow.10xscale.ai/docs/reference/api-cli/configuration"
 
-# Mirrors agentflow.core.authz.ALL_SCOPES; kept in sync by a unit test so the
+# Mirrors authorization.all_scopes(); kept in sync by a unit test so the
 # editor never imports the core framework just to render suggestions.
 AUTHORIZATION_SCOPES: tuple[str, ...] = (
     "checkpointer:delete",
@@ -59,9 +59,9 @@ AUTHORIZATION_SCOPES: tuple[str, ...] = (
     "graph:setup",
     "graph:stop",
     "graph:stream",
-    "memory:delete",
-    "memory:read",
-    "memory:write",
+    "store:delete",
+    "store:read",
+    "store:write",
 )
 
 BUILTIN_AUTHORIZATION: tuple[str, ...] = ("ownership", "allow_all", "default", "none")

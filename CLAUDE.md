@@ -49,7 +49,7 @@ Public exports from the package root (`from agentflow_cli import ...`): `BaseAut
 | `agentflow version` | Show CLI + core framework version | both resolve from installed distribution metadata |
 | `agentflow audit` | Read-only audit of the interpreter, installed CLI/core packages, evaluation-API compatibility, `agentflow.json`, and the default port. Exits `1` on failure, `0` on warnings only, so it works as a CI gate | `-v/--verbose`, `-q/--quiet` |
 | `agentflow demo` | Preview the animation/timeline/progress themes with no side effects (`Diagnostics` help panel) | `--style` (all\|typing\|network\|init\|build\|eval; `play`/`api` alias to typing/network) |
-| `agentflow config` | Browser editor for `agentflow.json` (`Manage` panel). Loopback-only stdlib HTTP server in `cli/config_editor/` (`schema.py` lists every key, `validation.py` reuses the `graph_config` parsers, `store.py` does conflict-checked atomic writes with a `.bak`, `static/index.html` is the Tailwind page) | `--config/-c`, `--port/-p` (0 = any free port), `--open/--no-open` |
+| `agentflow config` | Browser editor for `agentflow.json` (`Manage` panel). Loopback-only stdlib HTTP server in `cli/config_editor/` (`schema.py` lists every key, `validation.py` reuses the `graph_config` parsers, `store.py` does conflict-checked atomic writes with a `.bak`). The page is a Preact + Tailwind app whose source lives in `config-editor-ui/`; `npm run build` there writes the committed `static/app.js` and `static/app.css`, so rebuild after editing `config-editor-ui/src` | `--config/-c`, `--port/-p` (0 = any free port), `--open/--no-open` |
 
 Defaults (from `cli/constants.py`): `DEFAULT_HOST="127.0.0.1"`, `DEFAULT_PORT=8000`,
 `DEFAULT_CONFIG_FILE="agentflow.json"`.

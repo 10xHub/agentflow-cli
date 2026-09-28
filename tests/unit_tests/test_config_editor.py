@@ -41,10 +41,10 @@ def test_schema_is_json_and_fields_live_under_their_section() -> None:
             assert field["path"][0] in KNOWN_TOP_LEVEL_KEYS
 
 
-def test_schema_scopes_match_core_scopes() -> None:
-    from agentflow.core.authz import ALL_SCOPES
+def test_schema_scopes_match_api_scopes() -> None:
+    from agentflow_cli.src.app.core.auth.authorization import all_scopes
 
-    assert set(AUTHORIZATION_SCOPES) == set(ALL_SCOPES)
+    assert set(AUTHORIZATION_SCOPES) == set(all_scopes())
 
 
 def test_build_schema_returns_independent_copies() -> None:
@@ -302,6 +302,23 @@ def test_server_serves_page_without_token(editor: ConfigEditorServer) -> None:
     assert status == 200
     assert "Agentflow Config" in body
     assert editor.url.endswith("#token=secret-token")
+
+
+@pytest.mark.parametrize(
+    ("route", "content_type"),
+    [("/app.js", "text/javascript"), ("/app.css", "text/css")],
+)
+def test_server_serves_built_assets(
+    editor: ConfigEditorServer, route: str, content_type: str
+) -> None:
+    conn = http.client.HTTPConnection("127.0.0.1", editor.port, timeout=5)
+    conn.request("GET", route, headers={"Host": f"127.0.0.1:{editor.port}"})
+    response = conn.getresponse()
+    body = response.read()
+    conn.close()
+    assert response.status == 200
+    assert response.getheader("Content-Type", "").startswith(content_type)
+    assert body
 
 
 def test_server_requires_token_and_loopback_host(editor: ConfigEditorServer) -> None:
