@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from injectq import inject, singleton
 
 from agentflow_cli.src.app.core import logger
+from agentflow_cli.src.app.core.auth.request_config import client_config
 from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
     ForgetMemorySchema,
     MemoryCreateResponseSchema,
@@ -44,9 +45,9 @@ class StoreService:
         return self.store
 
     def _config(self, config: dict[str, Any] | None, user: dict[str, Any]) -> dict[str, Any]:
-        cfg: dict[str, Any] = dict(config or {})
-        # Overwrite (never setdefault): the trusted user object carries the authz policy;
-        # a client-supplied "user" must not be able to weaken it.
+        # Client keys pass through; server-owned keys (authz, user, internals) never do.
+        # The trusted user object carries the authz policy the store enforces.
+        cfg: dict[str, Any] = client_config(config)
         cfg["user"] = user
         cfg["user_id"] = user.get("user_id", "anonymous")
         return cfg

@@ -13,6 +13,10 @@ from injectq import InjectQ, inject, singleton
 from pydantic import BaseModel
 
 from agentflow_cli.src.app.core import logger
+from agentflow_cli.src.app.core.auth.request_config import (
+    client_config,
+    normalize_thread_id,
+)
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
@@ -295,7 +299,7 @@ class GraphService:
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
             # Start with client config if provided, then overlay trusted attributes
-            stop_config = dict(config) if config else {}
+            stop_config = client_config(config)
             stop_config.update(
                 {
                     "thread_id": thread_id,
@@ -326,10 +330,10 @@ class GraphService:
         user_id: str | None = None,
     ):
         is_new_thread = False
-        config = dict(graph_input.config or {})
-        if config.get("thread_id") and str(config["thread_id"]).strip():
-            thread_id = str(config["thread_id"]).strip()
-        else:
+        config = client_config(graph_input.config)
+        # Same normalisation as the permission check, so the checked thread is the one used.
+        thread_id = normalize_thread_id(config.get("thread_id"))
+        if thread_id is None:
             thread_id = await InjectQ.get_instance().atry_get("generated_id") or str(uuid4())
             is_new_thread = True
 
@@ -998,7 +1002,7 @@ class GraphService:
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
             # Start with client config if provided, then overlay trusted attributes
-            fix_config = dict(config) if config else {}
+            fix_config = client_config(config)
             fix_config.update(
                 {"thread_id": thread_id, "user": user, "user_id": user.get("user_id", "anonymous")}
             )

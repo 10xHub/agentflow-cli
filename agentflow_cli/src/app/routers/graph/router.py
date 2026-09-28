@@ -18,6 +18,7 @@ from agentflow_cli.src.app.core.auth.permissions import (
     RequirePermission,
     ws_bearer_subprotocol,
 )
+from agentflow_cli.src.app.core.auth.request_config import normalize_thread_id
 from agentflow_cli.src.app.routers.graph.realtime_guard import realtime_connection_guard
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     FixGraphRequestSchema,
@@ -39,6 +40,9 @@ from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_response
 # the live agent finish its turn and stop once the provider goes idle, so this normally
 # returns well within the window; it only bounds a provider that never goes idle.
 REALTIME_DRAIN_TIMEOUT = 30.0
+
+# ``config.thread_id`` value a WebSocket client sends to start a fresh thread.
+WS_NEW_THREAD = "new"
 
 # Bound the upstream audio queue. WebSocket frames bypass RequestSizeLimitMiddleware (it is
 # HTTP-only), so the realtime path must guard memory itself. At ~50 input frames/sec a depth
@@ -348,6 +352,25 @@ async def fix_graph(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+def _ws_run_thread_id(ws_input: WsGraphInputSchema) -> str | None:
+    """Resolve the thread a WebSocket run targets, and make the run use exactly that thread.
+
+    Normalises ``config.thread_id`` the way ``GraphService`` does. ``"new"`` (or a missing
+    or blank id) means "start a fresh thread": the key is removed so the service generates
+    one, instead of running on a literal thread named ``"new"`` shared by every client.
+    """
+    config = dict(ws_input.config or {})
+    thread_id = normalize_thread_id(config.get("thread_id"))
+    if thread_id == WS_NEW_THREAD:
+        thread_id = None
+    if thread_id is None:
+        config.pop("thread_id", None)
+    else:
+        config["thread_id"] = thread_id
+    ws_input.config = config
+    return thread_id
+
+
 async def _ws_thread_authorized(
     authz: AuthorizationBackend,
     user: dict[str, Any],
@@ -479,7 +502,7 @@ async def websocket_graph(
                 )
                 continue
 
-            thread_id = (ws_input.config or {}).get("thread_id", "new")
+            thread_id = _ws_run_thread_id(ws_input)
             if not await _ws_thread_authorized(authz, user, thread_id, "stream"):
                 logger.warning(
                     f"WebSocket authorization failed for user {user.get('user_id')} "

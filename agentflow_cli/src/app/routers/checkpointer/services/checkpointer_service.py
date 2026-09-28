@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from injectq import inject, singleton
 
 from agentflow_cli.src.app.core import logger
+from agentflow_cli.src.app.core.auth.request_config import client_config
 from agentflow_cli.src.app.core.config.settings import get_settings
 from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
@@ -38,7 +39,8 @@ class CheckpointerService:
         if not self.checkpointer:
             raise CheckpointerUnavailableError()
 
-        cfg: dict[str, Any] = dict(config or {})
+        # Client keys pass through; server-owned keys (authz, user, internals) never do.
+        cfg: dict[str, Any] = client_config(config)
         cfg["user"] = user
         cfg["user_id"] = user.get("user_id", "anonymous")
         return cfg
