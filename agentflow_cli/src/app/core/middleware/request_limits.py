@@ -38,17 +38,35 @@ class RequestSizeLimitMiddleware:
     Args:
         app: The ASGI application
         max_size: Maximum request body size in bytes (default: 10MB)
+        path_limits: Per-path limits that replace ``max_size``, e.g. a larger one for the
+            file upload route so ``MEDIA_MAX_SIZE_MB`` is reachable.
     """
 
-    def __init__(self, app: ASGIApp, max_size: int = 10 * 1024 * 1024) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        max_size: int = 10 * 1024 * 1024,
+        path_limits: dict[str, int] | None = None,
+    ) -> None:
         self.app = app
         self.max_size = max_size
         self.max_size_mb = max_size / (1024 * 1024)
+        self.path_limits = dict(path_limits or {})
+
+    def _limit_for(self, scope: Scope) -> int:
+        path = scope.get("path", "")
+        root_path = (scope.get("root_path") or "").rstrip("/")
+        if root_path and path.startswith(root_path):
+            path = path[len(root_path) :] or "/"
+        return self.path_limits.get(path, self.max_size)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+
+        max_size = self._limit_for(scope)
+        max_size_mb = max_size / (1024 * 1024)
 
         content_length = Headers(scope=scope).get("content-length")
         if content_length is not None:
@@ -63,12 +81,12 @@ class RequestSizeLimitMiddleware:
                     {"code": "INVALID_CONTENT_LENGTH", "message": "Invalid Content-Length header."},
                 )
                 return
-            if declared > self.max_size:
+            if declared > max_size:
                 logger.warning(
                     f"Request rejected: size {declared} bytes exceeds limit of "
-                    f"{self.max_size} bytes ({self.max_size_mb:.1f}MB)"
+                    f"{max_size} bytes ({max_size_mb:.1f}MB)"
                 )
-                await self._too_large(scope, send)
+                await self._too_large(scope, send, max_size)
                 return
 
         received = 0
@@ -79,12 +97,12 @@ class RequestSizeLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_size:
+                if received > max_size:
                     logger.warning(
                         f"Request rejected: streamed body passed the limit of "
-                        f"{self.max_size} bytes ({self.max_size_mb:.1f}MB)"
+                        f"{max_size} bytes ({max_size_mb:.1f}MB)"
                     )
-                    raise RequestBodyTooLarge(self.max_size)
+                    raise RequestBodyTooLarge(max_size)
             return message
 
         async def tracking_send(message: Message) -> None:
@@ -100,18 +118,19 @@ class RequestSizeLimitMiddleware:
             # body read outside FastAPI's request handling (e.g. by another middleware).
             if response_started:
                 raise
-            await self._too_large(scope, send)
+            await self._too_large(scope, send, max_size)
 
-    async def _too_large(self, scope: Scope, send: Send) -> None:
+    async def _too_large(self, scope: Scope, send: Send, max_size: int) -> None:
+        max_size_mb = max_size / (1024 * 1024)
         await self._error(
             scope,
             send,
             status.HTTP_413_CONTENT_TOO_LARGE,
             {
                 "code": "REQUEST_TOO_LARGE",
-                "message": f"Request body too large. Maximum size is {self.max_size_mb:.1f}MB",
-                "max_size_bytes": self.max_size,
-                "max_size_mb": self.max_size_mb,
+                "message": f"Request body too large. Maximum size is {max_size_mb:.1f}MB",
+                "max_size_bytes": max_size,
+                "max_size_mb": max_size_mb,
             },
         )
 

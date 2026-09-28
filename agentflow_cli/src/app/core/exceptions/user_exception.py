@@ -13,16 +13,18 @@ class UserAccountError(GeneralException):
         please contact support".
         error_code (str): Specific error code for this type of error.
         Defaults to "USER_ACCOUNT_DISABLE".
-        status_code (int): HTTP status code for the error. Defaults to 403.
+        status_code (int): HTTP status code for the error. Defaults to 403; a missing,
+        invalid or expired credential uses 401.
     """
 
     def __init__(
         self,
         message="User account is disabled, please contact support",
         error_code="USER_ACCOUNT_DISABLE",
+        status_code=403,
     ):
         self.message = message
-        self.status_code = 403
+        self.status_code = status_code
         self.error_code = error_code
         super().__init__(
             message=self.message,

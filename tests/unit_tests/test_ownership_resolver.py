@@ -24,13 +24,15 @@ class _FakeRedis:
         self.store: dict[str, bytes] = {}
         self.gets = 0
         self.sets = 0
+        self.ttls: dict[str, int | None] = {}
 
     async def get(self, key):
         self.gets += 1
         return self.store.get(key)
 
-    async def set(self, key, value):
+    async def set(self, key, value, ex=None):
         self.sets += 1
+        self.ttls[key] = ex
         self.store[key] = value.encode() if isinstance(value, str) else value
 
     async def delete(self, key):
@@ -116,7 +118,7 @@ async def test_redis_errors_degrade_to_lookup():
         async def get(self, key):
             raise RuntimeError("redis down")
 
-        async def set(self, key, value):
+        async def set(self, key, value, ex=None):
             raise RuntimeError("redis down")
 
         async def delete(self, key):
@@ -136,3 +138,34 @@ async def test_not_implemented_propagates():
     r = ThreadOwnershipResolver(_lookup)
     with pytest.raises(NotImplementedError):
         await r.owner_of("t1")
+
+
+# ---------------------------------------------------------------------------
+# L3: stale entries expire, so a delete on another worker is honoured eventually
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_l1_entry_expires_after_its_ttl(monkeypatch):
+    from agentflow_cli.src.app.core.auth import ownership_resolver
+
+    now = [1000.0]
+    monkeypatch.setattr(ownership_resolver.time, "monotonic", lambda: now[0])
+    lookup = _CountingLookup({"t1": "alice"})
+    r = ThreadOwnershipResolver(lookup, l1_ttl=30)
+
+    assert await r.owner_of("t1") == "alice"
+    # Another worker deleted t1 and bob re-created it; this worker only sees the DB.
+    lookup.owners["t1"] = "bob"
+    now[0] += 29
+    assert await r.owner_of("t1") == "alice"  # still inside the TTL
+    now[0] += 2
+    assert await r.owner_of("t1") == "bob"
+
+
+@pytest.mark.asyncio
+async def test_l2_entries_are_written_with_a_ttl():
+    redis = _FakeRedis()
+    r = ThreadOwnershipResolver(_CountingLookup({"t1": "alice"}), redis=redis, l2_ttl=600)
+    await r.owner_of("t1")
+    assert list(redis.ttls.values()) == [600]

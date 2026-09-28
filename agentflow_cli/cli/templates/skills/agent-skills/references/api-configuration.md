@@ -31,7 +31,7 @@ Common full shape:
     "requests": 100,
     "window": 60,
     "by": "ip",
-    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
   }
 }
 ```

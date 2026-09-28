@@ -105,7 +105,7 @@ class TestJwtAuth:
 
         assert exc_info.value.error_code == "REVOKED_TOKEN"
         assert "Invalid token" in exc_info.value.message
-        assert exc_info.value.status_code == 403
+        assert exc_info.value.status_code == 401
 
     # =========================================================================
     # Test: Missing JWT settings
@@ -604,16 +604,16 @@ class TestJwtAuth:
         mock_response: Response,
         jwt_env_vars,
     ):
-        """Test that logger.exception is called when InvalidTokenError occurs."""
+        """A rejected token is logged once, without a traceback or the token itself."""
         with patch("agentflow_cli.src.app.core.auth.jwt_auth.logger") as mock_logger:
             credentials = self.create_credentials("invalid-token")
 
             with pytest.raises(UserAccountError):
                 jwt_auth.authenticate(None, mock_response, credentials)
 
-            mock_logger.exception.assert_called_once()
-            call_args = mock_logger.exception.call_args
-            assert "JWT AUTH ERROR" in call_args[0][0]
+            mock_logger.warning.assert_called_once()
+            mock_logger.exception.assert_not_called()
+            assert "invalid-token" not in str(mock_logger.warning.call_args)
 
 
 class TestJwtAuthIntegration:

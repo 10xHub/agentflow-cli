@@ -12,6 +12,11 @@ from .base import BaseRateLimitBackend
 from .keying import client_key_for
 
 
+# Liveness/readiness probes hit /ping. Limiting it (or failing closed on a backend outage)
+# would make the orchestrator restart healthy pods.
+HEALTH_CHECK_PATHS = frozenset({"/ping"})
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Backend-agnostic rate-limit middleware."""
 
@@ -24,7 +29,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.config = config
         self.backend = backend
-        self._exclude = frozenset(config.exclude_paths)
+        self._exclude = frozenset(config.exclude_paths) | HEALTH_CHECK_PATHS
 
     def _client_key(self, request: Request) -> str:
         return client_key_for(request, self.config)

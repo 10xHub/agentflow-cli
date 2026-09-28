@@ -1,7 +1,7 @@
 """Unit tests for request size limit middleware."""
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from agentflow_cli.src.app.core.middleware.request_limits import RequestSizeLimitMiddleware
@@ -185,3 +185,44 @@ def test_invalid_content_length_is_a_client_error(app_with_limit):
         "/test", content=b"{}", headers={"content-length": "abc"}
     )
     assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# L7: the upload route has room for MEDIA_MAX_SIZE_MB
+# ---------------------------------------------------------------------------
+
+
+def _path_limited_app() -> TestClient:
+    app = FastAPI()
+    app.add_middleware(
+        RequestSizeLimitMiddleware, max_size=1024, path_limits={"/v1/files/upload": 4096}
+    )
+
+    @app.post("/v1/files/upload")
+    async def upload(request: Request):
+        return {"size": len(await request.body())}
+
+    @app.post("/other")
+    async def other(request: Request):
+        return {"size": len(await request.body())}
+
+    return TestClient(app)
+
+
+def test_upload_route_uses_its_own_limit():
+    client = _path_limited_app()
+    assert client.post("/v1/files/upload", content=b"x" * 3000).status_code == 200
+    assert client.post("/v1/files/upload", content=b"x" * 5000).status_code == 413
+    assert client.post("/other", content=b"x" * 3000).status_code == 413
+
+
+def test_upload_limit_follows_the_media_setting(monkeypatch):
+    from agentflow_cli.src.app.core.config import setup_middleware
+
+    monkeypatch.setattr(
+        "agentflow_cli.src.app.core.config.media_settings.get_media_settings",
+        lambda: type("S", (), {"MEDIA_MAX_SIZE_MB": 25.0})(),
+    )
+    limits = setup_middleware._upload_path_limits(10 * 1024 * 1024)
+    assert limits["/v1/files/upload"] > 25 * 1024 * 1024
+    assert setup_middleware._upload_path_limits(100 * 1024 * 1024) == {}

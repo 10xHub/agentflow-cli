@@ -296,6 +296,16 @@ _SECTIONS: list[dict[str, Any]] = [
                 "placeholder": "10",
                 "help": "Stops one account holding every slot. Defaults to 10; 0 means unlimited.",
             },
+            {
+                "path": ["websocket", "realtime_models"],
+                "label": "Realtime models clients may pick",
+                "type": "list",
+                "placeholder": "gemini-2.5-flash-live",
+                "help": (
+                    "Models a /v1/graph/live client may request. Any other request uses the "
+                    "agent's own model. Empty means clients cannot choose."
+                ),
+            },
         ],
     },
     {

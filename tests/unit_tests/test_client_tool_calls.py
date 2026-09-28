@@ -142,6 +142,7 @@ def graph_service():
     }
     srv._graph = SimpleNamespace(_state_graph=SimpleNamespace(nodes=nodes))
     srv.checkpointer = MagicMock()
+    srv.checkpointer.aget_thread_owner = AsyncMock(return_value=None)
     srv.config = MagicMock()
     srv.thread_name_generator = None
     srv._media_service = None

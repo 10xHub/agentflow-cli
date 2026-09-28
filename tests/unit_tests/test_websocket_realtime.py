@@ -278,6 +278,20 @@ class TestIsLiveAgent:
         assert self._service(graph).is_live_agent is False
 
 
+def _checkpointer():
+    checkpointer = AsyncMock()
+    checkpointer.aget_thread_owner = AsyncMock(return_value=None)
+    return checkpointer
+
+
+def _config():
+    from agentflow_cli.src.app.core.config.graph_config import WebSocketConfig
+
+    config = MagicMock()
+    config.websocket = WebSocketConfig.from_dict({"realtime_models": ["gemini-x"]})
+    return config
+
+
 class TestRealtimeGraphService:
     @pytest.mark.asyncio
     async def test_init_session_params_mapped_into_realtime_config(self):
@@ -292,7 +306,7 @@ class TestRealtimeGraphService:
 
         graph = MagicMock()
         graph.arealtime = _arealtime
-        svc = GraphService(graph=graph, checkpointer=AsyncMock(), config=MagicMock())
+        svc = GraphService(graph=graph, checkpointer=_checkpointer(), config=_config())
 
         init = {
             "model": "gemini-x",
@@ -328,7 +342,7 @@ class TestRealtimeGraphService:
 
         graph = MagicMock()
         graph.arealtime = _arealtime
-        svc = GraphService(graph=graph, checkpointer=AsyncMock(), config=MagicMock())
+        svc = GraphService(graph=graph, checkpointer=_checkpointer(), config=_config())
 
         # Client shorthand: a bare string instead of a list.
         init = {"model": "gemini-x", "modalities": "TEXT"}

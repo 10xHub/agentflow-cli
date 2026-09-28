@@ -130,7 +130,7 @@ class RateLimitConfig:
             "window": 60,
             "by": "ip",
             "trusted_proxy_headers": false,
-            "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+            "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
         }
 
     Example (Redis backend)::
@@ -142,7 +142,7 @@ class RateLimitConfig:
             "window": 60,
             "by": "ip",
             "trusted_proxy_headers": true,
-            "exclude_paths": ["/health"],
+            "exclude_paths": ["/ping"],
             "redis": {
                 "url": "redis://localhost:6379/0",
                 "prefix": "agentflow:rate-limit"
@@ -274,7 +274,8 @@ class WebSocketConfig:
 
         "websocket": {
             "max_connections": 1000,
-            "max_connections_per_user": 10
+            "max_connections_per_user": 10,
+            "realtime_models": ["gemini-2.5-flash-live"]
         }
 
     ``max_connections`` caps the concurrent WebSocket connections this server *process*
@@ -286,10 +287,15 @@ class WebSocketConfig:
     A missing key gets a finite default (1000 and 10). Set a key to ``0`` or ``null`` to make
     it unlimited. WebSocket handshakes, and every graph run started over ``/v1/graph/ws``, also
     count against the global ``rate_limit`` bucket shared with REST requests.
+
+    ``realtime_models`` lists the models a ``/v1/graph/live`` client may ask for in its init
+    frame. Any other requested model is ignored and the agent's own model is used. Empty (the
+    default) means clients cannot choose the model.
     """
 
     max_connections: int | None
     max_connections_per_user: int | None = DEFAULT_WS_MAX_CONNECTIONS_PER_USER
+    realtime_models: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, data: dict) -> "WebSocketConfig":
@@ -300,7 +306,17 @@ class WebSocketConfig:
             max_connections_per_user=_connection_limit(
                 data, "max_connections_per_user", DEFAULT_WS_MAX_CONNECTIONS_PER_USER
             ),
+            realtime_models=_string_list(data, "realtime_models"),
         )
+
+
+def _string_list(data: dict, key: str) -> tuple[str, ...]:
+    raw = data.get(key)
+    if raw is None:
+        return ()
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise ValueError(f"websocket.{key} must be a list of strings")
+    return tuple(item.strip() for item in raw if item.strip())
 
 
 def _connection_limit(data: dict, key: str, default: int) -> int | None:

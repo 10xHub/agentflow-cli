@@ -210,3 +210,36 @@ class TestInitSentry:
             init_sentry(mock_settings)
             # Should warn about invalid environment
             mock_logger.warning.assert_called()
+
+
+def test_only_server_errors_are_reported_and_sampling_is_configurable():
+    """L9: a 403 is not a Sentry event, and tracing is not forced to 100%."""
+    from types import ModuleType
+
+    from agentflow_cli.src.app.core.config.settings import Settings
+
+    captured = {}
+    sdk = ModuleType("sentry_sdk")
+    sdk.init = lambda **kwargs: captured.update(kwargs)
+    modules = {"sentry_sdk": sdk}
+    for name, cls in (("fastapi", "FastApiIntegration"), ("starlette", "StarletteIntegration")):
+        module = ModuleType(f"sentry_sdk.integrations.{name}")
+        setattr(module, cls, lambda **kwargs: kwargs)
+        modules[f"sentry_sdk.integrations.{name}"] = module
+    modules["sentry_sdk.integrations"] = ModuleType("sentry_sdk.integrations")
+
+    settings = Settings(
+        SENTRY_DSN="https://example@sentry.io/1",
+        MODE="production",
+        SENTRY_TRACES_SAMPLE_RATE=0.25,
+        _env_file=None,
+    )
+    with patch.dict("sys.modules", modules):
+        init_sentry(settings)
+
+    for integration in captured["integrations"]:
+        codes = integration["failed_request_status_codes"]
+        assert 403 not in codes
+        assert {500, 502, 599} <= codes
+    assert captured["traces_sample_rate"] == 0.25
+    assert captured["profiles_sample_rate"] == 0.0

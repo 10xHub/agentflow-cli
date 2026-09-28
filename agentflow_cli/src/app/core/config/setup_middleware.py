@@ -20,6 +20,42 @@ from .sentry_config import init_sentry
 from .settings import get_settings, logger
 
 
+class HealthCheckAwareTrustedHostMiddleware(TrustedHostMiddleware):
+    """``TrustedHostMiddleware`` that lets the health check through from any Host.
+
+    Docker and Kubernetes probes call ``/ping`` on ``localhost`` or the pod IP, which are
+    never in ``ALLOWED_HOST``, so the probe would fail and the container would be restarted.
+    ``/ping`` returns a constant and reads nothing, so skipping the Host check there is safe.
+    """
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and _is_health_check(scope):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+# Multipart framing (boundaries, part headers, the filename field) on top of the file bytes.
+UPLOAD_MULTIPART_OVERHEAD_BYTES = 64 * 1024
+
+
+def _upload_path_limits(max_request_size: int) -> dict[str, int]:
+    """A body limit for the upload route that fits ``MEDIA_MAX_SIZE_MB``, if that is larger."""
+    from agentflow_cli.src.app.core.config.media_settings import get_media_settings
+
+    media_bytes = int(get_media_settings().MEDIA_MAX_SIZE_MB * 1024 * 1024)
+    upload_limit = media_bytes + UPLOAD_MULTIPART_OVERHEAD_BYTES
+    if upload_limit <= max_request_size:
+        return {}
+    return {"/v1/files/upload": upload_limit}
+
+
+def _is_health_check(scope: Scope) -> bool:
+    path = scope.get("path", "")
+    root_path = (scope.get("root_path") or "").rstrip("/")
+    return path in ("/ping", f"{root_path}/ping")
+
+
 # Paths that should be excluded from GZip compression (streaming endpoints)
 GZIP_EXCLUDED_PATHS = frozenset({"/v1/graph/stream"})
 
@@ -383,10 +419,18 @@ def setup_middleware(
         allow_headers=["*"],
     )
 
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOST.split(","))
+    app.add_middleware(
+        HealthCheckAwareTrustedHostMiddleware,
+        allowed_hosts=settings.ALLOWED_HOST.split(","),
+    )
 
-    # Add request size limit middleware (protects against DoS via large payloads)
-    app.add_middleware(RequestSizeLimitMiddleware, max_size=settings.MAX_REQUEST_SIZE)
+    # Add request size limit middleware (protects against DoS via large payloads). The upload
+    # route gets room for MEDIA_MAX_SIZE_MB, which the route itself enforces on the file.
+    app.add_middleware(
+        RequestSizeLimitMiddleware,
+        max_size=settings.MAX_REQUEST_SIZE,
+        path_limits=_upload_path_limits(settings.MAX_REQUEST_SIZE),
+    )
 
     # Add security headers middleware (if enabled)
     if settings.SECURITY_HEADERS_ENABLED:

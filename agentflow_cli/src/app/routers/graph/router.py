@@ -396,14 +396,20 @@ def _ws_run_thread_id(ws_input: WsGraphInputSchema) -> str | None:
     one, instead of running on a literal thread named ``"new"`` shared by every client.
     """
     config = dict(ws_input.config or {})
-    thread_id = normalize_thread_id(config.get("thread_id"))
+    thread_id = _resolve_ws_thread(config)
+    ws_input.config = config
+    return thread_id
+
+
+def _resolve_ws_thread(frame: dict[str, Any]) -> str | None:
+    """Normalise ``frame["thread_id"]`` in place; ``"new"``, blank or missing removes it."""
+    thread_id = normalize_thread_id(frame.get("thread_id"))
     if thread_id == WS_NEW_THREAD:
         thread_id = None
     if thread_id is None:
-        config.pop("thread_id", None)
+        frame.pop("thread_id", None)
     else:
-        config["thread_id"] = thread_id
-    ws_input.config = config
+        frame["thread_id"] = thread_id
     return thread_id
 
 
@@ -417,22 +423,22 @@ async def _ws_thread_authorized(
 
     Returns ``True`` when the run may proceed. Ownership is only enforced when auth is
     configured (``GraphConfig.auth_config``); an unauthenticated dev graph and fresh
-    (``"new"``/absent) threads always pass.
+    (``"new"``/absent) threads always pass. If the config cannot be read, the check runs
+    anyway: a lookup failure must not switch authorization off.
     """
-    if not thread_id or thread_id == "new":
+    if not thread_id or thread_id == WS_NEW_THREAD:
         return True
 
     from injectq import InjectQ
 
-    has_auth = False
+    has_auth = True
     try:
         from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 
         cfg = InjectQ.get_instance().get(GraphConfig)
-        if cfg and cfg.auth_config():
-            has_auth = True
+        has_auth = bool(cfg and cfg.auth_config())
     except Exception as exc:
-        logger.debug("Could not resolve GraphConfig for WS auth check: %s", exc)
+        logger.warning("Could not resolve GraphConfig for WS auth check; enforcing it: %s", exc)
 
     if not has_auth:
         return True
@@ -589,6 +595,19 @@ async def websocket_graph(
             await websocket.close(code=1011)
 
 
+def _client_error(exc: Exception) -> str:
+    """The error text a client may see: the exception in development, generic in production.
+
+    A ValueError here can come from anywhere under the session (storage, provider SDK), not
+    only from the init frame, and its text may name internal hosts, paths or queries.
+    """
+    from agentflow_cli.src.app.core.config.settings import get_settings
+    from agentflow_cli.src.app.core.exceptions.handle_errors import _sanitize_error_message
+
+    is_production = get_settings().MODE == "production"
+    return _sanitize_error_message(str(exc), "VALIDATION_ERROR", is_production)
+
+
 def _realtime_event_json(event: Any) -> str:
     """Serialize a non-audio RealtimeEvent to a JSON text frame for the client."""
     try:
@@ -670,7 +689,8 @@ async def realtime_graph_ws(  # noqa: PLR0912, PLR0915
         return
 
     if isinstance(init, dict):
-        thread_id = init.get("thread_id")
+        # Same rules as /v1/graph/ws: "new" starts a fresh thread, never a shared one.
+        thread_id = _resolve_ws_thread(init)
         if not await _ws_thread_authorized(authz, user, thread_id, "stream"):
             logger.warning(
                 f"Realtime WebSocket authorization failed for user {user.get('user_id')} "
@@ -754,7 +774,7 @@ async def realtime_graph_ws(  # noqa: PLR0912, PLR0915
             with contextlib.suppress(Exception):
                 await websocket.send_text(
                     _realtime_event_json(
-                        ErrorEvent(code="invalid_config", message=str(e), fatal=True)
+                        ErrorEvent(code="invalid_config", message=_client_error(e), fatal=True)
                     )
                 )
 

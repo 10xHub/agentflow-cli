@@ -335,7 +335,6 @@ class TestSchemas:
 
         r = MultimodalConfigResponse(
             media_storage_type="local",
-            media_storage_path="./uploads",
             media_max_size_mb=25.0,
             document_handling="extract_text",
         )

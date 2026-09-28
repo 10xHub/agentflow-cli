@@ -45,6 +45,7 @@ class TestGraphServiceMethods:
     def mock_checkpointer(self):
         checkpointer = MagicMock(spec=BaseCheckpointer)
         checkpointer.aput_thread = AsyncMock(return_value=True)
+        checkpointer.aget_thread_owner = AsyncMock(return_value=None)
         return checkpointer
 
     @pytest.fixture

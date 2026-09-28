@@ -80,6 +80,11 @@ def _reraise_framework_errors(exc: Exception) -> None:
         raise exc
 
 
+# A taken generated id is retried with a fresh one; each retry is another prediction the
+# claimer would have had to get right.
+MAX_THREAD_ID_ATTEMPTS = 5
+
+
 @singleton
 class GraphService:
     """
@@ -377,6 +382,25 @@ class GraphService:
             if call_id not in pending or pending[call_id] not in remote:
                 raise ValueError(f"No remote tool call '{call_id}' is waiting for a result")
 
+    async def _new_thread_id(self) -> str:
+        """Generate a thread id that nobody owns yet.
+
+        The permission check approved "a new thread", so the id handed out here must really
+        be new. Generated ids (Snowflake by default) are predictable, and a client may create
+        a thread under any id it likes, so another user could have claimed the next id
+        first; running on it would put this user's messages in their thread.
+        """
+        for _ in range(MAX_THREAD_ID_ATTEMPTS):
+            thread_id = str(await InjectQ.get_instance().atry_get("generated_id") or uuid4())
+            try:
+                owner = await self.checkpointer.aget_thread_owner(thread_id)
+            except NotImplementedError:
+                return thread_id  # the checkpointer cannot tell; keep the old behaviour
+            if owner is None:
+                return thread_id
+            logger.warning("Generated thread id %s is already taken; generating another", thread_id)
+        raise RuntimeError("Could not generate an unused thread id")
+
     async def _prepare_input(
         self,
         graph_input: GraphInputSchema,
@@ -387,7 +411,7 @@ class GraphService:
         # Same normalisation as the permission check, so the checked thread is the one used.
         thread_id = normalize_thread_id(config.get("thread_id"))
         if thread_id is None:
-            thread_id = await InjectQ.get_instance().atry_get("generated_id") or str(uuid4())
+            thread_id = await self._new_thread_id()
             is_new_thread = True
 
         # update thread id
@@ -667,7 +691,7 @@ class GraphService:
         normalized RealtimeEvents. The compiled graph must be rooted at a LiveAgent (e.g.
         an ``AudioAgent``); otherwise ``arealtime`` raises.
         """
-        thread_id = init.get("thread_id") or str(uuid4())
+        thread_id = normalize_thread_id(init.get("thread_id")) or await self._new_thread_id()
         config: dict[str, Any] = {
             "thread_id": thread_id,
             "user": user,
@@ -676,7 +700,7 @@ class GraphService:
         # Map the client init frame onto RealtimeConfig field names so the live agent can
         # apply per-session overrides (model/voice/modalities/vad/...). Only present keys
         # are forwarded; absent ones fall back to the agent's build-time config.
-        realtime = self._realtime_overrides(init)
+        realtime = self._restrict_realtime_overrides(self._realtime_overrides(init))
         if realtime:
             config["realtime"] = realtime
         await self._save_thread(config, thread_id)
@@ -709,6 +733,43 @@ class GraphService:
         if isinstance(overrides.get("response_modalities"), str):
             overrides["response_modalities"] = [overrides["response_modalities"]]
         return overrides
+
+    def _live_tools_tags(self) -> set[str] | None:
+        """The tag filter the live agent was built with, or ``None`` when it has none."""
+        find_live_nodes = getattr(self._graph, "_find_live_nodes", None)
+        for _name, node in find_live_nodes() if callable(find_live_nodes) else []:
+            realtime_config = getattr(getattr(node, "func", None), "realtime_config", None)
+            tags = getattr(realtime_config, "tools_tags", None)
+            if tags:
+                return {str(tag) for tag in tags}
+        return None
+
+    def _restrict_realtime_overrides(self, overrides: dict[str, Any]) -> dict[str, Any]:
+        """Drop the init-frame overrides a client is not allowed to make.
+
+        ``model`` is honoured only when listed in ``websocket.realtime_models``. ``tools_tags``
+        may only narrow the agent's own filter: widening it, or clearing it (an empty filter
+        advertises every tool), would expose tools the agent was built to hide.
+        """
+        restricted = dict(overrides)
+        model = restricted.get("model")
+        if model is not None and model not in self.config.websocket.realtime_models:
+            logger.info(
+                "Realtime init model %r is not in websocket.realtime_models; ignored", model
+            )
+            restricted.pop("model")
+
+        if "tools_tags" in restricted:
+            requested = restricted.pop("tools_tags")
+            if isinstance(requested, str):
+                requested = [requested]
+            if not isinstance(requested, list):
+                requested = []
+            base = self._live_tools_tags()
+            tags = [str(tag) for tag in requested if base is None or str(tag) in base]
+            if tags:
+                restricted["tools_tags"] = tags
+        return restricted
 
     async def graph_details(self) -> GraphSchema:
         try:

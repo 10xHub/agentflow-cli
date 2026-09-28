@@ -263,10 +263,12 @@ def load_and_bind_auth(container: InjectQ, auth_config: dict) -> None:
     ``jwt`` needs no path; ``custom`` needs a ``path`` to a ``BaseAuth``. Any other method
     is a configuration error and fails at startup rather than silently binding no backend.
     """
-    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth, check_jwt_settings
+    from agentflow_cli.src.app.core.config.settings import get_settings
 
     method = auth_config.get("method")
     if method == "jwt":
+        check_jwt_settings(get_settings())
         auth_backend: BaseAuth | None = JwtAuth()
     elif method == "none":
         auth_backend = None

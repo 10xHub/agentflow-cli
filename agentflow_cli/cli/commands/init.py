@@ -453,7 +453,7 @@ class InitCommand(BaseCommand):
                 "window": context.get("rl_window", 60),
                 "by": context.get("rl_by", "ip"),
                 "trusted_proxy_headers": context.get("rl_trusted_proxy", False),
-                "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
+                "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"],
             }
 
         return config

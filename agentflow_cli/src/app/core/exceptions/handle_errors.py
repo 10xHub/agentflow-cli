@@ -102,14 +102,20 @@ def init_errors_handler(app: FastAPI):  # noqa: PLR0915
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
-        logger.error(f"Value error exception: url: {request.base_url}", exc_info=exc)
-
         request_id = getattr(request.state, "request_id", "unknown")
         details = [ErrorSchemas(**error) for error in exc.errors()]
 
-        # In production, sanitize validation error details
+        # Log where and why validation failed, never the submitted values: exc (and its
+        # traceback) embeds the raw request body, which can hold messages, files or tokens.
+        logger.warning(
+            "Request %s - validation failed: %s %s: %s",
+            request_id,
+            request.method,
+            request.url.path,
+            [f"{'.'.join(map(str, d.loc))}: {d.msg}" for d in details],
+        )
+
         if is_production:
-            logger.error(f"Request {request_id} - Validation errors: {details}")
             message = "The request data is invalid. Please check your input."
         else:
             message = str(exc.body) if exc.body else "Validation error"
@@ -145,13 +151,16 @@ def init_errors_handler(app: FastAPI):  # noqa: PLR0915
     ########################################
     @app.exception_handler(UserAccountError)
     async def user_account_exception_handler(request: Request, exc: UserAccountError):
-        logger.error(f"UserAccountError: url: {request.base_url}", exc_info=exc)
-        return error_response(
+        logger.warning("UserAccountError on %s: %s", request.url.path, exc.error_code)
+        response = error_response(
             request,
             error_code=exc.error_code,
             message=exc.message,
             status_code=exc.status_code,
         )
+        if exc.status_code == 401:  # noqa: PLR2004
+            response.headers["WWW-Authenticate"] = 'Bearer realm="auth_required"'
+        return response
 
     @app.exception_handler(UserPermissionError)
     async def user_write_exception_handler(request: Request, exc: UserPermissionError):

@@ -19,6 +19,7 @@ from agentflow_cli.src.app.core.auth.auth_backend import BaseAuth
 from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
 from agentflow_cli.src.app.core.auth.request_config import normalize_thread_id
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from agentflow_cli.src.app.core.exceptions.general_exception import GeneralException
 from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 
 
@@ -168,7 +169,7 @@ class RequirePermission:
         self.action = action
         self.extract_resource_id_fn = extract_resource_id
 
-    async def __call__(
+    async def __call__(  # noqa: PLR0912
         self,
         connection: HTTPConnection,
         response: Response,
@@ -222,6 +223,12 @@ class RequirePermission:
                 # JWT/custom backends signal auth failure with HTTPException; convert it
                 # to a clean WebSocket close on WS routes (see _reject).
                 _reject(connection, exc.status_code, str(exc.detail))
+            except GeneralException as exc:
+                # JwtAuth raises UserAccountError (401). HTTP routes render it through its
+                # exception handler; a WebSocket has no handler, so close it cleanly.
+                if isinstance(connection, WebSocket):
+                    _reject(connection, exc.status_code, exc.message)
+                raise
             if user_result and "user_id" not in user_result:
                 logger.error("Authentication failed: 'user_id' not found in user info")
             user = user_result or {}
