@@ -287,8 +287,8 @@ def test_load_thread_name_generator():
 def test_load_and_bind_auth():
     container = MagicMock(spec=InjectQ)
 
-    # Missing method/path
-    with pytest.raises(ValueError, match="Both 'method' and 'path' must be specified"):
+    # custom needs a path
+    with pytest.raises(ValueError, match="requires a 'path'"):
         load_and_bind_auth(container, {"method": "custom"})
 
     # Path existence check failure
@@ -302,24 +302,36 @@ def test_load_and_bind_auth():
             mock_auth_instance = MagicMock(spec=BaseAuth)
             mock_load_auth.return_value = mock_auth_instance
 
-            # test "custom" method
             load_and_bind_auth(container, {"method": "custom", "path": "my.auth.path:auth"})
             container.bind_instance.assert_called_with(
                 BaseAuth, mock_auth_instance, allow_none=True
             )
 
-            # test "jwt" method
-            from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+    # "none" binds no backend
+    load_and_bind_auth(container, {"method": "none"})
+    container.bind_instance.assert_called_with(BaseAuth, None, allow_none=True)
 
-            load_and_bind_auth(container, {"method": "jwt", "path": "some_path.py:auth"})
-            # JwtAuth is instantiated inside, so we check if standard JwtAuth was bound
-            args, kwargs = container.bind_instance.call_args
-            assert args[0] == BaseAuth
-            assert isinstance(args[1], JwtAuth)
+    # An unknown method fails at startup instead of silently binding no backend
+    with pytest.raises(ValueError, match="Unsupported auth method"):
+        load_and_bind_auth(container, {"method": "oauth"})
 
-            # test "none" method
-            load_and_bind_auth(container, {"method": "none", "path": "some_path.py:auth"})
-            container.bind_instance.assert_called_with(BaseAuth, None, allow_none=True)
+
+def test_load_and_bind_auth_jwt_needs_no_path(monkeypatch, tmp_path):
+    """The documented ``"auth": "jwt"`` config must boot (it has no path)."""
+    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+    from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+
+    monkeypatch.setenv("JWT_SECRET_KEY", "x" * 32)
+    monkeypatch.setenv("JWT_ALGORITHM", "HS256")
+    config_file = tmp_path / "agentflow.json"
+    config_file.write_text('{"agent": "graph.react:app", "auth": "jwt"}')
+
+    container = MagicMock(spec=InjectQ)
+    load_and_bind_auth(container, GraphConfig(str(config_file)).auth_config())
+
+    args, kwargs = container.bind_instance.call_args
+    assert args[0] == BaseAuth
+    assert isinstance(args[1], JwtAuth)
 
 
 def test_load_and_bind_authorization():

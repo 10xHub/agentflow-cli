@@ -142,62 +142,49 @@
 <body class="bg-canvas font-sans text-body antialiased">
   <a href="#main" class="sr-only z-50 rounded-md bg-brand-solid px-3 py-2 text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Skip to content</a>
 
-  <div class="flex h-dvh overflow-hidden">
+  <div class="flex h-dvh flex-col overflow-hidden">
     <div id="scrim" class="fixed inset-0 z-30 hidden bg-black/50"></div>
 
-    <!-- Sidebar -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-line bg-surface transition-transform duration-200 ease-out lg:static lg:w-64 lg:translate-x-0" aria-label="Configuration sections">
-      <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-line px-4">
+    <header class="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:gap-3 sm:px-4">
+      <div class="flex shrink-0 items-center gap-2.5">
         <svg viewBox="0 0 32 32" class="size-7 shrink-0" aria-hidden="true">
           <rect width="32" height="32" rx="8" fill="#2563eb"/>
           <path d="M10 11 22 11M10 11 16 22M22 11 16 22" stroke="white" stroke-opacity=".55" stroke-width="2"/>
           <circle cx="10" cy="11" r="3" fill="white"/><circle cx="22" cy="11" r="3" fill="white"/><circle cx="16" cy="22" r="3" fill="white"/>
         </svg>
-        <div class="flex items-baseline gap-1.5">
+        <div class="hidden items-baseline gap-1.5 md:flex">
           <span class="text-[15px] font-semibold tracking-tight text-ink">Agentflow</span>
           <span class="text-[15px] text-faint">Config</span>
         </div>
-        <button id="nav-close" type="button" class="icon-btn ml-auto lg:hidden" aria-label="Close sections"></button>
       </div>
-      <div id="file-card" class="shrink-0 p-3"></div>
-      <nav id="nav" class="min-h-0 flex-1 overflow-y-auto px-3 pb-4"></nav>
-      <div class="shrink-0 space-y-2 border-t border-line px-4 py-3">
-        <a id="docs-link" href="#" target="_blank" rel="noopener" class="flex items-center gap-2 text-sm text-muted transition-colors hover:text-ink"></a>
-        <p class="hidden text-xs text-faint sm:block">Save with <span class="font-mono">Ctrl</span>+<span class="font-mono">S</span></p>
-      </div>
-    </aside>
+      <span class="hidden h-6 w-px shrink-0 bg-line md:block" aria-hidden="true"></span>
+      <div id="file" class="flex min-w-0 flex-1 items-center gap-2"></div>
+      <button id="inspector-open" type="button" class="icon-btn relative xl:hidden" aria-label="Open problems and JSON preview"></button>
+      <button id="validate-btn" type="button" class="btn btn-outline" disabled></button>
+      <button id="save-btn" type="button" class="btn btn-primary" disabled></button>
+    </header>
 
-    <!-- Workspace -->
-    <div class="flex min-w-0 flex-1 flex-col">
-      <header class="flex h-14 shrink-0 items-center gap-1.5 border-b border-line bg-surface px-2 sm:gap-2 sm:px-4">
-        <button id="nav-open" type="button" class="icon-btn lg:hidden" aria-label="Open sections"></button>
-        <div id="crumbs" class="flex min-w-0 flex-1 items-center gap-1.5 text-sm"></div>
-        <span id="dirty" class="hidden items-center gap-1.5 pr-1 text-xs font-medium text-warn md:flex"></span>
-        <button id="inspector-open" type="button" class="icon-btn relative xl:hidden" aria-label="Open problems and JSON preview"></button>
-        <button id="validate-btn" type="button" class="btn btn-outline" disabled></button>
-        <button id="save-btn" type="button" class="btn btn-primary" disabled></button>
-      </header>
-
-      <div class="flex min-h-0 flex-1">
-        <main id="main" tabindex="-1" class="min-w-0 flex-1 overflow-y-auto focus:outline-none">
-          <div id="page" class="mx-auto w-full max-w-3xl px-4 pt-8 pb-16 sm:px-8">
-            <div class="animate-pulse space-y-4" aria-label="Loading">
-              <div class="h-7 w-48 rounded-md bg-raised"></div>
-              <div class="h-4 w-80 max-w-full rounded-md bg-raised"></div>
-              <div class="h-56 rounded-xl bg-raised"></div>
-            </div>
+    <div class="flex min-h-0 flex-1">
+      <main id="main" tabindex="-1" class="min-w-0 flex-1 overflow-y-auto focus:outline-none">
+        <div id="page" class="mx-auto w-full max-w-4xl px-4 pb-24 sm:px-8">
+          <div class="animate-pulse space-y-4 pt-8" aria-label="Loading">
+            <div class="h-7 w-48 rounded-md bg-raised"></div>
+            <div class="h-4 w-80 max-w-full rounded-md bg-raised"></div>
+            <div class="h-16 rounded-xl bg-raised"></div>
+            <div class="h-16 rounded-xl bg-raised"></div>
+            <div class="h-16 rounded-xl bg-raised"></div>
           </div>
-        </main>
+        </div>
+      </main>
 
-        <!-- Inspector -->
-        <aside id="inspector" class="fixed inset-y-0 right-0 z-40 flex w-[min(100vw,400px)] translate-x-full flex-col border-l border-line bg-surface transition-transform duration-200 ease-out xl:static xl:z-auto xl:w-[380px] xl:translate-x-0" aria-label="Inspector">
-          <div class="flex h-14 shrink-0 items-center gap-1 border-b border-line px-3">
-            <div id="tabs" role="tablist" class="flex flex-1 gap-1"></div>
-            <button id="inspector-close" type="button" class="icon-btn xl:hidden" aria-label="Close inspector"></button>
-          </div>
-          <div id="inspector-body" class="min-h-0 flex-1 overflow-y-auto"></div>
-        </aside>
-      </div>
+      <!-- Inspector -->
+      <aside id="inspector" class="fixed inset-y-0 right-0 z-40 flex w-[min(100vw,400px)] translate-x-full flex-col border-l border-line bg-surface transition-transform duration-200 ease-out xl:static xl:z-auto xl:w-[380px] xl:translate-x-0" aria-label="Inspector">
+        <div class="flex h-14 shrink-0 items-center gap-1 border-b border-line px-3">
+          <div id="tabs" role="tablist" class="flex flex-1 gap-1"></div>
+          <button id="inspector-close" type="button" class="icon-btn xl:hidden" aria-label="Close inspector"></button>
+        </div>
+        <div id="inspector-body" class="min-h-0 flex-1 overflow-y-auto"></div>
+      </aside>
     </div>
   </div>
 
@@ -231,11 +218,11 @@
       x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
       plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
       trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
-      menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
       panel: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>',
       chevronDown: '<path d="m6 9 6 6 6-6"/>',
       chevronRight: '<path d="m9 18 6-6-6-6"/>',
-      chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+      expand: '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
+      collapse: '<path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>',
       power: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>',
       spinner: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
       book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
@@ -246,11 +233,23 @@
       observability: "activity", plugins: "layers", remote_tools: "wrench", test: "flask", evaluation: "target",
     };
 
-    const NAV_GROUPS = [
-      ["Project", ["core", "plugins"]],
-      ["Security", ["auth", "authorization", "rate_limit"]],
-      ["Runtime", ["websocket", "observability", "remote_tools"]],
-      ["Tooling", ["test", "evaluation"]],
+    // Sections not listed here land in the last tier, so new schema entries still render.
+    const TIERS = [
+      {
+        id: "essential", title: "Essentials",
+        tagline: "What the server needs to boot. Start here.",
+        sections: ["core", "plugins"],
+      },
+      {
+        id: "recommended", title: "Recommended",
+        tagline: "Lock down access and see what your agents do before you ship.",
+        sections: ["auth", "authorization", "rate_limit", "observability"],
+      },
+      {
+        id: "advanced", title: "Advanced",
+        tagline: "Tune connection limits, client-side tools, and your test loop.",
+        sections: ["websocket", "remote_tools", "test", "evaluation"],
+      },
     ];
 
     // Issues a widget renders beside its own input rather than at the top of the page.
@@ -260,7 +259,8 @@
 
     const state = {
       schema: null,
-      sections: [],            // in navigation order
+      sections: [],            // in page order
+      tiers: [],               // TIERS with the resolved section objects in `list`
       fields: new Map(),       // "a.b.c" -> field definition
       config: {},
       version: null,
@@ -270,7 +270,7 @@
       saved: "",               // snapshot of the last loaded/saved config
       validated: null,         // snapshot the current issues belong to
       issues: [],
-      active: "core",
+      open: new Set(),         // ids of expanded sections
       tab: "problems",
       busy: null,              // "validate" | "save" | null
       toolParams: {},          // remote tool index -> {text, error} while JSON is being edited
@@ -376,8 +376,10 @@
 
       const data = res.data;
       state.schema = data.schema;
-      const order = NAV_GROUPS.flatMap(([, ids]) => ids);
+      const order = TIERS.flatMap((t) => t.sections);
       state.sections = [...data.schema.sections].sort((a, b) => rank(order, a.id) - rank(order, b.id));
+      state.tiers = TIERS.map((t) => ({ ...t, list: t.sections.map(section).filter(Boolean) }));
+      state.tiers[state.tiers.length - 1].list.push(...state.sections.filter((s) => !order.includes(s.id)));
       for (const sec of state.sections) for (const f of sec.fields) state.fields.set(f.path.join("."), f);
       state.config = data.config;
       state.version = data.version;
@@ -388,11 +390,16 @@
       const clean = data.exists && !data.parse_error;
       state.saved = clean ? snapshot() : "";
       state.validated = clean ? snapshot() : null;
-      const requested = new URLSearchParams(location.hash.slice(1)).get("section");
-      if (requested && section(requested)) state.active = requested;
-      $("docs-link").replaceChildren(icon("book"), "Configuration reference", icon("external", "size-3.5 ml-auto text-faint"));
-      $("docs-link").href = data.schema.docs_url;
+      // Open everything that is required, switched on, or has something to fix.
+      for (const sec of state.sections) if (!sec.optional || isOn(sec)) state.open.add(sec.id);
+      openIssues();
       renderAll();
+      const requested = new URLSearchParams(location.hash.slice(1)).get("section");
+      if (requested && section(requested)) go(requested);
+    }
+
+    function openIssues() {
+      for (const issue of state.issues) if (section(issue.section)) state.open.add(issue.section);
     }
 
     function rank(order, id) {
@@ -408,6 +415,7 @@
         if (!res.ok) return toast("error", res.data.error || "Validation failed.");
         state.issues = res.data.issues;
         state.validated = snapshot();
+        openIssues();
         const { errors, warnings } = counts();
         if (errors) toast("error", `${plural(errors, "error")} to fix before saving.`, { label: "Show", run: () => openInspector("problems") });
         else if (warnings) toast("warning", `Valid, with ${plural(warnings, "warning")}.`, { label: "Show", run: () => openInspector("problems") });
@@ -429,6 +437,7 @@
         if (res.data.issues) {
           state.issues = res.data.issues;
           state.validated = snapshot();
+          openIssues();
         }
         if (res.ok) {
           state.version = res.data.version;
@@ -458,8 +467,7 @@
     function guardJson() {
       const broken = Object.values(state.toolParams).some((t) => t.error);
       if (broken) {
-        state.active = "remote_tools";
-        renderAll();
+        go("remote_tools");
         toast("error", "A remote tool has invalid parameters JSON.");
       }
       return !broken;
@@ -473,88 +481,44 @@
     // ================================================================== frame
 
     function renderAll() {
-      renderFileCard();
-      renderNav();
       renderHeader();
       renderPage();
       renderInspector();
     }
 
-    // Called after every edit. Rebuilds the current page only when its structure changed.
+    // Called after every edit. Rebuilds the page only when its structure changed.
     function changed(rebuildPage) {
       if (rebuildPage) {
         const active = document.activeElement?.id;
         renderPage();
-        if (active) $(active)?.focus();
+        if (active) $(active)?.focus({ preventScroll: true });
       }
-      renderFileCard();
-      renderNav();
       renderHeader();
       renderInspector();
     }
 
-    function renderFileCard() {
+    function renderFile() {
       const name = state.path.split(/[\\/]/).pop() || "agentflow.json";
       const dir = state.path.slice(0, state.path.length - name.length);
-      let badge;
-      if (!state.exists) badge = pill("New", "bg-brand-soft text-brand");
+      let badge = null;
+      if (!state.schema) badge = null;
+      else if (!state.exists) badge = pill("New", "bg-brand-soft text-brand");
       else if (isDirty()) badge = pill("Unsaved", "bg-warn-soft text-warn");
       else badge = pill("Saved", "bg-ok-soft text-ok");
-      $("file-card").replaceChildren(h("div", { class: "rounded-lg border border-line bg-canvas px-3 py-2.5", title: state.path },
-        h("div", { class: "flex items-center gap-2" },
-          icon("file", "size-4 text-faint"),
-          h("span", { class: "min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-ink" }, name),
-          badge,
-        ),
-        dir ? h("p", { class: "mt-1 truncate font-mono text-xs text-faint", dir: "rtl" }, h("bdi", null, dir)) : null,
-      ));
+      fill($("file"),
+        icon("file", "size-4 text-faint"),
+        h("span", { class: "truncate font-mono text-[13px] font-medium text-ink", title: state.path || null }, name),
+        badge,
+        dir ? h("span", { class: "hidden min-w-0 truncate font-mono text-xs text-faint lg:block", dir: "rtl", title: state.path }, h("bdi", null, dir)) : null,
+      );
     }
 
     function pill(text, cls) {
-      return h("span", { class: `inline-flex h-5 items-center rounded-full px-2 text-[11px] font-semibold ${cls}` }, text);
-    }
-
-    function renderNav() {
-      $("nav").replaceChildren(...NAV_GROUPS.map(([label, ids]) => h("div", { class: "mt-4 first:mt-1" },
-        h("p", { class: "eyebrow mb-1.5 px-2.5" }, label),
-        h("ul", { class: "space-y-0.5" }, ids.map(section).filter(Boolean).map(navItem)),
-      )));
-    }
-
-    function navItem(sec) {
-      const active = sec.id === state.active;
-      const on = isOn(sec);
-      const { errors, warnings } = counts(issuesFor(sec.id));
-      let status = null;
-      if (errors) status = h("span", { class: "inline-flex items-center gap-1 text-xs font-medium text-danger", title: plural(errors, "error") }, icon("xCircle", "size-3.5"), errors);
-      else if (warnings) status = h("span", { class: "inline-flex items-center gap-1 text-xs font-medium text-warn", title: plural(warnings, "warning") }, icon("alert", "size-3.5"), warnings);
-      else if (sec.optional && !on) status = h("span", { class: "text-xs text-faint" }, "Off");
-      return h("li", null, h("a", {
-        href: `#section=${sec.id}`,
-        "aria-current": active ? "page" : null,
-        class: `group relative flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors duration-150 sm:h-9 ${active
-          ? "bg-brand-soft font-medium text-ink"
-          : "text-muted hover:bg-raised hover:text-ink"}`,
-        onclick: (e) => { e.preventDefault(); go(sec.id); },
-      },
-        active ? h("span", { class: "absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-brand" }) : null,
-        icon(SECTION_ICONS[sec.id] || "box", `size-4 ${active ? "text-brand" : on ? "" : "opacity-60"}`),
-        h("span", { class: `flex-1 truncate ${sec.optional && !on && !active ? "text-faint" : ""}` }, sec.title),
-        status,
-      ));
+      return h("span", { class: `inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[11px] font-semibold ${cls}` }, text);
     }
 
     function renderHeader() {
-      const sec = section(state.active);
-      $("crumbs").replaceChildren(
-        h("span", { class: "hidden font-mono text-[13px] text-faint sm:inline" }, "agentflow.json"),
-        h("span", { class: "hidden text-faint sm:inline" }, icon("chevronRight", "size-3.5")),
-        h("span", { class: "truncate font-medium text-ink" }, sec ? sec.title : ""),
-      );
-
-      const dirty = state.schema && isDirty();
-      $("dirty").classList.toggle("md:flex", !!dirty && state.exists);
-      $("dirty").replaceChildren(h("span", { class: "size-1.5 rounded-full bg-warn" }), "Unsaved changes");
+      renderFile();
 
       const { errors, warnings } = counts();
       const badge = errors || warnings
@@ -579,72 +543,153 @@
       );
     }
 
+    // Expand a section and bring it (or one of its fields) into view.
     function go(id, fieldId) {
-      state.active = id;
+      state.open.add(id);
       history.replaceState(null, "", `#token=${encodeURIComponent(TOKEN)}&section=${id}`);
       closeDrawers();
       renderAll();
-      $("main").scrollTop = 0;
-      if (fieldId) {
-        const el = $(fieldId);
-        if (el) {
-          el.scrollIntoView({ block: "center" });
-          el.focus({ preventScroll: true });
-          return;
-        }
+      const field = fieldId ? $(fieldId) : null;
+      if (field) {
+        field.scrollIntoView({ block: "center" });
+        field.focus({ preventScroll: true });
+        return;
       }
-      $("page-title")?.focus({ preventScroll: true });
+      $(`sec-${id}`)?.scrollIntoView({ block: "start" });
+      $(`acc-${id}`)?.focus({ preventScroll: true });
     }
 
     // ================================================================== page
 
     function renderPage() {
-      const sec = section(state.active);
-      if (!sec) return;
-      const on = isOn(sec);
-      const page = [];
-
+      if (!state.schema) return;
+      const main = $("main");
+      const scroll = main.scrollTop;
+      const page = [
+        h("div", { class: "pt-8" },
+          h("h1", { class: "text-xl font-semibold tracking-tight text-ink" }, "Server configuration"),
+          h("p", { class: "mt-1 max-w-prose text-sm leading-6 text-muted" },
+            "Every agentflow.json option on one page. Fill in the essentials to get running, then switch on what you need on the way to production.")),
+        toolbar(),
+      ];
       if (state.parseError) {
-        page.push(callout("warn", "The existing file is not valid JSON",
-          `${state.parseError}. The form starts from defaults; saving replaces the file and keeps the old one as agentflow.json.bak.`));
+        page.push(h("div", { class: "mt-6" }, callout("warn", "The existing file is not valid JSON",
+          `${state.parseError}. The form starts from defaults; saving replaces the file and keeps the old one as agentflow.json.bak.`)));
       }
+      page.push(...state.tiers.map(renderTier));
+      $("page").replaceChildren(...page);
+      main.scrollTop = scroll;
+    }
 
-      page.push(h("div", { class: "flex items-start gap-4" },
-        h("div", { class: "flex size-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-brand shadow-card" },
-          icon(SECTION_ICONS[sec.id] || "box", "size-5")),
-        h("div", { class: "min-w-0 flex-1" },
-          h("div", { class: "flex flex-wrap items-center gap-x-3 gap-y-1" },
-            h("h1", { id: "page-title", tabindex: "-1", class: "text-xl font-semibold tracking-tight text-ink focus:outline-none" }, sec.title),
-            sec.key ? h("code", { class: "rounded-md border border-line bg-raised px-1.5 py-0.5 font-mono text-xs text-muted" }, sec.key) : null,
-          ),
-          h("p", { class: "mt-1 max-w-prose text-sm leading-6 text-muted" }, sec.description),
-        ),
-        sec.optional ? h("div", { class: "flex shrink-0 items-center gap-2.5 pt-1" },
-          h("span", { class: "hidden text-sm font-medium text-muted sm:inline" }, on ? "On" : "Off"),
+    function toolbar() {
+      const allOpen = state.sections.every((s) => state.open.has(s.id));
+      return h("div", { class: "sticky top-0 z-10 -mx-4 mt-6 flex items-center gap-2 border-b border-line bg-canvas/90 px-4 py-2 backdrop-blur sm:-mx-8 sm:px-8" },
+        h("nav", { class: "-ml-2.5 flex min-w-0 flex-1 gap-1 overflow-x-auto", "aria-label": "Jump to a tier" }, state.tiers.map(tierLink)),
+        h("button", {
+          type: "button", class: "btn btn-ghost", "aria-label": allOpen ? "Collapse all sections" : "Expand all sections",
+          onclick: () => {
+            state.open = allOpen ? new Set() : new Set(state.sections.map((s) => s.id));
+            renderPage();
+          },
+        }, icon(allOpen ? "collapse" : "expand", "size-4"), h("span", { class: "hidden sm:inline" }, allOpen ? "Collapse all" : "Expand all")),
+        h("a", {
+          href: state.schema.docs_url, target: "_blank", rel: "noopener", class: "btn btn-ghost", "aria-label": "Configuration reference",
+        }, icon("book", "size-4"), h("span", { class: "hidden sm:inline" }, "Reference")),
+      );
+    }
+
+    function tierLink(tier) {
+      const on = tier.list.filter(isOn).length;
+      const { errors, warnings } = counts(state.issues.filter((i) => tier.list.some((s) => s.id === i.section)));
+      return h("a", {
+        href: `#tier-${tier.id}`,
+        class: "inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm text-muted transition-colors duration-150 hover:bg-raised hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring",
+        title: `${on} of ${plural(tier.list.length, "section")} on`,
+        onclick: (e) => {
+          e.preventDefault();
+          const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          $(`tier-${tier.id}`)?.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+        },
+      },
+        h("span", { class: "font-medium" }, tier.title),
+        h("span", { class: "font-mono text-xs text-faint tabular-nums" }, `${on}/${tier.list.length}`),
+        errors || warnings ? h("span", { class: `size-1.5 rounded-full ${errors ? "bg-danger" : "bg-warn"}` }) : null,
+      );
+    }
+
+    function renderTier(tier) {
+      const on = tier.list.filter(isOn).length;
+      return h("section", { id: `tier-${tier.id}`, class: "mt-10 scroll-mt-16", "aria-labelledby": `tier-${tier.id}-title` },
+        h("div", { class: "mb-3" },
+          h("div", { class: "flex items-baseline gap-3" },
+            h("h2", { id: `tier-${tier.id}-title`, class: "text-base font-semibold tracking-tight text-ink" }, tier.title),
+            h("span", { class: "text-xs text-faint" }, `${on} of ${tier.list.length} on`)),
+          h("p", { class: "mt-0.5 text-sm text-muted" }, tier.tagline)),
+        h("div", { class: "space-y-3" }, tier.list.map(renderSection)),
+      );
+    }
+
+    function renderSection(sec) {
+      const on = isOn(sec);
+      const open = state.open.has(sec.id);
+      const { errors, warnings } = counts(issuesFor(sec.id));
+      const bodyId = `body-${sec.id}`;
+
+      let status = null;
+      if (errors) status = h("span", { class: "inline-flex shrink-0 items-center gap-1 text-xs font-medium text-danger", title: plural(errors, "error") }, icon("xCircle", "size-3.5"), errors);
+      else if (warnings) status = h("span", { class: "inline-flex shrink-0 items-center gap-1 text-xs font-medium text-warn", title: plural(warnings, "warning") }, icon("alert", "size-3.5"), warnings);
+
+      const header = h("div", { class: "flex items-center gap-3 pr-4 sm:pr-5" },
+        h("h3", { class: "min-w-0 flex-1" }, h("button", {
+          type: "button", id: `acc-${sec.id}`, "aria-expanded": open ? "true" : "false", "aria-controls": bodyId,
+          class: "flex w-full cursor-pointer items-center gap-3 rounded-xl py-3.5 pl-3 text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring sm:pl-4",
+          onclick: () => {
+            if (open) state.open.delete(sec.id);
+            else state.open.add(sec.id);
+            changed(true);
+          },
+        },
+          icon("chevronRight", `size-4 text-faint transition-transform duration-150 ${open ? "rotate-90" : ""}`),
+          h("span", { class: `flex size-9 shrink-0 items-center justify-center rounded-lg border border-line ${on ? "bg-brand-soft text-brand" : "bg-raised text-faint"}` },
+            icon(SECTION_ICONS[sec.id] || "box", "size-[18px]")),
+          h("span", { class: "min-w-0 flex-1" },
+            h("span", { class: "flex flex-wrap items-center gap-x-2 gap-y-0.5" },
+              h("span", { class: `text-sm font-semibold ${on ? "text-ink" : "text-muted"}` }, sec.title),
+              sec.key ? h("code", { class: "hidden rounded border border-line bg-raised px-1.5 font-mono text-[11px] leading-4 text-faint sm:inline" }, sec.key) : null),
+            h("span", { class: "mt-0.5 block text-[13px] leading-5 text-muted" }, sec.description)),
+          status,
+        )),
+        sec.optional ? h("div", { class: "flex shrink-0 items-center gap-2.5" },
+          h("span", { class: "hidden w-6 text-xs font-medium text-faint sm:inline" }, on ? "On" : "Off"),
           toggle(`toggle-${sec.id}`, on, `${on ? "Turn off" : "Turn on"} ${sec.title}`, (v) => setSection(sec, v)),
         ) : null,
-      ));
+      );
 
-      const body = h("div", { class: "mt-8 space-y-8" });
-      if (!on) {
-        body.append(offState(sec));
-      } else {
-        const inline = new Set([...sec.fields.map((f) => f.path.join(".")), ...Object.keys(WIDGET_FIELD_IDS)]);
-        const general = issuesFor(sec.id).filter((i) => !inline.has(i.path));
-        if (general.length) body.append(h("div", { class: "space-y-2" }, general.map(issueCallout)));
-        if (sec.notes?.length) body.append(callout("info", null, sec.notes));
-        if (sec.widget === "auth") body.append(renderAuth(sec));
-        else if (sec.widget === "authorization") body.append(renderAuthorization(sec));
-        else if (sec.widget === "remote_tools") body.append(renderRemoteTools(sec));
-        for (const group of fieldGroups(sec)) {
-          body.append(h("section", null,
-            group.name ? h("h2", { class: "eyebrow mb-2.5" }, group.name) : null,
-            h("div", { class: "panel divide-y divide-line" }, group.fields.map((f) => renderField(f))),
-          ));
-        }
+      const body = open ? h("div", {
+        id: bodyId, role: "region", "aria-labelledby": `acc-${sec.id}`,
+        class: "space-y-6 rounded-b-xl border-t border-line bg-canvas/60 px-4 py-5 sm:px-5",
+      }, sectionBody(sec, on)) : null;
+
+      return h("section", { id: `sec-${sec.id}`, class: `panel scroll-mt-16 ${errors ? "border-danger/40" : ""}` }, header, body);
+    }
+
+    function sectionBody(sec, on) {
+      if (!on) return [offState(sec)];
+      const parts = [];
+      const inline = new Set([...sec.fields.map((f) => f.path.join(".")), ...Object.keys(WIDGET_FIELD_IDS)]);
+      const general = issuesFor(sec.id).filter((i) => !inline.has(i.path));
+      if (general.length) parts.push(h("div", { class: "space-y-2" }, general.map(issueCallout)));
+      if (sec.notes?.length) parts.push(callout("info", null, sec.notes));
+      if (sec.widget === "auth") parts.push(renderAuth(sec));
+      else if (sec.widget === "authorization") parts.push(renderAuthorization(sec));
+      else if (sec.widget === "remote_tools") parts.push(renderRemoteTools(sec));
+      for (const group of fieldGroups(sec)) {
+        parts.push(h("section", null,
+          group.name ? h("h4", { class: "eyebrow mb-2.5" }, group.name) : null,
+          h("div", { class: "panel divide-y divide-line" }, group.fields.map((f) => renderField(f))),
+        ));
       }
-      page.push(body, pager(sec));
-      $("page").replaceChildren(...page);
+      return parts;
     }
 
     function fieldGroups(sec) {
@@ -660,39 +705,23 @@
     }
 
     function setSection(sec, on) {
-      if (on) state.config[sec.key] = clone(sec.default);
-      else delete state.config[sec.key];
+      if (on) {
+        state.config[sec.key] = clone(sec.default);
+        state.open.add(sec.id);
+      } else {
+        delete state.config[sec.key];
+      }
       if (sec.key === "remote_tools") state.toolParams = {};
       changed(true);
     }
 
     function offState(sec) {
-      return h("div", { class: "rounded-xl border border-dashed border-line-strong px-6 py-12 text-center" },
-        h("div", { class: "mx-auto flex size-11 items-center justify-center rounded-full bg-raised text-faint" }, icon("power", "size-5")),
-        h("p", { class: "mt-4 text-sm font-semibold text-ink" }, `${sec.title} is off`),
-        h("p", { class: "mx-auto mt-1 max-w-sm text-sm leading-6 text-muted" },
-          h("code", { class: "font-mono text-[13px]" }, sec.key), " is not in agentflow.json. ", sec.off_summary || ""),
-        h("button", { type: "button", class: "btn btn-outline mt-5", onclick: () => setSection(sec, true) },
+      return h("div", { class: "flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6" },
+        h("p", { class: "text-sm leading-6 text-muted" },
+          h("code", { class: "font-mono text-[13px] text-body" }, sec.key), " is not in agentflow.json. ", sec.off_summary || ""),
+        h("button", { type: "button", class: "btn btn-outline", onclick: () => setSection(sec, true) },
           icon("power", "size-4"), `Turn on ${sec.title.toLowerCase()}`),
       );
-    }
-
-    function pager(sec) {
-      const i = state.sections.indexOf(sec);
-      const prev = state.sections[i - 1];
-      const next = state.sections[i + 1];
-      const link = (target, dir) => target ? h("button", {
-        type: "button",
-        class: `group flex min-w-0 flex-1 cursor-pointer flex-col rounded-xl border border-line px-4 py-3 transition-colors duration-150 hover:border-line-strong hover:bg-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring ${dir === "next" ? "items-end text-right" : "items-start"}`,
-        onclick: () => go(target.id),
-      },
-        h("span", { class: "text-xs text-faint" }, dir === "next" ? "Next" : "Previous"),
-        h("span", { class: "mt-0.5 flex items-center gap-1 text-sm font-medium text-ink" },
-          dir === "prev" ? icon("chevronLeft", "size-4 text-faint") : null,
-          target.title,
-          dir === "next" ? icon("chevronRight", "size-4 text-faint") : null),
-      ) : h("span", { class: "flex-1" });
-      return h("nav", { class: "mt-12 flex gap-3 border-t border-line pt-6", "aria-label": "Section navigation" }, link(prev, "prev"), link(next, "next"));
     }
 
     // ================================================================== fields
@@ -864,7 +893,7 @@
     }
 
     function groupBlock(title, ...content) {
-      return h("section", null, title ? h("h2", { class: "eyebrow mb-2.5" }, title) : null, ...content);
+      return h("section", null, title ? h("h4", { class: "eyebrow mb-2.5" }, title) : null, ...content);
     }
 
     // ================================================================== widgets
@@ -1226,11 +1255,6 @@
 
     // ================================================================== drawers
 
-    function openNav() {
-      $("sidebar").classList.remove("-translate-x-full");
-      $("scrim").classList.remove("hidden");
-    }
-
     function openInspector(tab) {
       if (tab) state.tab = tab;
       renderInspector();
@@ -1240,18 +1264,13 @@
     }
 
     function closeDrawers() {
-      $("sidebar").classList.add("-translate-x-full");
       $("inspector").classList.add("translate-x-full");
       $("scrim").classList.add("hidden");
     }
 
     // ================================================================== wiring
 
-    $("nav-open").append(icon("menu", "size-5"));
-    $("nav-close").append(icon("x", "size-5"));
     $("inspector-close").append(icon("x", "size-5"));
-    $("nav-open").addEventListener("click", openNav);
-    $("nav-close").addEventListener("click", closeDrawers);
     $("inspector-open").addEventListener("click", () => openInspector());
     $("inspector-close").addEventListener("click", closeDrawers);
     $("scrim").addEventListener("click", closeDrawers);

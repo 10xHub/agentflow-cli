@@ -265,7 +265,7 @@ class MediaService:
             mime_type
         ):
             try:
-                text = await self.pipeline.extractor.extract(data, filename)
+                text = await self.pipeline.extractor.extract(data, filename, mime_type)
                 if text:
                     result["extracted_text"] = text
                     await self._cache_extraction(storage_key, text)

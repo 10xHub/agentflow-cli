@@ -19,7 +19,11 @@ from agentflow_cli.src.app.core.auth.permissions import (
     ws_bearer_subprotocol,
 )
 from agentflow_cli.src.app.core.auth.request_config import normalize_thread_id
-from agentflow_cli.src.app.routers.graph.realtime_guard import realtime_connection_guard
+from agentflow_cli.src.app.routers.graph.realtime_guard import (
+    realtime_connection_guard,
+    ws_identity_still_valid,
+    ws_run_allowed,
+)
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     FixGraphRequestSchema,
     GraphInputSchema,
@@ -352,6 +356,38 @@ async def fix_graph(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+async def _ws_run_gate(websocket: WebSocket, user: dict[str, Any]) -> str:
+    """Per-run checks for a WebSocket: ``"run"``, ``"skip"`` (rate limited) or ``"close"``.
+
+    The handshake guard runs once, so a socket that stays open must be re-checked before each
+    run: the token may have expired or been revoked, and every run counts against the limit.
+    """
+    if not ws_identity_still_valid(websocket, user):
+        logger.info("WebSocket credential no longer valid; closing")
+        await websocket.send_text(
+            StreamChunk(
+                event=StreamEvent.ERROR,
+                data={"reason": "Session expired. Reconnect with a valid token."},
+            ).model_dump_json()
+        )
+        await websocket.close(code=1008)
+        return "close"
+
+    retry_after = await ws_run_allowed(websocket)
+    if retry_after is not None:
+        await websocket.send_text(
+            StreamChunk(
+                event=StreamEvent.ERROR,
+                data={
+                    "reason": f"Rate limit exceeded. Retry after {retry_after}s.",
+                    "retry_after_seconds": retry_after,
+                },
+            ).model_dump_json()
+        )
+        return "skip"
+    return "run"
+
+
 def _ws_run_thread_id(ws_input: WsGraphInputSchema) -> str | None:
     """Resolve the thread a WebSocket run targets, and make the run use exactly that thread.
 
@@ -443,10 +479,15 @@ async def websocket_graph(
     identical to the HTTP stream route. Handshakes are subject to the global rate
     limit and the ``websocket.max_connections`` cap.
 
+    Every run on the socket counts against the same rate limit (an error chunk with
+    ``retry_after_seconds`` is sent when over it), and the token is re-verified before each
+    run.
+
     Close codes
     -----------
     1000  normal closure (client disconnected cleanly)
-    1008  rejected: this graph is a live (realtime) agent — use ``/v1/graph/live``
+    1008  rejected: this graph is a live (realtime) agent — use ``/v1/graph/live``;
+          or the token expired / was revoked since the socket opened
     1011  unexpected server error
     1013  rejected: rate limit or connection cap exceeded (try again later)
     """
@@ -500,6 +541,13 @@ async def websocket_graph(
                         data={"reason": f"Invalid request: {e}"},
                     ).model_dump_json()
                 )
+                continue
+
+            # The handshake checks happen once; these apply to every run on the socket.
+            gate = await _ws_run_gate(websocket, user)
+            if gate == "close":
+                break
+            if gate == "skip":
                 continue
 
             thread_id = _ws_run_thread_id(ws_input)

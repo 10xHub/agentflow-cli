@@ -42,7 +42,7 @@ import copy
 from typing import Any
 
 
-DOCS_URL = "https://10xhub.github.io/Agentflow/docs/reference/api-cli/configuration"
+DOCS_URL = "https://agentflow.10xscale.ai/docs/reference/api-cli/configuration"
 
 # Mirrors agentflow.core.authz.ALL_SCOPES; kept in sync by a unit test so the
 # editor never imports the core framework just to render suggestions.
@@ -249,6 +249,18 @@ _SECTIONS: list[dict[str, Any]] = [
                 "show_if": {"path": ["rate_limit", "trusted_proxy_headers"], "equals": True},
             },
             {
+                "path": ["rate_limit", "trusted_proxies"],
+                "group": "Proxy",
+                "label": "Trusted proxy networks",
+                "type": "list",
+                "placeholder": "10.0.0.0/8",
+                "help": (
+                    "IPs or CIDR ranges your proxy connects from. X-Forwarded-For is ignored "
+                    "for anyone else, so clients that reach the app directly cannot spoof it."
+                ),
+                "show_if": {"path": ["rate_limit", "trusted_proxy_headers"], "equals": True},
+            },
+            {
                 "path": ["rate_limit", "exclude_paths"],
                 "group": "Excluded paths",
                 "label": "Excluded paths",
@@ -260,11 +272,11 @@ _SECTIONS: list[dict[str, Any]] = [
     {
         "id": "websocket",
         "title": "WebSocket",
-        "description": "Per-process cap on concurrent realtime and streaming connections.",
+        "description": "Caps on concurrent realtime and streaming connections, per process.",
         "key": "websocket",
         "optional": True,
         "off_summary": "Concurrent WebSocket connections are not capped.",
-        "default": {"max_connections": 100},
+        "default": {"max_connections": 1000, "max_connections_per_user": 10},
         "fields": [
             {
                 "path": ["websocket", "max_connections"],
@@ -272,7 +284,17 @@ _SECTIONS: list[dict[str, Any]] = [
                 "type": "number",
                 "min": 0,
                 "step": 1,
-                "help": "0 means unlimited.",
+                "placeholder": "1000",
+                "help": "Per worker process. Defaults to 1000; 0 means unlimited.",
+            },
+            {
+                "path": ["websocket", "max_connections_per_user"],
+                "label": "Max connections per user",
+                "type": "number",
+                "min": 0,
+                "step": 1,
+                "placeholder": "10",
+                "help": "Stops one account holding every slot. Defaults to 10; 0 means unlimited.",
             },
         ],
     },

@@ -9,8 +9,10 @@ time, so the rate limit could be bypassed entirely.
 from types import SimpleNamespace
 
 import pytest
+from starlette.datastructures import Headers
 
 from agentflow_cli.src.app.core.config.graph_config import RateLimitConfig
+from agentflow_cli.src.app.core.middleware.rate_limit import keying
 from agentflow_cli.src.app.core.middleware.rate_limit.keying import client_key_for
 
 
@@ -32,12 +34,21 @@ def _cfg(**overrides) -> RateLimitConfig:
     return RateLimitConfig(**base)
 
 
-def _conn(xff: str | None = None, peer: str = "10.0.0.9", user=None):
+def _conn(xff: str | None = None, peer: str = "10.0.0.9"):
     return SimpleNamespace(
-        headers={"X-Forwarded-For": xff} if xff else {},
+        headers=Headers({"X-Forwarded-For": xff} if xff else {}),
         client=SimpleNamespace(host=peer),
-        state=SimpleNamespace(user=user),
     )
+
+
+@pytest.fixture
+def verified_as(monkeypatch):
+    """Make the limiter see the caller as a verified user (``None`` = no valid token)."""
+
+    def _set(user_id):
+        monkeypatch.setattr(keying, "verified_user_id", lambda connection: user_id)
+
+    return _set
 
 
 class TestForwardedForSpoofing:
@@ -70,21 +81,23 @@ class TestForwardedForSpoofing:
 
 
 class TestByUser:
-    def test_authenticated_user_gets_own_bucket(self):
-        cfg = _cfg(by="user")
-        key = client_key_for(_conn(user={"user_id": "u42"}), cfg)
+    def test_authenticated_user_gets_own_bucket(self, verified_as):
+        verified_as("u42")
+        key = client_key_for(_conn(), _cfg(by="user"))
         assert key == "user:u42"
 
-    def test_two_users_do_not_share_a_bucket(self):
+    def test_two_users_do_not_share_a_bucket(self, verified_as):
         cfg = _cfg(by="user")
-        a = client_key_for(_conn(user={"user_id": "a"}), cfg)
-        b = client_key_for(_conn(user={"user_id": "b"}), cfg)
+        verified_as("a")
+        a = client_key_for(_conn(), cfg)
+        verified_as("b")
+        b = client_key_for(_conn(), cfg)
         assert a != b
 
-    def test_anonymous_falls_back_to_ip_not_one_shared_bucket(self):
+    def test_anonymous_falls_back_to_ip_not_one_shared_bucket(self, verified_as):
         # Otherwise a single anonymous caller could exhaust the bucket for everyone.
-        cfg = _cfg(by="user")
-        key = client_key_for(_conn("1.1.1.1, 203.0.113.7", user=None), cfg)
+        verified_as(None)
+        key = client_key_for(_conn("1.1.1.1, 203.0.113.7"), _cfg(by="user"))
         assert key == "ip:203.0.113.7"
 
 

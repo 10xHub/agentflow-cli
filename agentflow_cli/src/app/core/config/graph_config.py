@@ -1,3 +1,4 @@
+import ipaddress
 import json
 import logging
 import os
@@ -104,6 +105,18 @@ def _expand_env(value: str | None) -> str | None:
     return expanded
 
 
+def _parse_networks(raw: object) -> tuple[str, ...]:
+    if not isinstance(raw, list | tuple):
+        raise ValueError("rate_limit.trusted_proxies must be a list of IPs or CIDR ranges")
+    networks = []
+    for item in raw:
+        try:
+            networks.append(str(ipaddress.ip_network(str(item).strip(), strict=False)))
+        except ValueError as exc:
+            raise ValueError(f"rate_limit.trusted_proxies: invalid network {item!r}") from exc
+    return tuple(networks)
+
+
 @dataclass
 class RateLimitConfig:
     """Rate limit configuration parsed from agentflow.json.
@@ -164,6 +177,10 @@ class RateLimitConfig:
     # infrastructure; anything further left came from the caller and is forgeable.
     trusted_proxy_hops: int = 1
     fail_open: bool = True  # on backend error: True=allow, False=deny
+    # Networks your proxies connect from. When set, X-Forwarded-For is honoured only for
+    # requests whose peer address is in one of them, so a client that reaches the app
+    # directly (bypassing the proxy) cannot pick its own address.
+    trusted_proxies: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, data: dict) -> "RateLimitConfig":
@@ -202,6 +219,7 @@ class RateLimitConfig:
         # written by infrastructure you control; everything to the left of them came
         # from the caller and is forgeable. See keying._client_ip.
         trusted_proxy_hops = int(data.get("trusted_proxy_hops", 1))
+        trusted_proxies = _parse_networks(data.get("trusted_proxies", []))
 
         # Validation
         if by not in ("ip", "global", "user"):
@@ -239,7 +257,13 @@ class RateLimitConfig:
             trusted_proxy_headers=trusted_proxy_headers,
             trusted_proxy_hops=trusted_proxy_hops,
             fail_open=fail_open,
+            trusted_proxies=trusted_proxies,
         )
+
+
+# Finite defaults so an unconfigured server cannot be held open by one client.
+DEFAULT_WS_MAX_CONNECTIONS = 1000
+DEFAULT_WS_MAX_CONNECTIONS_PER_USER = 10
 
 
 @dataclass
@@ -249,30 +273,47 @@ class WebSocketConfig:
     Example::
 
         "websocket": {
-            "max_connections": 100
+            "max_connections": 1000,
+            "max_connections_per_user": 10
         }
 
-    ``max_connections`` caps the number of concurrent WebSocket connections this server
-    *process* accepts (realtime ``/v1/graph/live`` + streaming ``/v1/graph/ws``). ``None`` or
-    ``0`` means unlimited. It is a per-process limit, like the in-memory rate-limit backend;
-    run one limiter per worker. WebSocket handshakes are also subject to the global
-    ``rate_limit`` (they share the same bucket as REST requests), since rate-limit middleware
-    is HTTP-only and cannot see WebSocket scopes.
+    ``max_connections`` caps the concurrent WebSocket connections this server *process*
+    accepts (realtime ``/v1/graph/live`` + streaming ``/v1/graph/ws``).
+    ``max_connections_per_user`` caps how many of those one verified user may hold, so a
+    single account cannot take every slot. Both are per process, like the in-memory
+    rate-limit backend; size them per worker.
+
+    A missing key gets a finite default (1000 and 10). Set a key to ``0`` or ``null`` to make
+    it unlimited. WebSocket handshakes, and every graph run started over ``/v1/graph/ws``, also
+    count against the global ``rate_limit`` bucket shared with REST requests.
     """
 
     max_connections: int | None
+    max_connections_per_user: int | None = DEFAULT_WS_MAX_CONNECTIONS_PER_USER
 
     @classmethod
     def from_dict(cls, data: dict) -> "WebSocketConfig":
         if not isinstance(data, dict):
             raise ValueError("websocket must be an object")
-        raw = data.get("max_connections")
-        if raw in (None, 0):
-            return cls(max_connections=None)
-        max_connections = int(raw)
-        if max_connections < 0:
-            raise ValueError("websocket.max_connections must be a non-negative integer")
-        return cls(max_connections=max_connections)
+        return cls(
+            max_connections=_connection_limit(data, "max_connections", DEFAULT_WS_MAX_CONNECTIONS),
+            max_connections_per_user=_connection_limit(
+                data, "max_connections_per_user", DEFAULT_WS_MAX_CONNECTIONS_PER_USER
+            ),
+        )
+
+
+def _connection_limit(data: dict, key: str, default: int) -> int | None:
+    """A missing key gets ``default``; an explicit ``0`` or ``null`` means unlimited."""
+    if key not in data:
+        return default
+    raw = data[key]
+    if raw in (None, 0):
+        return None
+    value = int(raw)
+    if value < 0:
+        raise ValueError(f"websocket.{key} must be a non-negative integer")
+    return value
 
 
 class GraphConfig:
@@ -412,9 +453,7 @@ class GraphConfig:
     def websocket(self) -> "WebSocketConfig":
         """WebSocket connection limits from agentflow.json (``websocket`` key).
 
-        Returns a config with ``max_connections=None`` (unlimited) when the key is absent.
+        Returns the default limits when the key is absent.
         """
         data = self.data.get("websocket", None)
-        if data is None:
-            return WebSocketConfig(max_connections=None)
-        return WebSocketConfig.from_dict(data)
+        return WebSocketConfig.from_dict({} if data is None else data)

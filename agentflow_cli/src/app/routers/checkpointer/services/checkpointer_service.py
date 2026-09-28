@@ -19,6 +19,9 @@ from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas imp
     ThreadResponseSchema,
     ThreadsListResponseSchema,
 )
+from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+    check_media_references,
+)
 from agentflow_cli.src.app.utils.parse_output import parse_state_output
 
 
@@ -47,6 +50,25 @@ class CheckpointerService:
         cfg["user"] = user
         cfg["user_id"] = user.get("user_id", "anonymous")
         return cfg
+
+    async def _check_media_references(self, messages: list[Any], user: dict) -> None:
+        """Messages written into a thread are resolved on the next run, so the files they
+        reference must belong to the caller, exactly as for graph input."""
+        user_id = user.get("user_id")
+        if not user_id or not messages:
+            return
+        await check_media_references(messages, self._media_service(), str(user_id))
+
+    @staticmethod
+    def _media_service() -> Any:
+        try:
+            from injectq import InjectQ
+
+            from agentflow_cli.src.app.routers.media import MediaService
+
+            return InjectQ.get_instance().try_get(MediaService)
+        except Exception:
+            return None
 
     async def get_state(self, config: dict[str, Any], user: dict) -> StateResponseSchema:
         cfg = self._config(config, user)
@@ -78,6 +100,7 @@ class CheckpointerService:
         # in it would run on the next resume without the model ever requesting it.
         if error := client_tool_call_error(state.get("context")):
             raise HTTPException(status_code=422, detail=error)
+        await self._check_media_references(state.get("context") or [], user)
         old_state: AgentState | None = await self.checkpointer.aget_state(cfg)
         if not old_state:
             old_state = await self.checkpointer.aget_state_cache(cfg)
@@ -113,6 +136,7 @@ class CheckpointerService:
         metadata: dict[str, Any] | None = None,
     ) -> ResponseSchema:
         cfg = self._config(config, user)
+        await self._check_media_references(messages, user)
         res = await self.checkpointer.aput_messages(cfg, messages, metadata)
         return ResponseSchema(success=True, message="Messages put successfully", data=res)
 
