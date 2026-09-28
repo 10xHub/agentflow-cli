@@ -4,6 +4,8 @@ from agentflow.core.state import Message
 from agentflow.utils import ResponseGranularity
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from agentflow_cli.src.app.core.auth.request_config import client_tool_call_error
+
 
 class GraphInputSchema(BaseModel):
     """
@@ -33,6 +35,8 @@ class GraphInputSchema(BaseModel):
     def messages_must_not_be_empty(cls, v: list[Message]) -> list[Message]:
         if not v:
             raise ValueError("messages must contain at least one message")
+        if error := client_tool_call_error(v):
+            raise ValueError(error)
         return v
 
     response_granularity: ResponseGranularity = Field(
@@ -337,6 +341,10 @@ class WsGraphInputSchema(BaseModel):
                 raise ValueError("tool_result must not be empty for invoke_type='resume'")
             if not (self.config or {}).get("thread_id"):
                 raise ValueError("config.thread_id is required for invoke_type='resume'")
+        # Resume sends tool *results*; neither run type may carry a tool call.
+        for messages in (self.messages, self.tool_result):
+            if error := client_tool_call_error(messages):
+                raise ValueError(error)
         return self
 
     def to_graph_input(self) -> "GraphInputSchema":

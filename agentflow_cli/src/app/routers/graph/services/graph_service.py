@@ -324,6 +324,24 @@ class GraphService:
                 status_code=500, detail=f"Graph stop failed for thread {thread_id}: {e!s}"
             )
 
+    def _reject_tool_start_node(self, initial_state: dict[str, Any]) -> None:
+        """Allow a run to start on any node except a ``ToolNode``.
+
+        Clients may pick the start node, e.g. to jump straight to one agent. A ``ToolNode``
+        runs the tool calls in the last message of the saved context without asking the
+        model, so starting there would execute tools the model never requested.
+        """
+        from agentflow.core.graph import ToolNode
+
+        node_name = initial_state.get("current_node")
+        if not isinstance(node_name, str):
+            return
+        state_graph = getattr(self._graph, "_state_graph", None)
+        nodes = getattr(state_graph, "nodes", {}) if state_graph else {}
+        node = nodes.get(node_name)
+        if node is not None and isinstance(getattr(node, "func", None), ToolNode):
+            raise ValueError(f"current_node '{node_name}' is a tool node; runs cannot start there")
+
     async def _prepare_input(
         self,
         graph_input: GraphInputSchema,
@@ -354,6 +372,7 @@ class GraphService:
             "messages": preprocessed,
         }
         if graph_input.initial_state:
+            self._reject_tool_start_node(graph_input.initial_state)
             input_data["state"] = graph_input.initial_state
 
         return (

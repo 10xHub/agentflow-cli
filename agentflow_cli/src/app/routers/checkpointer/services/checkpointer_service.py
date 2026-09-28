@@ -6,7 +6,10 @@ from fastapi import HTTPException
 from injectq import inject, singleton
 
 from agentflow_cli.src.app.core import logger
-from agentflow_cli.src.app.core.auth.request_config import client_config
+from agentflow_cli.src.app.core.auth.request_config import (
+    client_config,
+    client_tool_call_error,
+)
 from agentflow_cli.src.app.core.config.settings import get_settings
 from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
@@ -71,6 +74,10 @@ class CheckpointerService:
         state: dict[str, Any],
     ) -> StateResponseSchema:
         cfg = self._config(config, user)
+        # context is appended, so every message here is new and client-authored. A tool call
+        # in it would run on the next resume without the model ever requesting it.
+        if error := client_tool_call_error(state.get("context")):
+            raise HTTPException(status_code=422, detail=error)
         old_state: AgentState | None = await self.checkpointer.aget_state(cfg)
         if not old_state:
             old_state = await self.checkpointer.aget_state_cache(cfg)

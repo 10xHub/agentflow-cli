@@ -16,6 +16,9 @@ pass it through :func:`client_config` first, then set the server-owned keys itse
 
 The thread a request runs on is also server-controlled: routes use the thread the permission
 check approved, and both sides normalise it with :func:`normalize_thread_id`.
+
+Tool calls are server-controlled too: only the model may request a tool. Client messages
+are checked with :func:`client_tool_call_error`.
 """
 
 from __future__ import annotations
@@ -44,6 +47,36 @@ def client_config(config: Any) -> dict[str, Any]:
     if not isinstance(config, dict):
         return {}
     return {key: value for key, value in config.items() if _is_client_key(key)}
+
+
+# Content blocks that ask the server to run a tool. Only the model produces these; tool
+# *results* (``tool_result``) are fine, since remote tools send them back from the client.
+TOOL_CALL_BLOCK_TYPES: frozenset[str] = frozenset({"tool_call", "remote_tool_call"})
+
+
+def _field(message: Any, name: str) -> Any:
+    if isinstance(message, dict):
+        return message.get(name)
+    return getattr(message, name, None)
+
+
+def client_tool_call_error(messages: Any) -> str | None:
+    """Describe the first client-supplied message that carries a tool call, or ``None``.
+
+    A ``ToolNode`` executes the ``tools_calls`` of the last message in context, so a client
+    that can write a tool call can run any server tool with its own arguments, skipping the
+    model, the system prompt and any guard node. Accepts ``Message`` objects or plain dicts.
+    """
+    if not isinstance(messages, list | tuple):
+        return None
+    for index, message in enumerate(messages):
+        carries_call = bool(_field(message, "tools_calls")) or any(
+            _field(block, "type") in TOOL_CALL_BLOCK_TYPES
+            for block in _field(message, "content") or []
+        )
+        if carries_call:
+            return f"messages[{index}] carries a tool call; only the model may request tools"
+    return None
 
 
 def normalize_thread_id(value: Any) -> str | None:
