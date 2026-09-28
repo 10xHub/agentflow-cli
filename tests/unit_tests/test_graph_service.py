@@ -304,39 +304,6 @@ class TestGraphServiceMethods:
             await service.get_state_schema()
         assert exc.value.status_code == 500
 
-    @pytest.mark.asyncio
-    async def test_setup(self, service, mock_graph):
-        from agentflow_cli.src.app.core.config.settings import get_settings
-
-        settings = get_settings()
-        old_mode = settings.MODE
-        settings.MODE = "development"
-        try:
-            # Mock GraphSetupSchema data
-            class MockTool:
-                node_name = "n1"
-                name = "t1"
-                description = "desc"
-                parameters = {}
-
-            class MockSetupData:
-                tools = [MockTool()]
-
-            mock_graph.attach_remote_tools = MagicMock()
-            res = await service.setup(MockSetupData())
-            assert res["status"] == "success"
-            mock_graph.attach_remote_tools.assert_called_once_with(
-                [
-                    {
-                        "type": "function",
-                        "function": {"name": "t1", "description": "desc", "parameters": {}},
-                    }
-                ],
-                "n1",
-            )
-        finally:
-            settings.MODE = old_mode
-
     def test_extract_context_info(self, service):
         # Case 1: Result has values
         c, s = service._extract_context_info(None, {"context": ["msg"], "context_summary": "sum"})

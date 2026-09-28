@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections.abc import AsyncIterable
 from datetime import datetime
 from typing import Any
@@ -20,7 +19,6 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
-    GraphSetupSchema,
     GraphToolsSchema,
     ObservabilitySchema,
     ObsEventSchema,
@@ -1049,64 +1047,3 @@ class GraphService:
             _reraise_framework_errors(e)
             logger.error(f"Fix graph operation failed: {e}")
             raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")
-
-    async def setup(self, data: GraphSetupSchema) -> dict:
-        from agentflow_cli.src.app.core.config.settings import get_settings
-
-        settings = get_settings()
-        has_auth = False
-        if self.config:
-            backend = self.config.auth_config()
-            from unittest.mock import Mock
-
-            if (
-                backend
-                and not isinstance(backend, Mock)
-                and (
-                    (isinstance(backend, dict) and backend.get("method") != "none")
-                    or (isinstance(backend, str) and backend != "none")
-                )
-            ):
-                has_auth = True
-        if settings.MODE == "production" or has_auth:
-            # Name the condition that actually tripped: reporting only
-            # "production/multi-tenant" sends people auditing MODE when it was
-            # the auth backend, and vice versa.
-            reasons = []
-            if settings.MODE == "production":
-                reasons.append("MODE is 'production'")
-            if has_auth:
-                reasons.append("an auth backend is configured in agentflow.json")
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "Dynamic tool setup is disabled because "
-                    + " and ".join(reasons)
-                    + ". Registration mutates process-wide graph state, so it is unsafe to "
-                    "expose once requests can come from more than one tenant. Attach the tools "
-                    "statically instead via CompiledGraph.attach_remote_tools()."
-                ),
-            )
-
-        # lets create tools
-        remote_tools = defaultdict(list)
-        for tool in data.tools:
-            remote_tools[tool.node_name].append(
-                {
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.parameters,
-                    },
-                }
-            )
-
-        # Now call setup on graph
-        for node_name, tool in remote_tools.items():
-            self._graph.attach_remote_tools(tool, node_name)
-
-        return {
-            "status": "success",
-            "details": f"Added tools to nodes: {list(remote_tools.keys())}",
-        }

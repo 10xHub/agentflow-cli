@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentflow Config</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3Cpath d='M10 11 22 11M10 11 16 22M22 11 16 22' stroke='white' stroke-opacity='.6' stroke-width='2'/%3E%3Ccircle cx='10' cy='11' r='3' fill='white'/%3E%3Ccircle cx='22' cy='11' r='3' fill='white'/%3E%3Ccircle cx='16' cy='22' r='3' fill='white'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3"></script>
+  <style>
+    /* Agentflow tokens (see agentflow-docs/src/css/tokens.css). Dark is canonical. */
+    :root {
+      color-scheme: light;
+      --af-canvas: #f5f7fb;
+      --af-surface: #ffffff;
+      --af-raised: #f1f5f9;
+      --af-hover: #e8eef6;
+      --af-sunken: #ffffff;
+      --af-line: rgba(15, 23, 42, 0.09);
+      --af-line-strong: rgba(15, 23, 42, 0.17);
+      --af-ink: #0b1220;
+      --af-body: #1e293b;
+      --af-muted: #475569;
+      --af-faint: #64748b;
+      --af-brand: #2563eb;
+      --af-brand-solid: #2563eb;
+      --af-brand-solid-hover: #1d4ed8;
+      --af-brand-soft: rgba(37, 99, 235, 0.08);
+      --af-brand-ring: rgba(37, 99, 235, 0.22);
+      --af-ok: #047857;
+      --af-ok-soft: rgba(16, 185, 129, 0.1);
+      --af-warn: #b45309;
+      --af-warn-soft: rgba(245, 158, 11, 0.12);
+      --af-danger: #dc2626;
+      --af-danger-soft: rgba(239, 68, 68, 0.09);
+      --af-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.04);
+      --af-shadow-pop: 0 12px 32px rgba(15, 23, 42, 0.14);
+      --af-json-key: #1d4ed8;
+      --af-json-string: #047857;
+      --af-json-number: #b45309;
+      --af-json-literal: #7c3aed;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --af-canvas: #08111f;
+        --af-surface: #0c1727;
+        --af-raised: #131e33;
+        --af-hover: #1a2741;
+        --af-sunken: #07101d;
+        --af-line: rgba(148, 163, 184, 0.14);
+        --af-line-strong: rgba(148, 163, 184, 0.26);
+        --af-ink: #f8fafc;
+        --af-body: #e2e8f0;
+        --af-muted: #a3b1c6;
+        --af-faint: #8391a7;
+        --af-brand: #60a5fa;
+        --af-brand-solid: #2563eb;
+        --af-brand-solid-hover: #3b82f6;
+        --af-brand-soft: rgba(59, 130, 246, 0.14);
+        --af-brand-ring: rgba(59, 130, 246, 0.35);
+        --af-ok: #34d399;
+        --af-ok-soft: rgba(16, 185, 129, 0.14);
+        --af-warn: #fbbf24;
+        --af-warn-soft: rgba(245, 158, 11, 0.13);
+        --af-danger: #f87171;
+        --af-danger-soft: rgba(239, 68, 68, 0.13);
+        --af-shadow: 0 1px 2px rgba(2, 6, 23, 0.4);
+        --af-shadow-pop: 0 16px 40px rgba(2, 6, 23, 0.55);
+        --af-json-key: #93c5fd;
+        --af-json-string: #6ee7b7;
+        --af-json-number: #fcd34d;
+        --af-json-literal: #c4b5fd;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+    }
+  </style>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --color-canvas: var(--af-canvas);
+      --color-surface: var(--af-surface);
+      --color-raised: var(--af-raised);
+      --color-hover: var(--af-hover);
+      --color-sunken: var(--af-sunken);
+      --color-line: var(--af-line);
+      --color-line-strong: var(--af-line-strong);
+      --color-ink: var(--af-ink);
+      --color-body: var(--af-body);
+      --color-muted: var(--af-muted);
+      --color-faint: var(--af-faint);
+      --color-brand: var(--af-brand);
+      --color-brand-solid: var(--af-brand-solid);
+      --color-brand-solid-hover: var(--af-brand-solid-hover);
+      --color-brand-soft: var(--af-brand-soft);
+      --color-brand-ring: var(--af-brand-ring);
+      --color-ok: var(--af-ok);
+      --color-ok-soft: var(--af-ok-soft);
+      --color-warn: var(--af-warn);
+      --color-warn-soft: var(--af-warn-soft);
+      --color-danger: var(--af-danger);
+      --color-danger-soft: var(--af-danger-soft);
+      --shadow-card: var(--af-shadow);
+      --shadow-pop: var(--af-shadow-pop);
+    }
+    @layer components {
+      .input {
+        @apply block h-11 w-full rounded-lg border border-line-strong bg-sunken px-3 text-base text-ink
+          transition-[border-color,box-shadow] duration-150 placeholder:text-faint
+          hover:border-faint/60 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand-ring
+          sm:h-9 sm:text-sm;
+      }
+      .input-invalid { @apply border-danger focus:border-danger focus:ring-danger-soft; }
+      .btn {
+        @apply inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-3.5
+          text-sm font-medium whitespace-nowrap transition-colors duration-150
+          focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring
+          disabled:cursor-not-allowed disabled:opacity-45 sm:h-9;
+      }
+      .btn-primary { @apply bg-brand-solid text-white shadow-card hover:bg-brand-solid-hover; }
+      .btn-outline { @apply border border-line-strong bg-surface text-body hover:bg-raised; }
+      .btn-ghost { @apply text-muted hover:bg-raised hover:text-ink; }
+      .icon-btn {
+        @apply inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted
+          transition-colors duration-150 hover:bg-raised hover:text-ink
+          focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring sm:size-9;
+      }
+      .panel { @apply rounded-xl border border-line bg-surface shadow-card; }
+      .kbd {
+        @apply inline-flex h-5 items-center rounded border border-white/25 px-1.5 font-mono text-[11px]
+          font-medium text-white/80;
+      }
+      .eyebrow { @apply text-xs font-semibold tracking-wide text-faint uppercase; }
+    }
+  </style>
+</head>
+<body class="bg-canvas font-sans text-body antialiased">
+  <a href="#main" class="sr-only z-50 rounded-md bg-brand-solid px-3 py-2 text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Skip to content</a>
+
+  <div class="flex h-dvh overflow-hidden">
+    <div id="scrim" class="fixed inset-0 z-30 hidden bg-black/50"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-line bg-surface transition-transform duration-200 ease-out lg:static lg:w-64 lg:translate-x-0" aria-label="Configuration sections">
+      <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-line px-4">
+        <svg viewBox="0 0 32 32" class="size-7 shrink-0" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#2563eb"/>
+          <path d="M10 11 22 11M10 11 16 22M22 11 16 22" stroke="white" stroke-opacity=".55" stroke-width="2"/>
+          <circle cx="10" cy="11" r="3" fill="white"/><circle cx="22" cy="11" r="3" fill="white"/><circle cx="16" cy="22" r="3" fill="white"/>
+        </svg>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-[15px] font-semibold tracking-tight text-ink">Agentflow</span>
+          <span class="text-[15px] text-faint">Config</span>
+        </div>
+        <button id="nav-close" type="button" class="icon-btn ml-auto lg:hidden" aria-label="Close sections"></button>
+      </div>
+      <div id="file-card" class="shrink-0 p-3"></div>
+      <nav id="nav" class="min-h-0 flex-1 overflow-y-auto px-3 pb-4"></nav>
+      <div class="shrink-0 space-y-2 border-t border-line px-4 py-3">
+        <a id="docs-link" href="#" target="_blank" rel="noopener" class="flex items-center gap-2 text-sm text-muted transition-colors hover:text-ink"></a>
+        <p class="hidden text-xs text-faint sm:block">Save with <span class="font-mono">Ctrl</span>+<span class="font-mono">S</span></p>
+      </div>
+    </aside>
+
+    <!-- Workspace -->
+    <div class="flex min-w-0 flex-1 flex-col">
+      <header class="flex h-14 shrink-0 items-center gap-1.5 border-b border-line bg-surface px-2 sm:gap-2 sm:px-4">
+        <button id="nav-open" type="button" class="icon-btn lg:hidden" aria-label="Open sections"></button>
+        <div id="crumbs" class="flex min-w-0 flex-1 items-center gap-1.5 text-sm"></div>
+        <span id="dirty" class="hidden items-center gap-1.5 pr-1 text-xs font-medium text-warn md:flex"></span>
+        <button id="inspector-open" type="button" class="icon-btn relative xl:hidden" aria-label="Open problems and JSON preview"></button>
+        <button id="validate-btn" type="button" class="btn btn-outline" disabled></button>
+        <button id="save-btn" type="button" class="btn btn-primary" disabled></button>
+      </header>
+
+      <div class="flex min-h-0 flex-1">
+        <main id="main" tabindex="-1" class="min-w-0 flex-1 overflow-y-auto focus:outline-none">
+          <div id="page" class="mx-auto w-full max-w-3xl px-4 pt-8 pb-16 sm:px-8">
+            <div class="animate-pulse space-y-4" aria-label="Loading">
+              <div class="h-7 w-48 rounded-md bg-raised"></div>
+              <div class="h-4 w-80 max-w-full rounded-md bg-raised"></div>
+              <div class="h-56 rounded-xl bg-raised"></div>
+            </div>
+          </div>
+        </main>
+
+        <!-- Inspector -->
+        <aside id="inspector" class="fixed inset-y-0 right-0 z-40 flex w-[min(100vw,400px)] translate-x-full flex-col border-l border-line bg-surface transition-transform duration-200 ease-out xl:static xl:z-auto xl:w-[380px] xl:translate-x-0" aria-label="Inspector">
+          <div class="flex h-14 shrink-0 items-center gap-1 border-b border-line px-3">
+            <div id="tabs" role="tablist" class="flex flex-1 gap-1"></div>
+            <button id="inspector-close" type="button" class="icon-btn xl:hidden" aria-label="Close inspector"></button>
+          </div>
+          <div id="inspector-body" class="min-h-0 flex-1 overflow-y-auto"></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="pointer-events-none fixed right-4 bottom-4 left-4 z-50 flex flex-col items-end gap-2 sm:left-auto" aria-live="polite"></div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    // ================================================================== constants
+
+    const ICONS = {
+      box: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+      key: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+      shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+      gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+      arrows: '<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+      activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+      layers: '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+      wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+      flask: '<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
+      target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+      xCircle: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+      alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+      info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+      file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/>',
+      copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+      external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+      x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+      trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+      menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+      panel: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>',
+      chevronDown: '<path d="m6 9 6 6 6-6"/>',
+      chevronRight: '<path d="m9 18 6-6-6-6"/>',
+      chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+      power: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>',
+      spinner: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+      book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
+    };
+
+    const SECTION_ICONS = {
+      core: "box", auth: "key", authorization: "shield", rate_limit: "gauge", websocket: "arrows",
+      observability: "activity", plugins: "layers", remote_tools: "wrench", test: "flask", evaluation: "target",
+    };
+
+    const NAV_GROUPS = [
+      ["Project", ["core", "plugins"]],
+      ["Security", ["auth", "authorization", "rate_limit"]],
+      ["Runtime", ["websocket", "observability", "remote_tools"]],
+      ["Tooling", ["test", "evaluation"]],
+    ];
+
+    // Issues a widget renders beside its own input rather than at the top of the page.
+    const WIDGET_FIELD_IDS = { "auth.path": "auth-path", authorization: "authz-path" };
+
+    const TOKEN = new URLSearchParams(location.hash.slice(1)).get("token") || "";
+
+    const state = {
+      schema: null,
+      sections: [],            // in navigation order
+      fields: new Map(),       // "a.b.c" -> field definition
+      config: {},
+      version: null,
+      exists: false,
+      path: "",
+      parseError: null,
+      saved: "",               // snapshot of the last loaded/saved config
+      validated: null,         // snapshot the current issues belong to
+      issues: [],
+      active: "core",
+      tab: "problems",
+      busy: null,              // "validate" | "save" | null
+      toolParams: {},          // remote tool index -> {text, error} while JSON is being edited
+    };
+
+    // ================================================================== helpers
+
+    function h(tag, props, ...kids) {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(props || {})) {
+        if (v === null || v === undefined || v === false) continue;
+        if (k === "class") el.className = v;
+        else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+        else if (k === "value") el.value = v;
+        else el.setAttribute(k, v === true ? "" : v);
+      }
+      for (const kid of kids.flat(Infinity)) {
+        if (kid === null || kid === undefined || kid === false) continue;
+        el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+      }
+      return el;
+    }
+
+    function icon(name, cls = "size-4") {
+      const span = document.createElement("span");
+      span.className = `inline-flex shrink-0 ${cls}`;
+      span.setAttribute("aria-hidden", "true");
+      span.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="size-full">${ICONS[name]}</svg>`;
+      return span;
+    }
+
+    const $ = (id) => document.getElementById(id);
+    // replaceChildren() stringifies null; skip empty slots instead.
+    const fill = (el, ...kids) => el.replaceChildren(...kids.filter((k) => k !== null && k !== undefined && k !== false));
+    const clone = (v) => JSON.parse(JSON.stringify(v));
+    const snapshot = () => JSON.stringify(state.config);
+    const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+    const getPath = (obj, path) => path.reduce((acc, k) => (isObject(acc) ? acc[k] : undefined), obj);
+    const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+    function setPath(obj, path, value) {
+      let target = obj;
+      for (const k of path.slice(0, -1)) {
+        if (!isObject(target[k])) target[k] = {};
+        target = target[k];
+      }
+      target[path[path.length - 1]] = value;
+    }
+
+    function deletePath(obj, path) {
+      const parents = [];
+      let target = obj;
+      for (const k of path.slice(0, -1)) {
+        if (!isObject(target)) return;
+        parents.push([target, k]);
+        target = target[k];
+      }
+      if (isObject(target)) delete target[path[path.length - 1]];
+      // Drop nested objects left empty, but never the section key itself.
+      for (let i = parents.length - 1; i >= 1; i--) {
+        const [parent, k] = parents[i];
+        if (isObject(parent[k]) && Object.keys(parent[k]).length === 0) delete parent[k];
+        else break;
+      }
+    }
+
+    function valueOrDefault(path) {
+      const v = getPath(state.config, path);
+      return v !== undefined ? v : state.fields.get(path.join("."))?.default;
+    }
+
+    const section = (id) => state.sections.find((s) => s.id === id);
+    const isDirty = () => snapshot() !== state.saved;
+    const isOn = (sec) => !sec.optional || (sec.key in state.config && state.config[sec.key] !== null);
+    const issuesFor = (id) => state.issues.filter((i) => i.section === id);
+    const issueAt = (path) => state.issues.find((i) => i.path === path);
+    const counts = (list = state.issues) => {
+      const errors = list.filter((i) => i.level === "error").length;
+      return { errors, warnings: list.length - errors };
+    };
+    const isStale = () => state.validated !== null && state.validated !== snapshot();
+
+    // ================================================================== network
+
+    async function api(method, url, body) {
+      const headers = { "X-Agentflow-Token": TOKEN };
+      if (body !== undefined) headers["Content-Type"] = "application/json";
+      const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+      let data = {};
+      try { data = await res.json(); } catch { /* empty body */ }
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    async function load() {
+      if (!TOKEN) return fatal("Open the link printed by agentflow config", "This page needs the session token included in that link.");
+      let res;
+      try {
+        res = await api("GET", "/api/state");
+      } catch {
+        return fatal("Cannot reach the config server", "Check that agentflow config is still running in your terminal, then reload.");
+      }
+      if (!res.ok) return fatal("This link has expired", res.data.error || "Restart agentflow config and open the new link it prints.");
+
+      const data = res.data;
+      state.schema = data.schema;
+      const order = NAV_GROUPS.flatMap(([, ids]) => ids);
+      state.sections = [...data.schema.sections].sort((a, b) => rank(order, a.id) - rank(order, b.id));
+      for (const sec of state.sections) for (const f of sec.fields) state.fields.set(f.path.join("."), f);
+      state.config = data.config;
+      state.version = data.version;
+      state.exists = data.exists;
+      state.path = data.path;
+      state.parseError = data.parse_error;
+      state.issues = data.issues;
+      const clean = data.exists && !data.parse_error;
+      state.saved = clean ? snapshot() : "";
+      state.validated = clean ? snapshot() : null;
+      const requested = new URLSearchParams(location.hash.slice(1)).get("section");
+      if (requested && section(requested)) state.active = requested;
+      $("docs-link").replaceChildren(icon("book"), "Configuration reference", icon("external", "size-3.5 ml-auto text-faint"));
+      $("docs-link").href = data.schema.docs_url;
+      renderAll();
+    }
+
+    function rank(order, id) {
+      const i = order.indexOf(id);
+      return i === -1 ? order.length : i;
+    }
+
+    async function validate() {
+      if (state.busy || !guardJson()) return;
+      setBusy("validate");
+      try {
+        const res = await api("POST", "/api/validate", { config: state.config });
+        if (!res.ok) return toast("error", res.data.error || "Validation failed.");
+        state.issues = res.data.issues;
+        state.validated = snapshot();
+        const { errors, warnings } = counts();
+        if (errors) toast("error", `${plural(errors, "error")} to fix before saving.`, { label: "Show", run: () => openInspector("problems") });
+        else if (warnings) toast("warning", `Valid, with ${plural(warnings, "warning")}.`, { label: "Show", run: () => openInspector("problems") });
+        else toast("success", "Configuration is valid.");
+      } catch {
+        toast("error", "Cannot reach the config server.");
+      } finally {
+        setBusy(null);
+      }
+    }
+
+    async function save() {
+      if (state.busy || !state.schema) return;
+      if (state.exists && !isDirty() && !state.parseError) return toast("success", "No changes to save.");
+      if (!guardJson()) return;
+      setBusy("save");
+      try {
+        const res = await api("POST", "/api/save", { config: state.config, version: state.version });
+        if (res.data.issues) {
+          state.issues = res.data.issues;
+          state.validated = snapshot();
+        }
+        if (res.ok) {
+          state.version = res.data.version;
+          state.config = res.data.config;
+          state.toolParams = {};
+          state.validated = snapshot();
+          state.saved = snapshot();
+          state.exists = true;
+          state.parseError = null;
+          const name = res.data.path.split(/[\\/]/).pop();
+          toast("success", res.data.backup ? `Saved ${name}. The previous version is in ${name}.bak.` : `Created ${name}.`);
+        } else if (res.status === 409) {
+          toast("error", res.data.error, { label: "Reload", run: () => location.reload() });
+        } else if (res.status === 422) {
+          const { errors } = counts();
+          toast("error", `Not saved: ${plural(errors, "error")} to fix first.`, { label: "Show", run: () => openInspector("problems") });
+        } else {
+          toast("error", res.data.error || "Save failed.");
+        }
+      } catch {
+        toast("error", "Cannot reach the config server.");
+      } finally {
+        setBusy(null);
+      }
+    }
+
+    function guardJson() {
+      const broken = Object.values(state.toolParams).some((t) => t.error);
+      if (broken) {
+        state.active = "remote_tools";
+        renderAll();
+        toast("error", "A remote tool has invalid parameters JSON.");
+      }
+      return !broken;
+    }
+
+    function setBusy(kind) {
+      state.busy = kind;
+      renderAll();
+    }
+
+    // ================================================================== frame
+
+    function renderAll() {
+      renderFileCard();
+      renderNav();
+      renderHeader();
+      renderPage();
+      renderInspector();
+    }
+
+    // Called after every edit. Rebuilds the current page only when its structure changed.
+    function changed(rebuildPage) {
+      if (rebuildPage) {
+        const active = document.activeElement?.id;
+        renderPage();
+        if (active) $(active)?.focus();
+      }
+      renderFileCard();
+      renderNav();
+      renderHeader();
+      renderInspector();
+    }
+
+    function renderFileCard() {
+      const name = state.path.split(/[\\/]/).pop() || "agentflow.json";
+      const dir = state.path.slice(0, state.path.length - name.length);
+      let badge;
+      if (!state.exists) badge = pill("New", "bg-brand-soft text-brand");
+      else if (isDirty()) badge = pill("Unsaved", "bg-warn-soft text-warn");
+      else badge = pill("Saved", "bg-ok-soft text-ok");
+      $("file-card").replaceChildren(h("div", { class: "rounded-lg border border-line bg-canvas px-3 py-2.5", title: state.path },
+        h("div", { class: "flex items-center gap-2" },
+          icon("file", "size-4 text-faint"),
+          h("span", { class: "min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-ink" }, name),
+          badge,
+        ),
+        dir ? h("p", { class: "mt-1 truncate font-mono text-xs text-faint", dir: "rtl" }, h("bdi", null, dir)) : null,
+      ));
+    }
+
+    function pill(text, cls) {
+      return h("span", { class: `inline-flex h-5 items-center rounded-full px-2 text-[11px] font-semibold ${cls}` }, text);
+    }
+
+    function renderNav() {
+      $("nav").replaceChildren(...NAV_GROUPS.map(([label, ids]) => h("div", { class: "mt-4 first:mt-1" },
+        h("p", { class: "eyebrow mb-1.5 px-2.5" }, label),
+        h("ul", { class: "space-y-0.5" }, ids.map(section).filter(Boolean).map(navItem)),
+      )));
+    }
+
+    function navItem(sec) {
+      const active = sec.id === state.active;
+      const on = isOn(sec);
+      const { errors, warnings } = counts(issuesFor(sec.id));
+      let status = null;
+      if (errors) status = h("span", { class: "inline-flex items-center gap-1 text-xs font-medium text-danger", title: plural(errors, "error") }, icon("xCircle", "size-3.5"), errors);
+      else if (warnings) status = h("span", { class: "inline-flex items-center gap-1 text-xs font-medium text-warn", title: plural(warnings, "warning") }, icon("alert", "size-3.5"), warnings);
+      else if (sec.optional && !on) status = h("span", { class: "text-xs text-faint" }, "Off");
+      return h("li", null, h("a", {
+        href: `#section=${sec.id}`,
+        "aria-current": active ? "page" : null,
+        class: `group relative flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors duration-150 sm:h-9 ${active
+          ? "bg-brand-soft font-medium text-ink"
+          : "text-muted hover:bg-raised hover:text-ink"}`,
+        onclick: (e) => { e.preventDefault(); go(sec.id); },
+      },
+        active ? h("span", { class: "absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-brand" }) : null,
+        icon(SECTION_ICONS[sec.id] || "box", `size-4 ${active ? "text-brand" : on ? "" : "opacity-60"}`),
+        h("span", { class: `flex-1 truncate ${sec.optional && !on && !active ? "text-faint" : ""}` }, sec.title),
+        status,
+      ));
+    }
+
+    function renderHeader() {
+      const sec = section(state.active);
+      $("crumbs").replaceChildren(
+        h("span", { class: "hidden font-mono text-[13px] text-faint sm:inline" }, "agentflow.json"),
+        h("span", { class: "hidden text-faint sm:inline" }, icon("chevronRight", "size-3.5")),
+        h("span", { class: "truncate font-medium text-ink" }, sec ? sec.title : ""),
+      );
+
+      const dirty = state.schema && isDirty();
+      $("dirty").classList.toggle("md:flex", !!dirty && state.exists);
+      $("dirty").replaceChildren(h("span", { class: "size-1.5 rounded-full bg-warn" }), "Unsaved changes");
+
+      const { errors, warnings } = counts();
+      const badge = errors || warnings
+        ? h("span", { class: `absolute top-1 right-1 flex size-4 items-center justify-center rounded-full text-[10px] font-bold text-white ${errors ? "bg-danger" : "bg-warn"}` }, errors || warnings)
+        : null;
+      fill($("inspector-open"), icon("panel", "size-[18px]"), badge);
+
+      const validateBtn = $("validate-btn");
+      validateBtn.disabled = !state.schema || !!state.busy;
+      validateBtn.replaceChildren(
+        icon(state.busy === "validate" ? "spinner" : "checkCircle", `size-4 ${state.busy === "validate" ? "animate-spin" : ""}`),
+        h("span", { class: "hidden sm:inline" }, "Validate"),
+      );
+      validateBtn.setAttribute("aria-label", "Validate configuration");
+
+      const saveBtn = $("save-btn");
+      saveBtn.disabled = !state.schema || !!state.busy || (state.exists && !isDirty() && !state.parseError);
+      fill(saveBtn,
+        state.busy === "save" ? icon("spinner", "size-4 animate-spin") : null,
+        state.exists ? "Save" : "Create file",
+        h("span", { class: "kbd hidden lg:inline-flex" }, "Ctrl S"),
+      );
+    }
+
+    function go(id, fieldId) {
+      state.active = id;
+      history.replaceState(null, "", `#token=${encodeURIComponent(TOKEN)}&section=${id}`);
+      closeDrawers();
+      renderAll();
+      $("main").scrollTop = 0;
+      if (fieldId) {
+        const el = $(fieldId);
+        if (el) {
+          el.scrollIntoView({ block: "center" });
+          el.focus({ preventScroll: true });
+          return;
+        }
+      }
+      $("page-title")?.focus({ preventScroll: true });
+    }
+
+    // ================================================================== page
+
+    function renderPage() {
+      const sec = section(state.active);
+      if (!sec) return;
+      const on = isOn(sec);
+      const page = [];
+
+      if (state.parseError) {
+        page.push(callout("warn", "The existing file is not valid JSON",
+          `${state.parseError}. The form starts from defaults; saving replaces the file and keeps the old one as agentflow.json.bak.`));
+      }
+
+      page.push(h("div", { class: "flex items-start gap-4" },
+        h("div", { class: "flex size-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-brand shadow-card" },
+          icon(SECTION_ICONS[sec.id] || "box", "size-5")),
+        h("div", { class: "min-w-0 flex-1" },
+          h("div", { class: "flex flex-wrap items-center gap-x-3 gap-y-1" },
+            h("h1", { id: "page-title", tabindex: "-1", class: "text-xl font-semibold tracking-tight text-ink focus:outline-none" }, sec.title),
+            sec.key ? h("code", { class: "rounded-md border border-line bg-raised px-1.5 py-0.5 font-mono text-xs text-muted" }, sec.key) : null,
+          ),
+          h("p", { class: "mt-1 max-w-prose text-sm leading-6 text-muted" }, sec.description),
+        ),
+        sec.optional ? h("div", { class: "flex shrink-0 items-center gap-2.5 pt-1" },
+          h("span", { class: "hidden text-sm font-medium text-muted sm:inline" }, on ? "On" : "Off"),
+          toggle(`toggle-${sec.id}`, on, `${on ? "Turn off" : "Turn on"} ${sec.title}`, (v) => setSection(sec, v)),
+        ) : null,
+      ));
+
+      const body = h("div", { class: "mt-8 space-y-8" });
+      if (!on) {
+        body.append(offState(sec));
+      } else {
+        const inline = new Set([...sec.fields.map((f) => f.path.join(".")), ...Object.keys(WIDGET_FIELD_IDS)]);
+        const general = issuesFor(sec.id).filter((i) => !inline.has(i.path));
+        if (general.length) body.append(h("div", { class: "space-y-2" }, general.map(issueCallout)));
+        if (sec.notes?.length) body.append(callout("info", null, sec.notes));
+        if (sec.widget === "auth") body.append(renderAuth(sec));
+        else if (sec.widget === "authorization") body.append(renderAuthorization(sec));
+        else if (sec.widget === "remote_tools") body.append(renderRemoteTools(sec));
+        for (const group of fieldGroups(sec)) {
+          body.append(h("section", null,
+            group.name ? h("h2", { class: "eyebrow mb-2.5" }, group.name) : null,
+            h("div", { class: "panel divide-y divide-line" }, group.fields.map((f) => renderField(f))),
+          ));
+        }
+      }
+      page.push(body, pager(sec));
+      $("page").replaceChildren(...page);
+    }
+
+    function fieldGroups(sec) {
+      const groups = [];
+      for (const f of sec.fields) {
+        if (f.show_if && valueOrDefault(f.show_if.path) !== f.show_if.equals) continue;
+        const name = f.group || "";
+        let group = groups.find((g) => g.name === name);
+        if (!group) groups.push(group = { name, fields: [] });
+        group.fields.push(f);
+      }
+      return groups;
+    }
+
+    function setSection(sec, on) {
+      if (on) state.config[sec.key] = clone(sec.default);
+      else delete state.config[sec.key];
+      if (sec.key === "remote_tools") state.toolParams = {};
+      changed(true);
+    }
+
+    function offState(sec) {
+      return h("div", { class: "rounded-xl border border-dashed border-line-strong px-6 py-12 text-center" },
+        h("div", { class: "mx-auto flex size-11 items-center justify-center rounded-full bg-raised text-faint" }, icon("power", "size-5")),
+        h("p", { class: "mt-4 text-sm font-semibold text-ink" }, `${sec.title} is off`),
+        h("p", { class: "mx-auto mt-1 max-w-sm text-sm leading-6 text-muted" },
+          h("code", { class: "font-mono text-[13px]" }, sec.key), " is not in agentflow.json. ", sec.off_summary || ""),
+        h("button", { type: "button", class: "btn btn-outline mt-5", onclick: () => setSection(sec, true) },
+          icon("power", "size-4"), `Turn on ${sec.title.toLowerCase()}`),
+      );
+    }
+
+    function pager(sec) {
+      const i = state.sections.indexOf(sec);
+      const prev = state.sections[i - 1];
+      const next = state.sections[i + 1];
+      const link = (target, dir) => target ? h("button", {
+        type: "button",
+        class: `group flex min-w-0 flex-1 cursor-pointer flex-col rounded-xl border border-line px-4 py-3 transition-colors duration-150 hover:border-line-strong hover:bg-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring ${dir === "next" ? "items-end text-right" : "items-start"}`,
+        onclick: () => go(target.id),
+      },
+        h("span", { class: "text-xs text-faint" }, dir === "next" ? "Next" : "Previous"),
+        h("span", { class: "mt-0.5 flex items-center gap-1 text-sm font-medium text-ink" },
+          dir === "prev" ? icon("chevronLeft", "size-4 text-faint") : null,
+          target.title,
+          dir === "next" ? icon("chevronRight", "size-4 text-faint") : null),
+      ) : h("span", { class: "flex-1" });
+      return h("nav", { class: "mt-12 flex gap-3 border-t border-line pt-6", "aria-label": "Section navigation" }, link(prev, "prev"), link(next, "next"));
+    }
+
+    // ================================================================== fields
+
+    function fieldMeta(label, path, help, id, required) {
+      return h("div", { class: "min-w-0" },
+        h("label", { for: id, class: "block text-sm font-medium text-ink" }, label, required ? h("span", { class: "text-danger" }, " *") : null),
+        h("div", { class: "mt-0.5 font-mono text-xs text-faint" }, path),
+        help ? h("p", { class: "mt-1.5 text-[13px] leading-5 text-muted" }, help) : null,
+      );
+    }
+
+    function fieldIssue(issue) {
+      if (!issue) return null;
+      const error = issue.level === "error";
+      return h("p", { class: `mt-2 flex gap-1.5 text-[13px] leading-5 ${error ? "text-danger" : "text-warn"}`, role: error ? "alert" : null },
+        icon(error ? "xCircle" : "alert", "mt-0.5 size-3.5"), h("span", null, issue.message));
+    }
+
+    function renderField(f) {
+      const key = f.path.join(".");
+      const id = `f-${f.path.join("-")}`;
+      const value = getPath(state.config, f.path);
+      const issue = issueAt(key);
+      const invalid = issue?.level === "error" ? " input-invalid" : "";
+
+      if (f.type === "bool") {
+        const checked = (value ?? f.default ?? false) === true;
+        return h("div", { class: "flex items-start justify-between gap-6 px-5 py-4" },
+          h("div", { class: "min-w-0" }, fieldMeta(f.label, key, f.help, id), fieldIssue(issue)),
+          h("div", { class: "pt-0.5" }, toggle(id, checked, f.label, (v) => { setPath(state.config, f.path, v); changed(true); })),
+        );
+      }
+
+      let control;
+      if (f.type === "select") {
+        control = selectControl(id, f.options.map((o) => [o, o]), value ?? f.default ?? f.options[0], invalid, (v) => {
+          setPath(state.config, f.path, v);
+          changed(true);
+        });
+      } else if (f.type === "number") {
+        control = h("input", {
+          id, type: "number", inputmode: "decimal", class: `input font-mono tabular-nums${invalid}`, value: value ?? "",
+          min: f.min, step: f.step, placeholder: f.placeholder ?? (f.default ?? ""),
+          oninput: (e) => {
+            const raw = e.target.value;
+            if (raw === "") deletePath(state.config, f.path);
+            else if (!Number.isNaN(Number(raw))) setPath(state.config, f.path, Number(raw));
+            changed(false);
+          },
+        });
+      } else if (f.type === "list") {
+        control = chips(id, Array.isArray(value) ? value : [], {
+          placeholder: f.placeholder,
+          onChange: (next) => {
+            if (next.length) setPath(state.config, f.path, next);
+            else deletePath(state.config, f.path);
+            changed(true);
+          },
+        });
+      } else {
+        control = h("input", {
+          id, type: "text", class: `input font-mono${invalid}`, value: value ?? "", placeholder: f.placeholder,
+          autocomplete: "off", spellcheck: "false", autocapitalize: "off",
+          oninput: (e) => {
+            const raw = e.target.value;
+            if (raw === "") deletePath(state.config, f.path);
+            else setPath(state.config, f.path, raw);
+            changed(false);
+          },
+        });
+      }
+
+      if (f.type === "list") {
+        return h("div", { class: "px-5 py-4" },
+          fieldMeta(f.label, key, f.help, id, f.required),
+          h("div", { class: "mt-3" }, control, fieldIssue(issue)));
+      }
+      return h("div", { class: "grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] sm:gap-8" },
+        fieldMeta(f.label, key, f.help, id, f.required),
+        h("div", { class: "min-w-0 sm:pt-0.5" }, control, fieldIssue(issue)));
+    }
+
+    function selectControl(id, options, current, invalid, onChange) {
+      return h("div", { class: "relative" },
+        h("select", {
+          id, class: `input cursor-pointer appearance-none pr-9 font-mono${invalid}`,
+          onchange: (e) => onChange(e.target.value),
+        }, options.map(([value, label]) => {
+          const opt = h("option", { value }, label);
+          opt.selected = value === current;
+          return opt;
+        })),
+        icon("chevronDown", "pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-faint"),
+      );
+    }
+
+    function toggle(id, on, label, onChange) {
+      return h("button", {
+        id, type: "button", role: "switch", "aria-checked": on ? "true" : "false", "aria-label": label,
+        class: `relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 before:absolute before:-inset-2.5 before:content-[''] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring ${on ? "bg-brand-solid" : "bg-line-strong"}`,
+        onclick: () => onChange(!on),
+      }, h("span", { class: `pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-transform duration-200 ease-out ${on ? "translate-x-[18px]" : "translate-x-0.5"}` }));
+    }
+
+    function chips(id, values, { placeholder, suggestions, onChange }) {
+      const add = (raw) => {
+        const v = raw.trim();
+        if (v && !values.includes(v)) onChange([...values, v]);
+      };
+      const listId = suggestions ? `${id}-options` : null;
+      const input = h("input", {
+        id, type: "text", placeholder: values.length ? "Add..." : placeholder, list: listId,
+        autocomplete: "off", spellcheck: "false", autocapitalize: "off",
+        class: "h-7 min-w-[7rem] flex-1 bg-transparent px-1 font-mono text-base text-ink outline-none placeholder:text-faint sm:text-sm",
+        onkeydown: (e) => {
+          if ((e.key === "Enter" || e.key === ",") && input.value.trim()) { e.preventDefault(); add(input.value); }
+          else if (e.key === "Backspace" && !input.value && values.length) onChange(values.slice(0, -1));
+        },
+        onchange: () => { if (suggestions?.includes(input.value.trim())) add(input.value); },
+        onblur: () => add(input.value),
+      });
+      return h("div", {
+        class: "flex min-h-11 cursor-text flex-wrap items-center gap-1.5 rounded-lg border border-line-strong bg-sunken px-1.5 py-1.5 transition-[border-color,box-shadow] duration-150 focus-within:border-brand focus-within:ring-4 focus-within:ring-brand-ring sm:min-h-9 sm:py-1",
+        onclick: (e) => { if (e.target === e.currentTarget) input.focus(); },
+      },
+        values.map((v, i) => h("span", { class: "inline-flex h-7 items-center gap-0.5 rounded-md border border-line bg-raised pr-0.5 pl-2 font-mono text-xs text-body sm:h-6" },
+          v,
+          h("button", {
+            type: "button", "aria-label": `Remove ${v}`,
+            class: "inline-flex size-6 cursor-pointer items-center justify-center rounded text-faint transition-colors hover:bg-hover hover:text-ink sm:size-5",
+            onclick: () => onChange(values.filter((_, j) => j !== i)),
+          }, icon("x", "size-3")))),
+        input,
+        suggestions ? h("datalist", { id: listId }, suggestions.filter((s) => !values.includes(s)).map((s) => h("option", { value: s }))) : null,
+      );
+    }
+
+    function textField(id, label, path, value, placeholder, onInput, issue, help) {
+      const invalid = issue?.level === "error" ? " input-invalid" : "";
+      return h("div", { class: "grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] sm:gap-8" },
+        fieldMeta(label, path, help, id),
+        h("div", { class: "min-w-0 sm:pt-0.5" },
+          h("input", {
+            id, type: "text", value: value ?? "", placeholder, autocomplete: "off", spellcheck: "false", autocapitalize: "off",
+            class: `input font-mono${invalid}`, oninput: (e) => onInput(e.target.value),
+          }),
+          fieldIssue(issue)),
+      );
+    }
+
+    function choiceGroup(name, label, options, current, onPick) {
+      return h("div", { role: "radiogroup", "aria-label": label, class: "grid gap-3 sm:grid-cols-2" }, options.map(([value, title, detail]) => {
+        const selected = value === current;
+        return h("button", {
+          type: "button", role: "radio", "aria-checked": selected ? "true" : "false", id: `${name}-${value}`,
+          class: `flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring ${selected
+            ? "border-brand bg-brand-soft"
+            : "border-line bg-surface shadow-card hover:border-line-strong"}`,
+          onclick: () => { if (!selected) onPick(value); },
+        },
+          h("span", { class: `mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${selected ? "border-brand-solid bg-brand-solid" : "border-line-strong"}` },
+            selected ? h("span", { class: "size-1.5 rounded-full bg-white" }) : null),
+          h("span", { class: "min-w-0" },
+            h("span", { class: "block text-sm font-medium text-ink" }, title),
+            h("span", { class: "mt-0.5 block text-[13px] leading-5 text-muted" }, detail)),
+        );
+      }));
+    }
+
+    function groupBlock(title, ...content) {
+      return h("section", null, title ? h("h2", { class: "eyebrow mb-2.5" }, title) : null, ...content);
+    }
+
+    // ================================================================== widgets
+
+    function renderAuth() {
+      const value = state.config.auth;
+      const mode = isObject(value) ? "custom" : "jwt";
+      return h("div", { class: "space-y-8" },
+        groupBlock("Method", choiceGroup("auth", "Authentication method", [
+          ["jwt", "JWT", "Verify bearer tokens signed with JWT_SECRET_KEY."],
+          ["custom", "Custom backend", "Your own BaseAuth subclass decides who is calling."],
+        ], mode, (m) => {
+          state.config.auth = m === "jwt" ? "jwt" : { method: "custom", path: "" };
+          changed(true);
+        })),
+        mode === "custom" ? groupBlock("Backend", h("div", { class: "panel" },
+          textField("auth-path", "Auth class", "auth.path", value.path, "auth.custom:MyAuth", (v) => {
+            state.config.auth = { ...state.config.auth, method: "custom", path: v };
+            changed(false);
+          }, issueAt("auth.path"), "Import path of a BaseAuth subclass, as module:attribute."))) : null,
+      );
+    }
+
+    function authzModeOf(v) {
+      if (isObject(v)) return "rbac";
+      if (typeof v === "string") {
+        const key = v.trim().toLowerCase();
+        if (key === "ownership") return "ownership";
+        if (["allow_all", "default", "none"].includes(key)) return "allow_all";
+      }
+      return v === undefined || v === null ? null : "custom";
+    }
+
+    function renderAuthorization(sec) {
+      const value = state.config.authorization;
+      const mode = authzModeOf(value) ?? "ownership";
+      const wrap = h("div", { class: "space-y-8" },
+        groupBlock("Policy", choiceGroup("authz", "Authorization policy", [
+          ["ownership", "Ownership", "Users can only reach threads they created."],
+          ["allow_all", "Allow all", "Any authenticated user can do anything."],
+          ["rbac", "Roles and scopes", "Map roles to scopes, on top of owner isolation."],
+          ["custom", "Custom backend", "Your own AuthorizationBackend class."],
+        ], mode, (m) => {
+          state.config.authorization = {
+            ownership: "ownership",
+            allow_all: "allow_all",
+            custom: "",
+            rbac: {
+              backend: "rbac",
+              roles: { admin: ["*"], member: ["graph:invoke", "graph:stream", "graph:read", "checkpointer:read"] },
+              default_scopes: [],
+              isolation: "owner",
+            },
+          }[m];
+          changed(true);
+        })),
+      );
+      if (mode === "custom") {
+        wrap.append(groupBlock("Backend", h("div", { class: "panel" },
+          textField("authz-path", "Backend class", "authorization", typeof value === "string" ? value : "", "auth.permissions:MyBackend", (v) => {
+            state.config.authorization = v;
+            changed(false);
+          }, issueAt("authorization"), "Import path of an AuthorizationBackend, as module:attribute."))));
+      } else if (mode === "rbac") {
+        wrap.append(...renderRbac(sec, value));
+      }
+      return wrap;
+    }
+
+    function renderRbac(sec, value) {
+      const roleKey = "roles" in value || !("role_scopes" in value) ? "roles" : "role_scopes";
+      const roles = isObject(value[roleKey]) ? value[roleKey] : {};
+      const scopeOptions = ["*", ...(sec.scopes || [])];
+      const setRoles = (next) => { value[roleKey] = next; changed(true); };
+      const entries = Object.entries(roles);
+
+      const rows = entries.map(([name, scopes], index) => h("div", { class: "grid gap-3 px-5 py-4 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-start" },
+        h("div", null,
+          h("label", { for: `role-name-${index}`, class: "sr-only" }, "Role name"),
+          h("input", {
+            id: `role-name-${index}`, type: "text", value: name, class: "input font-mono", autocomplete: "off", spellcheck: "false",
+            onchange: (e) => {
+              const renamed = e.target.value.trim();
+              if (!renamed || (renamed !== name && renamed in roles)) { e.target.value = name; return; }
+              setRoles(Object.fromEntries(Object.entries(roles).map(([k, v]) => [k === name ? renamed : k, v])));
+            },
+          })),
+        chips(`role-scopes-${index}`, Array.isArray(scopes) ? scopes : [], {
+          placeholder: "Add a scope", suggestions: scopeOptions,
+          onChange: (next) => setRoles({ ...roles, [name]: next }),
+        }),
+        h("button", {
+          type: "button", class: "icon-btn justify-self-end hover:text-danger", "aria-label": `Remove role ${name}`,
+          onclick: () => setRoles(Object.fromEntries(Object.entries(roles).filter(([k]) => k !== name))),
+        }, icon("trash", "size-4")),
+      ));
+
+      const addRole = () => {
+        let n = entries.length + 1;
+        while (`role${n}` in roles) n++;
+        setRoles({ ...roles, [`role${n}`]: [] });
+      };
+
+      return [
+        groupBlock("Roles", h("div", { class: "panel" },
+          h("div", { class: "hidden grid-cols-[10rem_minmax(0,1fr)_auto] gap-3 border-b border-line px-5 py-2.5 sm:grid" },
+            h("span", { class: "text-xs font-medium text-faint" }, "Role"),
+            h("span", { class: "text-xs font-medium text-faint" }, "Scopes"),
+            h("span", { class: "w-9" })),
+          entries.length
+            ? h("div", { class: "divide-y divide-line" }, rows)
+            : h("p", { class: "px-5 py-6 text-center text-sm text-muted" }, "No roles yet. Users only get the default scopes."),
+          h("div", { class: "flex items-center justify-between gap-4 border-t border-line px-5 py-3" },
+            h("p", { class: "text-[13px] text-muted" }, "Read from the user's roles (or role) claim. ", h("code", { class: "font-mono" }, "*"), " grants every scope."),
+            h("button", { type: "button", class: "btn btn-ghost", onclick: addRole }, icon("plus", "size-4"), "Add role")),
+        )),
+        groupBlock("Defaults", h("div", { class: "panel divide-y divide-line" },
+          h("div", { class: "px-5 py-4" },
+            fieldMeta("Default scopes", "authorization.default_scopes", "Granted to every authenticated user, even without a role.", "rbac-default-scopes"),
+            h("div", { class: "mt-3" }, chips("rbac-default-scopes", Array.isArray(value.default_scopes) ? value.default_scopes : [], {
+              placeholder: "graph:read", suggestions: scopeOptions,
+              onChange: (next) => { value.default_scopes = next; changed(true); },
+            }))),
+          h("div", { class: "grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] sm:gap-8" },
+            fieldMeta("Thread isolation", "authorization.isolation", "owner keeps each user's threads private; none shares them.", "rbac-isolation"),
+            h("div", { class: "min-w-0 sm:pt-0.5" }, selectControl("rbac-isolation", [["owner", "owner"], ["none", "none"]], value.isolation ?? "owner", "", (v) => {
+              value.isolation = v;
+              changed(true);
+            }))),
+        )),
+      ];
+    }
+
+    function renderRemoteTools() {
+      const tools = Array.isArray(state.config.remote_tools) ? state.config.remote_tools : [];
+      const addTool = () => {
+        tools.push({ node: "", name: "", description: "", parameters: { type: "object", properties: {}, required: [] } });
+        state.config.remote_tools = tools;
+        changed(true);
+        $(`tool-${tools.length - 1}-name`)?.focus();
+      };
+
+      if (!tools.length) {
+        return h("div", { class: "rounded-xl border border-dashed border-line-strong px-6 py-12 text-center" },
+          h("div", { class: "mx-auto flex size-11 items-center justify-center rounded-full bg-raised text-faint" }, icon("wrench", "size-5")),
+          h("p", { class: "mt-4 text-sm font-semibold text-ink" }, "No remote tools yet"),
+          h("p", { class: "mx-auto mt-1 max-w-sm text-sm leading-6 text-muted" }, "Declare a tool here and the client that calls the API runs it, for example to read the user's location."),
+          h("button", { type: "button", class: "btn btn-outline mt-5", onclick: addTool }, icon("plus", "size-4"), "Add remote tool"));
+      }
+
+      const cards = tools.map((tool, index) => {
+        const params = state.toolParams[index] ?? { text: JSON.stringify(tool.parameters ?? {}, null, 2), error: null };
+        const update = (patch) => { tools[index] = { ...tools[index], ...patch }; changed(false); };
+        const errorId = `tool-${index}-params-error`;
+        return h("section", { class: "panel" },
+          h("div", { class: "flex items-center gap-3 border-b border-line px-5 py-3" },
+            icon("wrench", "size-4 text-faint"),
+            h("span", { class: "min-w-0 flex-1 truncate font-mono text-sm font-medium text-ink" }, tool.name || `tool_${index + 1}`),
+            tool.node ? h("span", { class: "rounded-md border border-line bg-raised px-1.5 py-0.5 font-mono text-xs text-muted" }, tool.node) : null,
+            h("button", {
+              type: "button", class: "icon-btn hover:text-danger", "aria-label": `Remove ${tool.name || "tool"}`,
+              onclick: () => { tools.splice(index, 1); state.toolParams = {}; changed(true); },
+            }, icon("trash", "size-4"))),
+          h("div", { class: "divide-y divide-line" },
+            textField(`tool-${index}-name`, "Tool name", `remote_tools[${index}].name`, tool.name, "get_location", (v) => update({ name: v })),
+            textField(`tool-${index}-node`, "Graph node", `remote_tools[${index}].node`, tool.node, "MAIN", (v) => update({ node: v }), null, "The node whose model may call this tool."),
+            textField(`tool-${index}-description`, "Description", `remote_tools[${index}].description`, tool.description, "Returns the user's current city", (v) => update({ description: v }), null, "What the model reads when deciding to call it."),
+            h("div", { class: "px-5 py-4" },
+              fieldMeta("Parameters", `remote_tools[${index}].parameters`, "JSON schema of the arguments. type must be object.", `tool-${index}-params`),
+              h("textarea", {
+                id: `tool-${index}-params`, rows: 7, spellcheck: "false", "aria-describedby": errorId,
+                class: `input mt-3 h-auto py-2.5 font-mono text-[13px] leading-5${params.error ? " input-invalid" : ""}`,
+                oninput: (e) => {
+                  const text = e.target.value;
+                  const errorEl = $(errorId);
+                  try {
+                    const parsed = JSON.parse(text);
+                    state.toolParams[index] = { text, error: null };
+                    tools[index] = { ...tools[index], parameters: parsed };
+                    e.target.classList.remove("input-invalid");
+                    errorEl.replaceChildren();
+                  } catch (err) {
+                    state.toolParams[index] = { text, error: err.message };
+                    e.target.classList.add("input-invalid");
+                    errorEl.replaceChildren(fieldIssue({ level: "error", message: err.message }));
+                  }
+                  changed(false);
+                },
+              }, params.text),
+              h("div", { id: errorId }, params.error ? fieldIssue({ level: "error", message: params.error }) : null)),
+          ),
+        );
+      });
+
+      return h("div", { class: "space-y-4" }, cards,
+        h("button", {
+          type: "button",
+          class: "flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong text-sm font-medium text-muted transition-colors duration-150 hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring",
+          onclick: addTool,
+        }, icon("plus", "size-4"), "Add remote tool"));
+    }
+
+    // ================================================================== inspector
+
+    function renderInspector() {
+      const { errors, warnings } = counts();
+      const tab = (id, label, badge) => h("button", {
+        type: "button", role: "tab", id: `tab-${id}`, "aria-selected": state.tab === id ? "true" : "false",
+        class: `inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring ${state.tab === id
+          ? "bg-raised text-ink" : "text-muted hover:text-ink"}`,
+        onclick: () => { state.tab = id; renderInspector(); },
+      }, label, badge);
+      const count = errors + warnings;
+      $("tabs").replaceChildren(
+        tab("problems", "Problems", state.validated !== null && count
+          ? h("span", { class: `inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold ${errors ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn"}` }, count)
+          : null),
+        tab("json", "agentflow.json", null),
+      );
+      $("inspector-body").replaceChildren(state.tab === "problems" ? problemsView() : jsonView());
+    }
+
+    function problemsView() {
+      if (!state.schema) return h("div");
+      if (state.validated === null) {
+        return emptyPanel("checkCircle", "text-faint", "Not checked yet",
+          "Validate runs the same rules agentflow api applies when it starts.",
+          h("button", { type: "button", class: "btn btn-outline mt-5", onclick: validate, disabled: !!state.busy }, "Validate now"));
+      }
+      const { errors, warnings } = counts();
+      const top = h("div", { class: "flex items-center justify-between gap-3 border-b border-line px-4 py-3" },
+        h("p", { class: "text-sm text-muted" },
+          h("span", { class: errors ? "font-medium text-danger" : "" }, plural(errors, "error")), " · ",
+          h("span", { class: warnings ? "font-medium text-warn" : "" }, plural(warnings, "warning"))),
+        isStale() ? h("button", { type: "button", class: "text-sm font-medium text-brand hover:underline", onclick: validate }, "Re-check") : null,
+      );
+      const stale = isStale() ? h("div", { class: "mx-4 mt-3 flex gap-2 rounded-lg bg-raised px-3 py-2 text-[13px] text-muted" },
+        icon("info", "mt-0.5 size-3.5 text-faint"), "You changed the form since this check.") : null;
+
+      if (!state.issues.length) {
+        return h("div", null, top, stale, emptyPanel("checkCircle", "text-ok", "No problems found", "This configuration passes every check."));
+      }
+      const groups = state.sections.map((sec) => [sec, issuesFor(sec.id)]).filter(([, list]) => list.length);
+      return h("div", null, top, stale, h("div", { class: "space-y-5 px-3 py-4" }, groups.map(([sec, list]) => h("div", null,
+        h("p", { class: "eyebrow mb-1.5 flex items-center gap-2 px-2" }, icon(SECTION_ICONS[sec.id] || "box", "size-3.5"), sec.title),
+        h("ul", { class: "space-y-0.5" }, list.map((issue) => {
+          const error = issue.level === "error";
+          return h("li", null, h("button", {
+            type: "button",
+            class: "flex w-full cursor-pointer gap-2.5 rounded-lg px-2 py-2 text-left transition-colors duration-150 hover:bg-raised focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring",
+            onclick: () => go(sec.id, fieldIdFor(issue.path)),
+          },
+            icon(error ? "xCircle" : "alert", `mt-0.5 size-4 ${error ? "text-danger" : "text-warn"}`),
+            h("span", { class: "min-w-0" },
+              h("span", { class: "block text-[13px] leading-5 text-body" }, issue.message),
+              issue.path ? h("span", { class: "mt-0.5 block truncate font-mono text-xs text-faint" }, issue.path) : null),
+          ));
+        })),
+      ))));
+    }
+
+    function fieldIdFor(path) {
+      return WIDGET_FIELD_IDS[path] || `f-${path.replaceAll(".", "-")}`;
+    }
+
+    function jsonView() {
+      const text = JSON.stringify(state.config, null, 2);
+      const lines = text.split("\n");
+      const code = h("div", { class: "font-mono text-[12.5px] leading-5" });
+      code.innerHTML = lines.map((line, i) =>
+        `<div class="flex"><span class="w-10 shrink-0 pr-3 text-right text-faint/70 select-none">${i + 1}</span><span class="min-w-0 flex-1 whitespace-pre-wrap break-all">${highlight(line)}</span></div>`).join("");
+      return h("div", null,
+        h("div", { class: "flex items-center justify-between gap-3 border-b border-line px-4 py-2.5" },
+          h("p", { class: "text-xs text-faint" }, isDirty() || !state.exists ? "Preview of what Save will write" : "Matches the file on disk"),
+          h("button", { type: "button", class: "btn btn-ghost h-8 px-2.5 text-xs", onclick: copyJson }, icon("copy", "size-3.5"), "Copy")),
+        h("div", { class: "py-3 pr-4" }, code),
+      );
+    }
+
+    function highlight(line) {
+      const escaped = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return escaped.replace(
+        /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+        (m) => {
+          let color = "var(--af-json-number)";
+          if (m.startsWith('"')) color = m.endsWith(":") ? "var(--af-json-key)" : "var(--af-json-string)";
+          else if (m === "true" || m === "false" || m === "null") color = "var(--af-json-literal)";
+          return `<span style="color:${color}">${m}</span>`;
+        },
+      );
+    }
+
+    async function copyJson() {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(state.config, null, 2) + "\n");
+        toast("success", "Copied agentflow.json to the clipboard.");
+      } catch {
+        toast("error", "The clipboard is not available here.");
+      }
+    }
+
+    // ================================================================== feedback
+
+    function callout(kind, title, body) {
+      const styles = {
+        info: ["info", "border-brand/20 bg-brand-soft", "text-brand"],
+        warn: ["alert", "border-warn/25 bg-warn-soft", "text-warn"],
+        error: ["xCircle", "border-danger/25 bg-danger-soft", "text-danger"],
+      }[kind];
+      const lines = Array.isArray(body) ? body : [body];
+      return h("div", { class: `flex gap-3 rounded-xl border px-4 py-3 ${styles[1]}`, role: kind === "error" ? "alert" : null },
+        icon(styles[0], `mt-0.5 size-4 ${styles[2]}`),
+        h("div", { class: "min-w-0 space-y-1 text-[13px] leading-5 text-body" },
+          title ? h("p", { class: "font-medium text-ink" }, title) : null,
+          lines.map((line) => h("p", null, line))),
+      );
+    }
+
+    function issueCallout(issue) {
+      return callout(issue.level === "error" ? "error" : "warn", null,
+        [h("span", null, issue.path ? h("code", { class: "mr-1.5 font-mono text-xs text-muted" }, issue.path) : null, issue.message)]);
+    }
+
+    function emptyPanel(iconName, iconCls, title, text, action) {
+      return h("div", { class: "px-6 py-14 text-center" },
+        h("div", { class: `mx-auto flex size-11 items-center justify-center rounded-full bg-raised ${iconCls}` }, icon(iconName, "size-5")),
+        h("p", { class: "mt-4 text-sm font-semibold text-ink" }, title),
+        h("p", { class: "mx-auto mt-1 max-w-xs text-sm leading-6 text-muted" }, text),
+        action || null);
+    }
+
+    function fatal(title, text) {
+      $("page").replaceChildren(h("div", { class: "panel mt-10" }, emptyPanel("xCircle", "text-danger", title, text)));
+      $("inspector-body").replaceChildren();
+    }
+
+    function toast(kind, message, action) {
+      const look = {
+        success: ["checkCircle", "text-ok"],
+        warning: ["alert", "text-warn"],
+        error: ["xCircle", "text-danger"],
+      }[kind];
+      const el = h("div", {
+        class: "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-sm shadow-pop transition-all duration-200 ease-out translate-y-2 opacity-0",
+        role: kind === "error" ? "alert" : "status",
+      },
+        icon(look[0], `mt-0.5 size-4 ${look[1]}`),
+        h("p", { class: "min-w-0 flex-1 leading-5 text-body" }, message),
+        action ? h("button", { type: "button", class: "shrink-0 font-medium text-brand hover:underline", onclick: () => { el.remove(); action.run(); } }, action.label) : null,
+        h("button", { type: "button", class: "-mr-1 shrink-0 cursor-pointer rounded text-faint hover:text-ink", "aria-label": "Dismiss", onclick: () => el.remove() }, icon("x", "size-4")),
+      );
+      $("toasts").append(el);
+      requestAnimationFrame(() => el.classList.remove("translate-y-2", "opacity-0"));
+      setTimeout(() => {
+        el.classList.add("opacity-0");
+        setTimeout(() => el.remove(), 200);
+      }, action ? 8000 : 4000);
+    }
+
+    // ================================================================== drawers
+
+    function openNav() {
+      $("sidebar").classList.remove("-translate-x-full");
+      $("scrim").classList.remove("hidden");
+    }
+
+    function openInspector(tab) {
+      if (tab) state.tab = tab;
+      renderInspector();
+      if (window.matchMedia("(min-width: 1280px)").matches) return;
+      $("inspector").classList.remove("translate-x-full");
+      $("scrim").classList.remove("hidden");
+    }
+
+    function closeDrawers() {
+      $("sidebar").classList.add("-translate-x-full");
+      $("inspector").classList.add("translate-x-full");
+      $("scrim").classList.add("hidden");
+    }
+
+    // ================================================================== wiring
+
+    $("nav-open").append(icon("menu", "size-5"));
+    $("nav-close").append(icon("x", "size-5"));
+    $("inspector-close").append(icon("x", "size-5"));
+    $("nav-open").addEventListener("click", openNav);
+    $("nav-close").addEventListener("click", closeDrawers);
+    $("inspector-open").addEventListener("click", () => openInspector());
+    $("inspector-close").addEventListener("click", closeDrawers);
+    $("scrim").addEventListener("click", closeDrawers);
+    $("validate-btn").addEventListener("click", validate);
+    $("save-btn").addEventListener("click", save);
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); save(); }
+      else if (e.key === "Escape") closeDrawers();
+    });
+    window.addEventListener("beforeunload", (e) => {
+      if (state.schema && isDirty()) e.preventDefault();
+    });
+
+    renderHeader();
+    load();
+  })();
+  </script>
+</body>
+</html>

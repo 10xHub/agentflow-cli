@@ -19,7 +19,6 @@ Registered in https://github.com/10xHub/agentflow-cli/blob/main/agentflow_cli/sr
 - `GET /v1/graph`
 - `GET /v1/graph:StateSchema`
 - `POST /v1/graph/stop`
-- `POST /v1/graph/setup`
 - `POST /v1/graph/fix`
 - `WS /v1/graph/live` — realtime audio bridge, exposed only when the configured graph is rooted at a
   `LiveAgent`. First frame is a JSON control frame (`model`, `thread_id`, `voice`, ... override

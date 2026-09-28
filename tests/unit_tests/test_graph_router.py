@@ -9,7 +9,6 @@ from agentflow_cli.src.app.routers.graph.router import (
     fix_graph,
     graph_details,
     invoke_graph,
-    setup_graph,
     state_schema,
     stop_graph,
     stream_graph,
@@ -17,7 +16,6 @@ from agentflow_cli.src.app.routers.graph.router import (
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     FixGraphRequestSchema,
     GraphInputSchema,
-    GraphSetupSchema,
     GraphStopSchema,
 )
 
@@ -133,23 +131,6 @@ async def test_stop_graph_endpoint(mock_request, mock_service, mock_user):
         )
         assert res == {"status": "success"}
         mock_service.stop_graph.assert_called_once_with("thread-abc", mock_user, {"force": True})
-
-
-@pytest.mark.asyncio
-async def test_setup_graph_endpoint(mock_request, mock_service, mock_user):
-    setup_req = GraphSetupSchema(tools=[])
-    mock_service.setup.return_value = {"status": "configured"}
-
-    with patch("agentflow_cli.src.app.routers.graph.router.success_response") as mock_success:
-        mock_success.return_value = {"status": "success"}
-        res = await setup_graph(
-            request=mock_request,
-            setup_request=setup_req,
-            service=mock_service,
-            user=mock_user,
-        )
-        assert res == {"status": "success"}
-        mock_service.setup.assert_called_once_with(setup_req)
 
 
 @pytest.mark.asyncio

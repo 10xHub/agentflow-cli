@@ -5,6 +5,7 @@
     "method": "custom",
     "path": "auth.agent_auth:AgentAuth"
   },
+  "remote_tools": [],
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "injectq": "graph.agent:container",
   "rate_limit": {

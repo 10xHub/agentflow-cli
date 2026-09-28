@@ -24,6 +24,7 @@ Common full shape:
   "authorization": "graph.auth:my_authorization_backend",
   "env": ".env",
   "auth": "jwt",
+  "remote_tools": [],
   "rate_limit": {
     "enabled": true,
     "backend": "memory",
@@ -45,6 +46,7 @@ Common full shape:
 - `authorization`: `null` (mode default: `ownership` in production, `allow_all` in dev), a built-in name (`"ownership"` | `"allow_all"`/`"default"`/`"none"`), an RBAC config object (`{"backend": "rbac", "roles": {...}, "default_scopes": [...], "isolation": "owner"}`), or a `module:attr` import path to a custom `AuthorizationBackend`. See `references/auth-and-authorization.md`.
 - `env`: optional `.env` path loaded before graph import.
 - `auth`: `null`, `"jwt"`, or `{"method": "custom", "path": "module:backend"}`.
+- `remote_tools`: validated client-executed tool schemas, attached once at startup.
 - `rate_limit`: optional sliding-window rate limiter config object; omit or set to `null` to disable. See `references/rate-limiting.md` for the full field reference.
 
 ## Loading Order
@@ -52,7 +54,7 @@ Common full shape:
 1. Read `agentflow.json`.
 2. Load `.env` when configured.
 3. Import the compiled graph from `agent`.
-4. Import and bind `checkpointer`, `store`, `injectq`, `thread_name_generator`, and `authorization` when configured.
+4. Attach `remote_tools`, then import and bind `checkpointer`, `store`, `injectq`, `thread_name_generator`, and `authorization` when configured.
 5. Configure auth.
 6. Start FastAPI routes and services.
 

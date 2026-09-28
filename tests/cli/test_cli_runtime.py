@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
+
 from typer.testing import CliRunner
 
 import agentflow_cli.cli.main as main_mod
-from agentflow_cli.cli.user_config import UserConfigStore
+from agentflow_cli.cli.commands.audit import AuditCommand
 
 
 runner = CliRunner()
@@ -47,6 +49,61 @@ def test_no_animation_alias_selects_static_output() -> None:
     assert "Audit" in result.output
 
 
+def test_audit_validates_remote_tool_schema(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "agentflow.json").write_text(
+        json.dumps(
+            {
+                "agent": "graph.agent:app",
+                "remote_tools": [
+                    {
+                        "node": "tools",
+                        "name": "read_clipboard",
+                        "description": "Read clipboard text.",
+                        "parameters": {"type": "object"},
+                    }
+                ],
+            }
+        )
+    )
+
+    diagnostic = AuditCommand._config_check()
+    assert diagnostic.status == "pass"
+    assert "1 remote tools" in diagnostic.detail
+
+
+def test_audit_fails_for_misspelled_remote_tool_key(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "agentflow.json").write_text(
+        json.dumps(
+            {
+                "agent": "graph.agent:app",
+                "remote_tools": [
+                    {"nod": "tools", "name": "read_clipboard", "description": "Read clipboard."}
+                ],
+            }
+        )
+    )
+
+    result = runner.invoke(main_mod.app, ["--no-animation", "audit"])
+    assert result.exit_code == 1
+    assert "remote_tools" in result.output
+    assert "nod" in result.output
+
+
+def test_audit_accepts_explicit_project_config(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    config_path = tmp_path / "custom.json"
+    config_path.write_text(json.dumps({"agent": "graph.agent:app", "remote_tools": []}))
+
+    diagnostic = AuditCommand._config_check(str(config_path))
+    assert diagnostic.status == "pass"
+
+    missing = runner.invoke(main_mod.app, ["--no-animation", "audit", "--config", "missing.json"])
+    assert missing.exit_code == 1
+    assert "not found" in missing.output
+
+
 def test_dev_delegates_to_api_with_open_policy(monkeypatch) -> None:
     called = {}
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
@@ -74,27 +131,3 @@ def test_lazy_dependency_error_has_recovery_code(monkeypatch) -> None:
     assert result.exit_code == 4
     assert "AF-DEPS-001" in result.output
     assert "agentflow audit" in result.output
-
-
-def test_config_commands_round_trip(monkeypatch, tmp_path) -> None:
-    store = UserConfigStore(tmp_path / "config.json")
-    monkeypatch.setattr(main_mod, "UserConfigStore", lambda: store)
-
-    set_result = runner.invoke(main_mod.app, ["config", "set", "output.format", "plain"])
-    assert set_result.exit_code == 0
-    assert store.get("output.format") == "plain"
-
-    get_result = runner.invoke(main_mod.app, ["config", "get", "output.format"])
-    assert get_result.exit_code == 0
-    assert get_result.output.strip() == "plain"
-
-    list_result = runner.invoke(main_mod.app, ["config", "list"])
-    assert list_result.exit_code == 0
-    assert "output.format" in list_result.output
-
-    validate_result = runner.invoke(main_mod.app, ["config", "validate"])
-    assert validate_result.exit_code == 0
-
-    unset_result = runner.invoke(main_mod.app, ["config", "unset", "output.format"])
-    assert unset_result.exit_code == 0
-    assert store.get("output.format") is None

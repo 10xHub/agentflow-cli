@@ -407,7 +407,19 @@ async def attach_all_modules(
     config: GraphConfig,
     container: InjectQ,
 ) -> CompiledGraph | None:
+    remote_tools = config.remote_tools
     graph = await load_graph(config.graph_path)
+
+    if remote_tools:
+        if graph is None:
+            raise RuntimeError("Cannot attach remote tools because the graph failed to load")
+        grouped: dict[str, list[dict]] = {}
+        for tool in remote_tools:
+            grouped.setdefault(tool.node_name, []).append(tool.to_tool_schema())
+        for node_name, schemas in grouped.items():
+            graph.attach_remote_tools(schemas, node_name)
+        logger.info("Attached %d configured remote tools", len(remote_tools))
+
     logger.info("All modules attached successfully")
 
     # This binding we have done already in the library

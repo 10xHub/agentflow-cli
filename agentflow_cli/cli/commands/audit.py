@@ -33,7 +33,8 @@ from pathlib import Path
 from typing import Any
 
 from agentflow_cli.cli.commands import BaseCommand
-from agentflow_cli.cli.constants import DEFAULT_PORT
+from agentflow_cli.cli.constants import DEFAULT_CONFIG_FILE, DEFAULT_PORT
+from agentflow_cli.src.app.core.config.graph_config import validate_remote_tools
 
 
 @dataclass(frozen=True)
@@ -66,13 +67,14 @@ class AuditCommand(BaseCommand):
     evaluation    The installed core exposes the evaluation symbols that
                   ``agentflow eval`` imports, catching a CLI/core version
                   skew before it becomes an ImportError mid-run.
-    config        ``agentflow.json`` exists here, parses, and declares an
-                  ``agent`` key in ``module:attribute`` form.
+    config        ``agentflow.json`` exists here, parses, declares an
+                  ``agent`` key in ``module:attribute`` form, and contains
+                  valid ``remote_tools`` definitions if present.
     port          The default API port is free to bind.
     ============  ==========================================================
     """
 
-    def execute(self, **kwargs: Any) -> int:
+    def execute(self, *, config: str = DEFAULT_CONFIG_FILE, **kwargs: Any) -> int:
         """Run every check and report the outcome.
 
         Returns:
@@ -95,7 +97,7 @@ class AuditCommand(BaseCommand):
             ("cli", "CLI package", lambda: self._package_check("10xscale-agentflow-cli")),
             ("core", "Core framework", lambda: self._package_check("10xscale-agentflow")),
             ("evaluation", "Evaluation API", self._evaluation_api_check),
-            ("config", "Project configuration", self._config_check),
+            ("config", "Project configuration", lambda: self._config_check(config)),
             ("port", f"Port {DEFAULT_PORT}", lambda: self._port_check(DEFAULT_PORT)),
         )
 
@@ -165,25 +167,31 @@ class AuditCommand(BaseCommand):
         return Diagnostic("Evaluation API", "pass", "compatible")
 
     @staticmethod
-    def _config_check() -> Diagnostic:
+    def _config_check(config: str = DEFAULT_CONFIG_FILE) -> Diagnostic:
         """Validate ``agentflow.json`` in the working directory.
 
-        Warns rather than fails when the file is absent, because the audit is
-        also useful outside a project directory. A file that exists but cannot
-        be parsed, or that omits a ``module:attribute`` ``agent`` key, is a
-        hard failure.
+        Warns when the default file is absent, because audit is also useful
+        outside a project directory. A missing explicit path, invalid JSON,
+        missing ``agent``, or invalid remote tool definition is a hard failure.
         """
-        config_path = Path.cwd() / "agentflow.json"
+        config_path = Path(config).resolve()
         if not config_path.exists():
-            return Diagnostic("Project config", "warn", f"not found at {config_path}")
+            status = "warn" if config == DEFAULT_CONFIG_FILE else "fail"
+            return Diagnostic("Project config", status, f"not found at {config_path}")
         try:
             data = json.loads(config_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             return Diagnostic("Project config", "fail", str(exc))
+        if not isinstance(data, dict):
+            return Diagnostic("Project config", "fail", "agentflow.json must be an object")
         agent = data.get("agent")
         if not isinstance(agent, str) or ":" not in agent:
             return Diagnostic("Project config", "fail", "'agent' must be a module:attribute string")
-        return Diagnostic("Project config", "pass", str(config_path))
+        try:
+            tools = validate_remote_tools(data.get("remote_tools", []))
+        except ValueError as exc:
+            return Diagnostic("Project config", "fail", str(exc))
+        return Diagnostic("Project config", "pass", f"{config_path} ({len(tools)} remote tools)")
 
     @staticmethod
     def _port_check(port: int) -> Diagnostic:

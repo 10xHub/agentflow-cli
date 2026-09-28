@@ -49,7 +49,7 @@ Public exports from the package root (`from agentflow_cli import ...`): `BaseAut
 | `agentflow version` | Show CLI + core framework version | both resolve from installed distribution metadata |
 | `agentflow audit` | Read-only audit of the interpreter, installed CLI/core packages, evaluation-API compatibility, `agentflow.json`, and the default port. Exits `1` on failure, `0` on warnings only, so it works as a CI gate | `-v/--verbose`, `-q/--quiet` |
 | `agentflow demo` | Preview the animation/timeline/progress themes with no side effects (`Diagnostics` help panel) | `--style` (all\|typing\|network\|init\|build\|eval; `play`/`api` alias to typing/network) |
-| `agentflow config <path\|list\|get\|set\|unset\|validate>` | Sub-app (`Manage` panel) for user-level preferences in `user_config.py` | dotted keys; `set` parses a JSON value, falling back to a plain string |
+| `agentflow config` | Browser editor for `agentflow.json` (`Manage` panel). Loopback-only stdlib HTTP server in `cli/config_editor/` (`schema.py` lists every key, `validation.py` reuses the `graph_config` parsers, `store.py` does conflict-checked atomic writes with a `.bak`, `static/index.html` is the Tailwind page) | `--config/-c`, `--port/-p` (0 = any free port), `--open/--no-open` |
 
 Defaults (from `cli/constants.py`): `DEFAULT_HOST="127.0.0.1"`, `DEFAULT_PORT=8000`,
 `DEFAULT_CONFIG_FILE="agentflow.json"`.
@@ -59,9 +59,7 @@ Root options apply to every command and are resolved in `main.root`:
 `--no-color`, `--progress` (auto\|tty\|plain\|json\|quiet),
 `--animation/--no-animation`, `--fullscreen/--no-fullscreen`, `--cwd`, `-v/--verbose`
 (counted), `-q/--quiet`, `--debug`, `-y/--yes`, `--non-interactive`, `-V/--version`.
-`output.format`, `output.color`, and `output.progress` from the user config file
-(`platformdirs`, e.g. `~/.config/agentflow/config.json`) supply the defaults; explicit
-flags win. `AGENTFLOW_NO_FULLSCREEN=1` opts out of the alternate-screen surface.
+`AGENTFLOW_NO_FULLSCREEN=1` opts out of the alternate-screen surface.
 
 ## `agentflow.json` (the config contract)
 
@@ -115,7 +113,7 @@ and for redis backend a `redis` sub-object `{ "url", "prefix" }` (or shorthand U
 ## HTTP + WebSocket surface (all under `/v1` except ping)
 
 - **Graph** (`tags=["Graph"]`): `POST /v1/graph/invoke`, `POST /v1/graph/stream`,
-  `POST /v1/graph/stop`, `POST /v1/graph/setup`, `POST /v1/graph/fix`, `GET /v1/graph`,
+  `POST /v1/graph/stop`, `POST /v1/graph/fix`, `GET /v1/graph`,
   `WS /v1/graph/ws`.
 - **Checkpointer / threads**: `GET/POST /v1/threads`, `GET/DELETE /v1/threads/{thread_id}`,
   `GET /v1/threads/{thread_id}/state`, `GET /v1/threads/{thread_id}/messages`,

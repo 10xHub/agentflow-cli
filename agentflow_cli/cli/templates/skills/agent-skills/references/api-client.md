@@ -21,7 +21,6 @@ Graph routes include:
 - `GET /v1/graph`
 - `GET /v1/graph:StateSchema`
 - `POST /v1/graph/stop`
-- `POST /v1/graph/setup`
 - `POST /v1/graph/fix`
 
 Memory/file routes are summarized in their topic references.
@@ -31,11 +30,11 @@ Memory/file routes are summarized in their topic references.
 `AgentFlowClient` is exported by `@10xscale/agentflow-client`. Its source facade is https://github.com/10xHub/agentflow-client/blob/main/src/client.ts, and it wraps:
 
 - Connectivity and metadata: `ping`, `graph`, `graphStateSchema`
-- Execution: `invoke`, `stream`, `stopGraph`, `fixGraph`, `setup`
+- Execution: `invoke`, `stream`, `stopGraph`, `fixGraph`
 - Threads/messages: `threadState`, `updateThreadState`, `clearThreadState`, `threadDetails`, `threads`, `threadMessages`, `addThreadMessages`, `singleMessage`, `deleteMessage`, `deleteThread`
 - Memory: `storeMemory`, `searchMemory`, `getMemory`, `updateMemory`, `deleteMemory`, `listMemories`, `forgetMemories`
 - Files: `uploadFile`, `getFile`, `getFileInfo`, `getFileAccessUrl`, `getMultimodalConfig`
-- Remote tools: `registerTool`, then `setup`
+- Remote tools: schemas in server `agentflow.json`, handlers via `registerToolHandler`
 
 For remote tools, read `remote-tools.md`; that flow has a client-managed execution loop around `remote_tool_call` blocks.
 

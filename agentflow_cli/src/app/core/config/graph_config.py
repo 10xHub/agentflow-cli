@@ -3,11 +3,84 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
 
 logger = logging.getLogger("agentflow_api")
+
+
+def _empty_parameters() -> dict[str, Any]:
+    return {"type": "object", "properties": {}, "required": []}
+
+
+class RemoteToolConfig(BaseModel):
+    """Trusted model-facing schema for a tool executed by the client."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    node_name: str = Field(alias="node", min_length=1)
+    name: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    parameters: dict[str, Any] = Field(default_factory=_empty_parameters)
+
+    @field_validator("node_name", "name", "description")
+    @classmethod
+    def _must_not_be_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @field_validator("parameters")
+    @classmethod
+    def _validate_parameters(cls, value: dict[str, Any]) -> dict[str, Any]:
+        parameters = dict(value)
+        parameters.setdefault("type", "object")
+        parameters.setdefault("properties", {})
+        parameters.setdefault("required", [])
+        if parameters["type"] != "object":
+            raise ValueError("remote tool parameters.type must be 'object'")
+        if not isinstance(parameters["properties"], dict):
+            raise ValueError("remote tool parameters.properties must be an object")
+        if not isinstance(parameters["required"], list) or not all(
+            isinstance(item, str) for item in parameters["required"]
+        ):
+            raise ValueError("remote tool parameters.required must be a list of strings")
+        return parameters
+
+    def to_tool_schema(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+_REMOTE_TOOLS_ADAPTER = TypeAdapter(list[RemoteToolConfig])
+
+
+def validate_remote_tools(raw: object) -> list[RemoteToolConfig]:
+    """Validate remote-tool declarations for both CLI audit and API startup."""
+    if not isinstance(raw, list):
+        raise ValueError("remote_tools must be a list")
+
+    try:
+        tools = _REMOTE_TOOLS_ADAPTER.validate_python(raw)
+    except ValidationError as exc:
+        raise ValueError(f"Invalid remote_tools configuration: {exc}") from exc
+
+    seen: set[str] = set()
+    for tool in tools:
+        if tool.name in seen:
+            raise ValueError(f"Duplicate remote tool name '{tool.name}'")
+        seen.add(tool.name)
+    return tools
 
 
 def _parse_bool(value: object, *, field: str) -> bool:
@@ -239,6 +312,11 @@ class GraphConfig:
     @property
     def thread_name_generator_path(self) -> str | None:
         return self.data.get("thread_name_generator", None)
+
+    @property
+    def remote_tools(self) -> list[RemoteToolConfig]:
+        """Validated client-executed tool schemas configured at startup."""
+        return validate_remote_tools(self.data.get("remote_tools", []))
 
     @property
     def observability(self) -> dict | None:

@@ -24,7 +24,6 @@ from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
-    GraphSetupSchema,
     GraphStopSchema,
     GraphToolsSchema,
     ObservabilitySchema,
@@ -280,40 +279,6 @@ async def stop_graph(
     result = await service.stop_graph(stop_request.thread_id, user, stop_request.config)
 
     logger.info(f"Graph stop completed for thread {stop_request.thread_id}")
-
-    return success_response(
-        result,
-        request,
-    )
-
-
-@router.post(
-    "/v1/graph/setup",
-    summary="Setup Remote Tool to the Graph Execution",
-    description="Stop the currently running graph execution for a specific thread",
-    responses=generate_swagger_responses(dict),  # type: ignore
-    openapi_extra={},
-)
-async def setup_graph(
-    request: Request,
-    setup_request: GraphSetupSchema,
-    service: GraphService = InjectAPI(GraphService),
-    user: dict[str, Any] = Depends(RequirePermission("graph", "setup")),
-):
-    """
-    Setup the graph execution for a specific thread.
-
-    Args:
-        setup_request: Request containing thread_id and optional config
-
-    Returns:
-        Status information about the setup operation
-    """
-    logger.info("Graph setup request received")
-
-    result = await service.setup(setup_request)
-
-    logger.info("Graph setup completed")
 
     return success_response(
         result,

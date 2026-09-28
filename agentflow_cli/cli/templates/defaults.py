@@ -34,6 +34,7 @@ DEFAULT_CONFIG_JSON: Final[str] = json.dumps(
         "checkpointer": None,
         "injectq": None,
         "store": None,
+        "remote_tools": [],
         "thread_name_generator": None,
         "observability": None,
     },

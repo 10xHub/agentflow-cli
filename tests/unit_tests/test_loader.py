@@ -13,7 +13,7 @@ from agentflow_cli.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
 )
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from agentflow_cli.src.app.core.config.graph_config import GraphConfig, RemoteToolConfig
 from agentflow_cli.src.app.loader import (
     attach_all_modules,
     load_and_bind_auth,
@@ -347,6 +347,13 @@ async def test_attach_all_modules():
     config.thread_name_generator_path = "mod:generator"
     config.authorization_path = "mod:authorization"
     config.store_path = None
+    config.remote_tools = [
+        RemoteToolConfig(
+            node="tools",
+            name="read_clipboard",
+            description="Read clipboard text.",
+        )
+    ]
 
     container = MagicMock(spec=InjectQ)
 
@@ -370,6 +377,9 @@ async def test_attach_all_modules():
         result = await attach_all_modules(config, container)
 
         assert result == mock_graph
+        mock_graph.attach_remote_tools.assert_called_once_with(
+            [config.remote_tools[0].to_tool_schema()], "tools"
+        )
         # verify bindings
         container.bind_instance.assert_any_call(BaseAuth, None, allow_none=True)
         container.bind_instance.assert_any_call(ThreadNameGenerator, mock_generator)
@@ -378,6 +388,7 @@ async def test_attach_all_modules():
         # Test branch where config has no thread name generator and no auth config
         config.thread_name_generator_path = None
         config.auth_config.return_value = None
+        config.remote_tools = []
 
         container.reset_mock()
         await attach_all_modules(config, container)
