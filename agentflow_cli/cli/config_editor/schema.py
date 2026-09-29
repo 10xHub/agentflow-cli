@@ -325,10 +325,21 @@ _SECTIONS: list[dict[str, Any]] = [
                 "type": "bool",
                 "help": "Mounts POST /v1/ag-ui. It uses the same auth as /v1/graph/stream.",
             },
+            {
+                "path": ["ag_ui", "allow_client_tools"],
+                "default": True,
+                "label": "Allow client tools",
+                "type": "bool",
+                "help": (
+                    "Offer the tools a client sends (e.g. CopilotKit useFrontendTool) to the "
+                    "model for that run. Off: only tools listed in remote_tools."
+                ),
+            },
         ],
         "notes": [
             'Needs the ag-ui extra: pip install "10xscale-agentflow-cli[ag-ui]".',
-            "Browser tools reach the model only when they are also listed in remote_tools.",
+            "Client tools run in the caller's browser, cannot reuse a server tool's name, and are "
+            "size-limited.",
         ],
     },
     {

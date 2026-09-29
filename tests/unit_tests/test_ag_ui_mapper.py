@@ -395,3 +395,31 @@ class TestConverter:
     def test_invalid_input_raises_value_error(self):
         with pytest.raises(ValueError):
             parse_run_input({"messages": []})
+
+
+def test_interrupt_update_becomes_the_run_outcome():
+    mapper = AgUiEventMapper("t", "r")
+    chunk = StreamChunk(
+        event=StreamEvent.UPDATES,
+        data={
+            "status": "interrupted",
+            "interrupt": {
+                "id": "int_1",
+                "key": "node:ASK:0",
+                "node": "ASK",
+                "value": {"amount": 5},
+                "message": "Approve?",
+                "reason": "approval",
+                "tool_call_id": "c1",
+                "response_schema": {"type": "object"},
+            },
+        },
+    )
+    events = _run(mapper, [chunk])
+    assert _types(events) == [EventType.RUN_STARTED, EventType.RUN_FINISHED]
+    outcome = events[-1].outcome
+    assert outcome.type == "interrupt"
+    [request] = outcome.interrupts
+    assert (request.id, request.reason, request.message) == ("int_1", "approval", "Approve?")
+    assert request.tool_call_id == "c1"
+    assert request.metadata == {"value": {"amount": 5}, "node": "ASK"}

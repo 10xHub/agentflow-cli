@@ -71,3 +71,17 @@ def test_missing_sdk_fails_with_install_hint(monkeypatch):
     monkeypatch.setattr(setup_router, "_import_ag_ui_router", _missing)
     with pytest.raises(RuntimeError, match=r"10xscale-agentflow-cli\[ag-ui\]"):
         init_routes(FastAPI(), ag_ui=True)
+
+
+def test_client_tools_are_allowed_by_default(tmp_path: Path):
+    assert _config(tmp_path, {"ag_ui": {"enabled": True}}).ag_ui.allow_client_tools is True
+
+
+def test_client_tools_can_be_disallowed(tmp_path: Path):
+    config = _config(tmp_path, {"ag_ui": {"enabled": True, "allow_client_tools": False}})
+    assert config.ag_ui.allow_client_tools is False
+
+
+def test_client_tools_flag_must_be_boolean():
+    with pytest.raises(ValueError, match=r"ag_ui\.allow_client_tools must be a boolean"):
+        AgUiConfig.from_dict({"allow_client_tools": "sometimes"})

@@ -41,6 +41,17 @@ from agentflow_cli.src.app.utils import DefaultThreadNameGenerator, ThreadNameGe
 from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
 
 
+def _run_tool_names(config: dict[str, Any]) -> set[str]:
+    """Names of the per-run client tools in ``config["remote_tools"]`` (server-owned key)."""
+    names: set[str] = set()
+    for item in config.get("remote_tools") or []:
+        if isinstance(item, dict):
+            spec = item.get("function") if isinstance(item.get("function"), dict) else item
+            if isinstance(spec.get("name"), str):
+                names.add(spec["name"])
+    return names
+
+
 def _reraise_framework_errors(exc: Exception) -> None:
     """Re-raise typed errors that have dedicated handlers instead of masking them.
 
@@ -362,6 +373,20 @@ class GraphService:
                 names.update(n for n in getattr(tool_node, "remote_tool_names", None) or [] if n)
         return names
 
+    def _server_tool_names(self) -> set[str]:
+        """Names of the tools the server runs itself (local and MCP), across every ToolNode."""
+        from agentflow.core.graph import ToolNode
+
+        state_graph = getattr(self._graph, "_state_graph", None)
+        nodes = getattr(state_graph, "nodes", {}) if state_graph else {}
+        names: set[str] = set()
+        for node in nodes.values():
+            tool_node = getattr(node, "func", None)
+            if isinstance(tool_node, ToolNode):
+                names.update(getattr(tool_node, "_funcs", None) or {})
+                names.update(getattr(tool_node, "mcp_tools", None) or [])
+        return names
+
     async def _check_tool_results(self, messages: list[Any], config: dict[str, Any]) -> None:
         """Accept a tool result only as the answer to a remote tool call awaiting one.
 
@@ -377,7 +402,9 @@ class GraphService:
 
         state = await self.checkpointer.aget_state(config) if self.checkpointer else None
         pending = unanswered_tool_calls(getattr(state, "context", None))
-        remote = self._remote_tool_names()
+        # A client tool can never carry a server tool's name: otherwise a client could declare
+        # it and post a "result" for a server tool call (one paused for approval, say).
+        remote = self._remote_tool_names() | (_run_tool_names(config) - self._server_tool_names())
         for call_id in result_ids:
             if call_id not in pending or pending[call_id] not in remote:
                 raise ValueError(f"No remote tool call '{call_id}' is waiting for a result")
@@ -405,9 +432,13 @@ class GraphService:
         self,
         graph_input: GraphInputSchema,
         user_id: str | None = None,
+        server_config: dict[str, Any] | None = None,
     ):
         is_new_thread = False
         config = client_config(graph_input.config)
+        # Server-owned keys set by a trusted caller (a protocol adapter), after the client's
+        # own config has been stripped of them.
+        config.update(server_config or {})
         # Same normalisation as the permission check, so the checked thread is the one used.
         thread_id = normalize_thread_id(config.get("thread_id"))
         if thread_id is None:
@@ -430,6 +461,8 @@ class GraphService:
         input_data: dict = {
             "messages": preprocessed,
         }
+        if graph_input.is_resume:
+            input_data["resume"] = graph_input.resume
         if graph_input.initial_state:
             self._reject_tool_start_node(graph_input.initial_state)
             input_data["state"] = graph_input.initial_state
@@ -569,12 +602,15 @@ class GraphService:
         self,
         graph_input: GraphInputSchema,
         user: dict[str, Any],
+        server_config: dict[str, Any] | None = None,
     ) -> AsyncIterable[StreamChunk]:
         """
         Streams the graph execution as ``StreamChunk`` objects.
 
         Shared by the NDJSON stream and protocol adapters such as AG-UI. The graph reuses one
         chunk object for successive messages, so consume each chunk before asking for the next.
+        ``server_config`` carries server-owned run config (for example per-run
+        ``remote_tools``) that a client could not set through ``graph_input.config``.
 
         Yields:
             StreamChunk: Graph output; failures arrive as an ``ERROR`` chunk, never raised.
@@ -588,7 +624,9 @@ class GraphService:
             logger.debug(f"Streaming graph with input: {graph_input.messages}")
 
             # Prepare the config
-            input_data, config, meta = await self._prepare_input(graph_input, user.get("user_id"))
+            input_data, config, meta = await self._prepare_input(
+                graph_input, user.get("user_id"), server_config
+            )
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")

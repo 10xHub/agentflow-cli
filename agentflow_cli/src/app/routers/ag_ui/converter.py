@@ -9,6 +9,8 @@ checkpoint is the record of what the model said and was told.
 
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
 from ag_ui.core import RunAgentInput
@@ -52,6 +54,47 @@ def parse_run_input(body: Any) -> RunAgentInput:
         return RunAgentInput.model_validate(body)
     except ValidationError as exc:
         raise ValueError(f"Invalid AG-UI RunAgentInput: {exc}") from exc
+
+
+# Limits on the tools an AG-UI client may bring to a run. The name rule matches what model
+# providers accept for function names.
+MAX_CLIENT_TOOLS = 64
+MAX_TOOL_DESCRIPTION_CHARS = 4096
+MAX_TOOL_SCHEMA_BYTES = 16 * 1024
+_TOOL_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def check_client_tools(tools: list[Any]) -> None:
+    """Reject client tool lists that are malformed or oversized.
+
+    Client tools put client-written text (names, descriptions, schemas) in front of the model and
+    in every request to the provider, so they are bounded before anything runs.
+
+    Raises:
+        ValueError: A tool breaks one of the limits above.
+    """
+    if len(tools) > MAX_CLIENT_TOOLS:
+        raise ValueError(f"At most {MAX_CLIENT_TOOLS} client tools are allowed per run")
+    seen: set[str] = set()
+    for tool in tools:
+        if not _TOOL_NAME.match(tool.name or ""):
+            raise ValueError(
+                f"Invalid client tool name {tool.name!r}: use 1-64 letters, digits, '_' or '-'"
+            )
+        if tool.name in seen:
+            raise ValueError(f"Duplicate client tool name {tool.name!r}")
+        seen.add(tool.name)
+        if len(tool.description or "") > MAX_TOOL_DESCRIPTION_CHARS:
+            raise ValueError(
+                f"Client tool {tool.name!r}: description is longer than "
+                f"{MAX_TOOL_DESCRIPTION_CHARS} characters"
+            )
+        schema_size = len(json.dumps(tool.parameters or {}, default=str).encode())
+        if schema_size > MAX_TOOL_SCHEMA_BYTES:
+            raise ValueError(
+                f"Client tool {tool.name!r}: parameters schema is larger than "
+                f"{MAX_TOOL_SCHEMA_BYTES} bytes"
+            )
 
 
 def _upgrade_message(message: Any) -> Any:

@@ -10,8 +10,10 @@ with a new id (streaming providers), or as one final message (plain function nod
 was already streamed is not sent again from the final message. Tool calls are only complete in
 the final message, so ``TOOL_CALL_START/ARGS/END`` are sent from there in one go.
 
-Only events accepted by CopilotKit's pinned ``@ag-ui/core`` (0.0.59 in CopilotKit 1.75) are
-used: ``RUN_FINISHED`` is sent without an ``outcome``, which that version validates strictly.
+A graph paused by ``interrupt()`` ends the run with ``RUN_FINISHED`` and an ``interrupt``
+outcome, which clients answer with ``RunAgentInput.resume``. Otherwise ``RUN_FINISHED`` carries no
+``outcome``: CopilotKit's pinned ``@ag-ui/core`` (0.0.59 in CopilotKit 1.75) rejects the
+``success`` outcome's newer fields and the ``cancelled`` outcome.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from typing import Any
 import ag_ui.core as agui
 from ag_ui.core import (
     BaseEvent,
+    Interrupt,
     ReasoningEndEvent,
     ReasoningMessageContentEvent,
     ReasoningMessageEndEvent,
@@ -29,6 +32,7 @@ from ag_ui.core import (
     ReasoningStartEvent,
     RunErrorEvent,
     RunFinishedEvent,
+    RunFinishedInterruptOutcome,
     RunStartedEvent,
     StateSnapshotEvent,
     StepFinishedEvent,
@@ -84,6 +88,7 @@ class AgUiEventMapper:
         self._tool_calls: set[str] = set()
         self._tool_results: set[str] = set()
         self._last_state = initial_state or None
+        self._interrupt: dict[str, Any] | None = None
 
     def start(self) -> list[BaseEvent]:
         extra: dict[str, Any] = {}
@@ -111,12 +116,21 @@ class AgUiEventMapper:
             return []
         return self._on_state(state)
 
+    def report_interrupt(self, interrupt: dict[str, Any]) -> None:
+        """End the run as paused at ``interrupt`` (an ``agentflow`` ``Interrupt`` as JSON)."""
+        self._interrupt = interrupt
+
     def finish(self) -> list[BaseEvent]:
         if self.finished:
             return []
         events = self._close_all()
         self.finished = True
-        events.append(RunFinishedEvent(thread_id=self.thread_id, run_id=self.run_id))
+        extra: dict[str, Any] = {}
+        if self._interrupt is not None:
+            extra["outcome"] = RunFinishedInterruptOutcome(
+                interrupts=[_agui_interrupt(self._interrupt)]
+            )
+        events.append(RunFinishedEvent(thread_id=self.thread_id, run_id=self.run_id, **extra))
         return events
 
     def fail(self, message: str, code: str | None = None) -> list[BaseEvent]:
@@ -261,6 +275,9 @@ class AgUiEventMapper:
     # ------------------------------------------------------ updates, state, errors
 
     def _on_update(self, data: dict[str, Any]) -> list[BaseEvent]:
+        if data.get("status") == "interrupted" and isinstance(data.get("interrupt"), dict):
+            self.report_interrupt(data["interrupt"])
+            return []
         node = data.get("node")
         if not isinstance(node, str) or node in _HIDDEN_NODES:
             return []
@@ -286,7 +303,8 @@ class AgUiEventMapper:
             call_id = data.get("tool_call_id")
             if not call_id or call_id in self._tool_results:
                 return []
-            reason = data.get("reason") or data.get("error") or "Tool failed"
+            # ``error`` holds the tool's own message; ``reason`` is a generic summary.
+            reason = data.get("error") or data.get("reason") or "Tool failed"
             return [self._tool_result(f"{call_id}-error", str(call_id), f"Error: {reason}")]
         return self.fail(str(data.get("reason") or "Graph execution failed"), "GRAPH_ERROR")
 
@@ -311,6 +329,18 @@ def _tool_calls(message: Message) -> list[tuple[str, str, str]]:
         if isinstance(block, ToolCallBlock | RemoteToolCallBlock) and block.id:
             calls.setdefault(block.id, (block.id, block.name, json.dumps(block.args or {})))
     return list(calls.values())
+
+
+def _agui_interrupt(interrupt: dict[str, Any]) -> Interrupt:
+    """An AG-UI ``Interrupt`` for an ``agentflow`` interrupt; its payload goes in metadata."""
+    return Interrupt(
+        id=str(interrupt.get("id")),
+        reason=str(interrupt.get("reason") or "input_required"),
+        message=interrupt.get("message"),
+        tool_call_id=interrupt.get("tool_call_id"),
+        response_schema=interrupt.get("response_schema"),
+        metadata={"value": interrupt.get("value"), "node": interrupt.get("node")},
+    )
 
 
 def _stringify(output: Any) -> str:

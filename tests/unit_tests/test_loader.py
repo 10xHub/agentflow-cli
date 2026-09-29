@@ -334,7 +334,13 @@ def test_load_and_bind_auth_jwt_needs_no_path(monkeypatch, tmp_path):
     assert isinstance(args[1], JwtAuth)
 
 
-def test_load_and_bind_authorization():
+def test_load_and_bind_authorization(monkeypatch):
+    from agentflow_cli.src.app.core.config import settings as settings_module
+
+    # The unconfigured default depends on MODE; do not depend on which test cached the
+    # settings first.
+    development = settings_module.Settings(MODE="development", _env_file=None)
+    monkeypatch.setattr(settings_module, "get_settings", lambda: development)
     container = MagicMock(spec=InjectQ)
 
     # Path provided

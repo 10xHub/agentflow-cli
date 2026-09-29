@@ -12,7 +12,7 @@ from agentflow_cli.src.app.core.auth.request_config import normalize_thread_id
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
 
-from .converter import parse_run_input
+from .converter import check_client_tools, parse_run_input
 from .service import stream_ag_ui
 
 
@@ -57,6 +57,7 @@ async def run_ag_ui(
         raise HTTPException(status_code=422, detail="Request body must be JSON") from exc
     try:
         run_input = parse_run_input(body)
+        check_client_tools(run_input.tools or [])
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -72,7 +73,13 @@ async def run_ag_ui(
     logger.info("AG-UI run %s received for thread %s", run_input.run_id, thread_id)
     encoder = EventEncoder(accept=request.headers.get("accept") or "")
     return StreamingResponse(
-        stream_ag_ui(service, run_input, user, encoder),
+        stream_ag_ui(
+            service,
+            run_input,
+            user,
+            encoder,
+            allow_client_tools=config.ag_ui.allow_client_tools,
+        ),
         media_type=encoder.get_content_type(),
         headers={
             "Cache-Control": "no-cache, no-transform",

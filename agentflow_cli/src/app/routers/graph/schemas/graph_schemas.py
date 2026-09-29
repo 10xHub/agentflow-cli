@@ -13,7 +13,17 @@ class GraphInputSchema(BaseModel):
     """
 
     messages: list[Message] = Field(
-        ..., description="List of messages to process through the graph"
+        default_factory=list,
+        description=(
+            "List of messages to process through the graph. Required unless `resume` is set."
+        ),
+    )
+    resume: Any = Field(
+        default=None,
+        description=(
+            "Answer for a thread paused by interrupt(); the paused node runs again and "
+            "interrupt() returns this value. Send it, possibly as null, only to resume."
+        ),
     )
     initial_state: dict[str, Any] | None = Field(
         default=None,
@@ -32,12 +42,21 @@ class GraphInputSchema(BaseModel):
 
     @field_validator("messages")
     @classmethod
-    def messages_must_not_be_empty(cls, v: list[Message]) -> list[Message]:
-        if not v:
-            raise ValueError("messages must contain at least one message")
+    def messages_must_not_carry_tool_calls(cls, v: list[Message]) -> list[Message]:
         if error := client_tool_call_error(v):
             raise ValueError(error)
         return v
+
+    @model_validator(mode="after")
+    def messages_or_resume(self) -> "GraphInputSchema":
+        if not self.messages and not self.is_resume:
+            raise ValueError("messages must contain at least one message")
+        return self
+
+    @property
+    def is_resume(self) -> bool:
+        """Whether the request resumes an interrupt() (``resume`` was sent, even as null)."""
+        return "resume" in self.model_fields_set
 
     response_granularity: ResponseGranularity = Field(
         default=ResponseGranularity.LOW,

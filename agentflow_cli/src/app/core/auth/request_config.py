@@ -9,6 +9,8 @@ A small set of keys is owned by the server instead, and a client must never set 
 - ``authz``   -- the isolation policy and scopes; the trusted copy lives in ``user["authz"]``
 - ``user``    -- the verified identity
 - ``user_id`` -- derived from the verified identity
+- ``remote_tools`` -- per-run client tool schemas the model may call; only protocol adapters
+  whose clients legitimately bring tools (AG-UI) set it, from the protocol's own tool list
 - ``_*``      -- framework internals (``_skip_interrupt_at``, ``_node_name``, ...)
 
 Every route and service that forwards client config to the graph, checkpointer or store must
@@ -27,7 +29,7 @@ from __future__ import annotations
 from typing import Any
 
 
-RESERVED_CONFIG_KEYS: frozenset[str] = frozenset({"authz", "user", "user_id"})
+RESERVED_CONFIG_KEYS: frozenset[str] = frozenset({"authz", "user", "user_id", "remote_tools"})
 INTERNAL_KEY_PREFIX = "_"
 
 

@@ -126,7 +126,11 @@ and for redis backend a `redis` sub-object `{ "url", "prefix" }` (or shorthand U
 - **AG-UI** (`tags=["AG-UI"]`, only when `ag_ui.enabled`): `POST /v1/ag-ui`. `routers/ag_ui/`:
   `converter.py` (RunAgentInput -> new user/tool messages only; the checkpoint is the record),
   `event_mapper.py` (StreamChunk -> AG-UI events), `service.py` (runs `GraphService.stream_chunks`).
-  Emits only events CopilotKit's pinned `@ag-ui/core` 0.0.59 accepts (no `RUN_FINISHED.outcome`).
+  `RUN_FINISHED` carries an `outcome` only for `interrupt()` pauses (CopilotKit's pinned
+  `@ag-ui/core` 0.0.59 rejects the newer `success`/`cancelled` outcome shapes). Browser tools
+  from `RunAgentInput.tools` go to the graph as the server-owned `remote_tools` run-config key
+  (via `GraphService.stream_chunks(..., server_config=...)`); `RunAgentInput.resume` becomes the
+  graph `resume` input. `GraphInputSchema.resume` also resumes over `/v1/graph/invoke|stream`.
 - **Ping**: `GET /ping`.
 
 Routers are wired in `routers/setup_router.py` (`init_routes`). The `a2a.py` / `a2ui.py` stubs

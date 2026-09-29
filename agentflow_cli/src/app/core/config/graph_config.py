@@ -339,21 +339,33 @@ class AgUiConfig:
     Example::
 
         "ag_ui": {
-            "enabled": true
+            "enabled": true,
+            "allow_client_tools": true
         }
 
     When enabled, ``POST /v1/ag-ui`` streams the graph as AG-UI events, so AG-UI clients
     such as CopilotKit can use the agent. It needs the ``ag-ui`` extra
     (``pip install "10xscale-agentflow-cli[ag-ui]"``). Off unless explicitly enabled.
+
+    ``allow_client_tools`` (default ``true``) offers the tools an AG-UI client sends with each
+    run to the model for that run. They run in the caller's own browser, cannot take the name of
+    a server tool, and must pass size limits. Set it to ``false`` to accept only the client tools
+    declared under ``remote_tools``.
     """
 
     enabled: bool = False
+    allow_client_tools: bool = True
 
     @classmethod
     def from_dict(cls, data: dict) -> "AgUiConfig":
         if not isinstance(data, dict):
             raise ValueError("ag_ui must be an object")
-        return cls(enabled=_parse_bool(data.get("enabled", False), field="ag_ui.enabled"))
+        return cls(
+            enabled=_parse_bool(data.get("enabled", False), field="ag_ui.enabled"),
+            allow_client_tools=_parse_bool(
+                data.get("allow_client_tools", True), field="ag_ui.allow_client_tools"
+            ),
+        )
 
 
 class GraphConfig:

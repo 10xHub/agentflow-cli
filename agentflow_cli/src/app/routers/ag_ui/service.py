@@ -31,8 +31,12 @@ async def stream_ag_ui(
     run_input: RunAgentInput,
     user: dict[str, Any],
     encoder: EventEncoder,
+    allow_client_tools: bool = True,
 ) -> AsyncIterator[str]:
     """Stream one AG-UI run as encoded events.
+
+    With ``allow_client_tools`` the tools the client sends are offered to the model for this run
+    (see ``ag_ui.allow_client_tools``); without it only ``remote_tools`` from agentflow.json are.
 
     The thread's checkpoint is the record of the conversation: only client messages it has not
     seen are sent to the graph. A run with nothing new (a client syncing state) still gets a
@@ -44,38 +48,10 @@ async def stream_ag_ui(
         yield encoder.encode(event)
 
     try:
-        checkpoint_state = await _checkpoint_state(service, run_input.thread_id, user)
-        context = list(getattr(checkpoint_state, "context", None) or [])
-        new_messages = select_new_messages(
-            run_input.messages,
-            known_ids={str(m.message_id) for m in context},
-            answered_call_ids=set(tool_result_ids(context)),
-        )
-        messages = to_agentflow_messages(new_messages)
-        _warn_unknown_tools(service, run_input)
-
-        if not messages:
-            if checkpoint_state is not None:
-                for event in mapper.map_state(checkpoint_state):
-                    yield encoder.encode(event)
-        else:
-            graph_input = GraphInputSchema(
-                messages=messages,
-                initial_state=initial_state,
-                config={
-                    "thread_id": run_input.thread_id,
-                    "run_id": run_input.run_id,
-                    AG_UI_CONFIG_KEY: {
-                        "context": [c.model_dump(mode="json") for c in run_input.context or []],
-                        "tools": [t.model_dump(mode="json") for t in run_input.tools or []],
-                        "forwarded_props": run_input.forwarded_props,
-                    },
-                },
-                response_granularity=ResponseGranularity.FULL,
-            )
-            async for chunk in service.stream_chunks(graph_input, user):
-                for event in mapper.map(chunk):
-                    yield encoder.encode(event)
+        async for event in _run_events(
+            service, run_input, user, mapper, initial_state, allow_client_tools
+        ):
+            yield encoder.encode(event)
     except ValueError as exc:
         logger.warning("AG-UI run rejected: %s", exc)
         for event in mapper.fail(str(exc), "INVALID_INPUT"):
@@ -88,6 +64,45 @@ async def stream_ag_ui(
 
     for event in mapper.finish():
         yield encoder.encode(event)
+
+
+async def _run_events(
+    service: GraphService,
+    run_input: RunAgentInput,
+    user: dict[str, Any],
+    mapper: AgUiEventMapper,
+    initial_state: dict[str, Any] | None,
+    allow_client_tools: bool,
+) -> AsyncIterator[Any]:
+    """The events between ``RUN_STARTED`` and the terminal event of one run."""
+    checkpoint_state = await _checkpoint_state(service, run_input.thread_id, user)
+    context = list(getattr(checkpoint_state, "context", None) or [])
+    new_messages = select_new_messages(
+        run_input.messages,
+        known_ids={str(m.message_id) for m in context},
+        answered_call_ids=set(tool_result_ids(context)),
+    )
+    messages = to_agentflow_messages(new_messages)
+    paused_at = _pending_interrupt(checkpoint_state)
+    resume = _resume_value(paused_at, run_input.resume or [])
+
+    if paused_at is not None and resume is _NO_RESUME:
+        # A thread paused at interrupt() only moves on with an answer; report the pause again
+        # instead of running the graph.
+        mapper.report_interrupt(paused_at.model_dump(mode="json"))
+        return
+    if not messages and resume is _NO_RESUME:
+        if checkpoint_state is not None:
+            for event in mapper.map_state(checkpoint_state):
+                yield event
+        return
+
+    graph_input, server_config = _graph_request(run_input, messages, initial_state, resume)
+    if not allow_client_tools:
+        server_config = {}
+    async for chunk in service.stream_chunks(graph_input, user, server_config):
+        for event in mapper.map(chunk):
+            yield event
 
 
 def _client_state(state: Any) -> dict[str, Any] | None:
@@ -108,18 +123,71 @@ async def _checkpoint_state(service: GraphService, thread_id: str, user: dict[st
     return await service.checkpointer.aget_state(config)
 
 
-def _warn_unknown_tools(service: GraphService, run_input: RunAgentInput) -> None:
-    """Frontend tools reach the model only when agentflow.json declares them.
+# Marks "the client sent no answer for the open interrupt" (a None answer means cancelled).
+_NO_RESUME: Any = object()
 
-    AG-UI clients send their tools with every run, but the graph's client-side tools are the
-    ``remote_tools`` configured at startup. Name the ones the model cannot see so the gap is
-    easy to find.
+# ``remote_tools`` run-config key read by agentflow's ToolNode for per-run client tools.
+RUN_REMOTE_TOOLS_KEY = "remote_tools"
+
+
+def _pending_interrupt(state: Any) -> Any:
+    """The interrupt() the thread is paused at, or ``None`` (and on cores without interrupts)."""
+    if state is None:
+        return None
+    try:
+        from agentflow.utils.interrupt import pending_interrupt
+    except ImportError:  # agentflow core older than interrupt()
+        return None
+    return pending_interrupt(state)
+
+
+def _resume_value(paused_at: Any, entries: list[Any]) -> Any:
+    """The graph resume value for the AG-UI ``resume`` entries.
+
+    Returns ``_NO_RESUME`` when nothing answers the open interrupt. A ``cancelled`` entry resumes
+    with ``None``.
+
+    Raises:
+        ValueError: ``resume`` was sent but the thread is not paused at that interrupt.
     """
-    sent = {tool.name for tool in run_input.tools or []}
-    unknown = sorted(sent - service._remote_tool_names())
-    if unknown:
-        logger.warning(
-            "AG-UI client tools not declared in agentflow.json remote_tools, "
-            "so the model cannot call them: %s",
-            ", ".join(unknown),
-        )
+    if not entries:
+        return _NO_RESUME
+    if paused_at is None:
+        raise ValueError("Nothing to resume: this thread is not paused at an interrupt")
+    for entry in entries:
+        if entry.interrupt_id == paused_at.id:
+            return entry.payload if entry.status == "resolved" else None
+    raise ValueError(f"resume does not answer the open interrupt '{paused_at.id}'")
+
+
+def _graph_request(
+    run_input: RunAgentInput,
+    messages: list[Any],
+    initial_state: dict[str, Any] | None,
+    resume: Any,
+) -> tuple[GraphInputSchema, dict[str, Any]]:
+    """The graph input for one AG-UI run, and the server-owned run config that goes with it."""
+    extra: dict[str, Any] = {} if resume is _NO_RESUME else {"resume": resume}
+    graph_input = GraphInputSchema(
+        messages=messages,
+        initial_state=initial_state,
+        config={
+            "thread_id": run_input.thread_id,
+            "run_id": run_input.run_id,
+            AG_UI_CONFIG_KEY: {
+                "context": [c.model_dump(mode="json") for c in run_input.context or []],
+                "tools": [t.model_dump(mode="json") for t in run_input.tools or []],
+                "forwarded_props": run_input.forwarded_props,
+            },
+        },
+        response_granularity=ResponseGranularity.FULL,
+        **extra,
+    )
+    # The client's own tools, offered to the model for this run only.
+    server_config = {
+        RUN_REMOTE_TOOLS_KEY: [
+            {"name": t.name, "description": t.description, "parameters": t.parameters}
+            for t in run_input.tools or []
+        ]
+    }
+    return graph_input, server_config
