@@ -422,6 +422,8 @@ class InitCommand(BaseCommand):
             "env": ".env",
             "auth": None,
             "thread_name_generator": None,
+            # AG-UI endpoint for clients such as CopilotKit. Off until turned on here.
+            "ag_ui": {"enabled": False},
         }
 
         if not is_prod:

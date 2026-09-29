@@ -6,6 +6,9 @@
     "path": "auth.agent_auth:AgentAuth"
   },
   "remote_tools": [],
+  "ag_ui": {
+    "enabled": false
+  },
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "injectq": "graph.agent:container",
   "rate_limit": {

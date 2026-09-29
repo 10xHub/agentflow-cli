@@ -562,6 +562,23 @@ class GraphService:
         Yields:
             str: Individual JSON chunks from graph execution with newline delimiters.
         """
+        async for chunk in self.stream_chunks(graph_input, user):
+            yield chunk.model_dump_json(serialize_as_any=True) + "\n"
+
+    async def stream_chunks(
+        self,
+        graph_input: GraphInputSchema,
+        user: dict[str, Any],
+    ) -> AsyncIterable[StreamChunk]:
+        """
+        Streams the graph execution as ``StreamChunk`` objects.
+
+        Shared by the NDJSON stream and protocol adapters such as AG-UI. The graph reuses one
+        chunk object for successive messages, so consume each chunk before asking for the next.
+
+        Yields:
+            StreamChunk: Graph output; failures arrive as an ``ERROR`` chunk, never raised.
+        """
         # Initialize meta here so it is available in the except blocks even if
         # _prepare_input raises before assigning it.
         meta: dict[str, Any] = {}
@@ -610,7 +627,7 @@ class GraphService:
                     StreamEvent.ERROR,
                 ):
                     run_status = "error"
-                yield chunk.model_dump_json(serialize_as_any=True) + "\n"
+                yield chunk
                 if (
                     self.config.thread_name_generator_path
                     and meta["is_new_thread"]
@@ -631,13 +648,10 @@ class GraphService:
                 )
                 meta["thread_name"] = thread_name
 
-                yield (
-                    StreamChunk(
-                        event=StreamEvent.UPDATES,
-                        data={"status": "completed"},
-                        metadata=meta,
-                    ).model_dump_json(serialize_as_any=True)
-                    + "\n"
+                yield StreamChunk(
+                    event=StreamEvent.UPDATES,
+                    data={"status": "completed"},
+                    metadata=meta,
                 )
 
         except Exception as e:
@@ -669,13 +683,10 @@ class GraphService:
 
             is_production = get_settings().MODE == "production"
             reason = _sanitize_error_message(str(e), "GRAPH_STREAM_ERROR", is_production)
-            yield (
-                StreamChunk(
-                    event=StreamEvent.ERROR,
-                    data={"reason": reason},
-                    metadata=meta,
-                ).model_dump_json(serialize_as_any=True)
-                + "\n"
+            yield StreamChunk(
+                event=StreamEvent.ERROR,
+                data={"reason": reason},
+                metadata=meta,
             )
 
     async def realtime_graph(

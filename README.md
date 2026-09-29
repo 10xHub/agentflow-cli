@@ -190,6 +190,7 @@ agentflow skills --all          # install for every supported agent
 agentflow skills --agent claude # install for one
 agentflow skills --list         # show supported agents
 agentflow skills --force        # overwrite an existing install
+agentflow skills --validate ./.agents/skills  # check skills against the Agent Skills spec
 ```
 
 Run without flags to get a checklist of the supported agents. Each row shows

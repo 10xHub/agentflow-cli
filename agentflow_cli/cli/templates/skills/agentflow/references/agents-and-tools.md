@@ -344,6 +344,40 @@ graph.add_node("TOOL", tool_node)
 
 ---
 
+## Skills (Agent Skills specification)
+
+`skills=SkillConfig(...)` loads skills that follow https://agentskills.io/specification: one
+directory per skill with a `SKILL.md` (YAML frontmatter `name` + `description`, optional
+`license`, `compatibility`, `allowed-tools`, `metadata`) and optional `scripts/`, `references/`,
+`assets/`.
+
+```python
+from agentflow.core.skills import SkillConfig
+
+agent = Agent(
+    model="gpt-4o",
+    tool_node=ToolNode([]),
+    skills=SkillConfig(skills_dir=["./.agents/skills", "./shared-skills"]),
+)
+```
+
+- On-demand mode (default) adds an `<available_skills>` catalog (name + description) to the
+  system prompt and registers `activate_skill(skill_name)`. The result is the SKILL.md body in
+  `<skill_content name="...">` tags plus a `<skill_resources>` file list.
+- `read_skill_resource(skill_name, path)` is registered when any skill bundles files. It reads any
+  file in the skill directory as text (markdown, `.py`, `.sh`, JSON, ...); nothing is executed.
+- `mode="session", preload_from="FIELD"` injects the skill named by `state.FIELD` every call.
+- Activated skills are recorded in `state.execution_meta.internal_data["active_skills"]` and are
+  re-injected if context trimming drops their tool result.
+- Agentflow extensions live in `metadata` as strings: `triggers: "a; b"`, `tags: "x, y"`,
+  `priority: "10"`.
+- `SkillConfig` options: `skills_dir` (path or ordered list; earlier wins on name clashes),
+  `inject_catalog`, `hot_reload`, `max_resource_bytes`, `include_skill_path`, `mode`,
+  `preload_from`.
+- Validate with `agentflow skills --validate PATH` or `agentflow.core.skills.validate_skill`.
+
+---
+
 ## Source map
 
 - Agent: https://github.com/10xHub/Agentflow/blob/main/agentflow/agentflow/core/graph/agent.py

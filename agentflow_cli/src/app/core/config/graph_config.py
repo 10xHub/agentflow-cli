@@ -332,6 +332,30 @@ def _connection_limit(data: dict, key: str, default: int) -> int | None:
     return value
 
 
+@dataclass
+class AgUiConfig:
+    """AG-UI protocol endpoint settings parsed from agentflow.json.
+
+    Example::
+
+        "ag_ui": {
+            "enabled": true
+        }
+
+    When enabled, ``POST /v1/ag-ui`` streams the graph as AG-UI events, so AG-UI clients
+    such as CopilotKit can use the agent. It needs the ``ag-ui`` extra
+    (``pip install "10xscale-agentflow-cli[ag-ui]"``). Off unless explicitly enabled.
+    """
+
+    enabled: bool = False
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgUiConfig":
+        if not isinstance(data, dict):
+            raise ValueError("ag_ui must be an object")
+        return cls(enabled=_parse_bool(data.get("enabled", False), field="ag_ui.enabled"))
+
+
 class GraphConfig:
     def __init__(self, path: str = "agentflow.json"):
         with Path(path).open() as f:
@@ -473,3 +497,12 @@ class GraphConfig:
         """
         data = self.data.get("websocket", None)
         return WebSocketConfig.from_dict({} if data is None else data)
+
+    @property
+    def ag_ui(self) -> AgUiConfig:
+        """AG-UI endpoint settings from agentflow.json (``ag_ui`` key).
+
+        Returns a disabled config when the key is absent.
+        """
+        data = self.data.get("ag_ui", None)
+        return AgUiConfig.from_dict({} if data is None else data)

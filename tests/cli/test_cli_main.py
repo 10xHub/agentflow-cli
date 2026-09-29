@@ -112,6 +112,18 @@ def test_skills_command(monkeypatch):
     assert called["force"] is True
     assert called["all_agents"] is True
     assert called["list_agents"] is True
+    assert called["validate_paths"] is None
+
+
+def test_skills_validate_option(monkeypatch):
+    called = {}
+    monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
+    monkeypatch.setattr(
+        main_mod.SkillsCommand, "execute", lambda self, **kwargs: called.update(kwargs) or 0
+    )
+    result = runner.invoke(main_mod.app, ["skills", "--validate", "a", "--validate", "b"])
+    assert result.exit_code == 0
+    assert called["validate_paths"] == ["a", "b"]
 
 
 def test_test_command(monkeypatch):

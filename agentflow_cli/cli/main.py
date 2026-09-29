@@ -746,6 +746,14 @@ def skills(
         "-l",
         help="List supported agents and exit",
     ),
+    validate: list[str] | None = typer.Option(
+        None,
+        "--validate",
+        help=(
+            "Validate a skill directory, or a folder of skill directories, against the "
+            "Agent Skills specification and exit. Repeatable."
+        ),
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -759,7 +767,7 @@ def skills(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Install bundled Agentflow skills for Codex, Claude, or GitHub."""
+    """Install bundled Agentflow skills for Codex, Claude, or GitHub, or validate skills."""
     _configure_command(verbose=verbose, quiet=quiet)
 
     try:
@@ -770,6 +778,7 @@ def skills(
             force=force,
             all_agents=all_agents,
             list_agents=list_agents,
+            validate_paths=validate,
         )
         sys.exit(exit_code)
     except Exception as e:

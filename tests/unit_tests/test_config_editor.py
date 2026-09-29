@@ -146,6 +146,13 @@ def test_websocket_rejects_negative_limit() -> None:
     assert _levels(issues, "websocket") == ["error"]
 
 
+def test_ag_ui_is_known_and_validated() -> None:
+    ok = validate_config({"agent": "graph.react:app", "ag_ui": {"enabled": True}})
+    assert _levels(ok, "ag_ui") == []
+    bad = validate_config({"agent": "graph.react:app", "ag_ui": {"enabled": "maybe"}})
+    assert _levels(bad, "ag_ui") == ["error"]
+
+
 def test_observability_checks() -> None:
     issues = validate_config(
         {"agent": "graph.react:app", "observability": {"level": "all", "logfire": []}}

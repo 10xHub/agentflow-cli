@@ -24,6 +24,34 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **AG-UI endpoint (`POST /v1/ag-ui`)** serves the graph over the
+  [AG-UI protocol](https://docs.ag-ui.com), so AG-UI clients such as CopilotKit
+  (through its generic `HttpAgent`) can use an Agentflow agent. Off by default: set
+  `"ag_ui": {"enabled": true}` in `agentflow.json` and install the new `ag-ui` extra
+  (`pip install "10xscale-agentflow-cli[ag-ui]"`, `ag-ui-protocol>=1.0,<2`). The server
+  refuses to start with a clear install hint when the endpoint is enabled but the package
+  is missing. The route uses the `graph:stream` permission and checks `threadId`
+  ownership when auth is configured. Streams text and reasoning, tool calls and results,
+  node steps, and application state (`STATE_SNAPSHOT`). The thread's checkpoint is the
+  record of the conversation, so only new user messages and tool results from the client
+  reach the graph. Frontend tools work when they are also declared under `remote_tools`.
+  `RunAgentInput.context`, `tools` and `forwardedProps` are available to nodes as
+  `config["ag_ui"]`. Interrupt/resume is not supported yet. `agentflow init` writes
+  `"ag_ui": {"enabled": false}`, and `agentflow config` shows the new section.
+- `GraphService.stream_chunks()` yields the graph stream as `StreamChunk` objects;
+  `stream_graph()` (NDJSON) is now a thin wrapper over it.
+
+- **`agentflow skills --validate PATH`** checks a skill directory, or a folder of
+  skill directories, against the Agent Skills specification (agentskills.io).
+  It reports errors and warnings per skill and exits `1` when any skill is
+  invalid. The option is repeatable, and it requires a `10xscale-agentflow`
+  release that ships `agentflow.core.skills.validate_skill`.
+- **The bundled Agentflow skill conforms to the Agent Skills specification.** Its
+  `description` was invalid YAML (an unquoted `TRIGGER when:`), so strict parsers,
+  including Agentflow's own loader, rejected it. Codex, Claude and GitHub now all
+  receive one identical `SKILL.md` that references `references/...` relative to
+  the skill directory, instead of three copies hard-wired to one install path
+  each.
 - **Persistent full-screen application surface.** On an interactive terminal a
   command now runs on its own screen with branded chrome pinned in place: a
   header (gradient rule, identity, version, subtitle) at the top, a footer

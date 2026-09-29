@@ -169,7 +169,8 @@ init_errors_handler(app)
 
 # init routes
 # The evals viewer reads local report files and has no auth, so it is a development tool only.
-init_routes(app, evals=settings.MODE != "production")
+# The AG-UI endpoint is opt-in through agentflow.json.
+init_routes(app, evals=settings.MODE != "production", ag_ui=graph_config.ag_ui.enabled)
 
 # Secure by construction: refuse to boot if any non-public route forgot its
 # RequirePermission guard (a forgotten guard would otherwise ship an open endpoint).

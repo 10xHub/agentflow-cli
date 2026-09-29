@@ -31,5 +31,6 @@ export const ICONS = {
 
 export const SECTION_ICONS = {
   core: "box", auth: "key", authorization: "shield", rate_limit: "gauge", websocket: "arrows",
+  ag_ui: "external",
   observability: "activity", plugins: "layers", remote_tools: "wrench", test: "flask", evaluation: "target",
 };

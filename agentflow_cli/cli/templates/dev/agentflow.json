@@ -3,6 +3,9 @@
   "env": ".env",
   "auth": null,
   "remote_tools": [],
+  "ag_ui": {
+    "enabled": false
+  },
   "thread_name_generator": null,
   "evaluation": {
     "directory": "evals",

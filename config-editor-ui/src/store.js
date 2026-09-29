@@ -17,7 +17,7 @@ export const TIERS = [
   {
     id: "advanced", title: "Advanced",
     tagline: "Tune connection limits, client-side tools, and your test loop.",
-    sections: ["websocket", "remote_tools", "test", "evaluation"],
+    sections: ["websocket", "ag_ui", "remote_tools", "test", "evaluation"],
   },
 ];
 

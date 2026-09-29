@@ -43,6 +43,11 @@ class _AgentTarget:
         return "file+folder"
 
 
+# Every agent gets the same spec-conformant skill folder (SKILL.md + references/);
+# the SKILL.md uses paths relative to the skill directory, so one copy works in
+# any install location.
+_SKILL_SOURCE = "agentflow"
+
 _TARGETS: tuple[_AgentTarget, ...] = (
     _AgentTarget(
         name="Codex",
@@ -50,13 +55,8 @@ _TARGETS: tuple[_AgentTarget, ...] = (
             _InstallArtifact(
                 kind="folder",
                 install_relpath=".agents/skills/agentflow",
-                source_relpath="agent-skills",
+                source_relpath=_SKILL_SOURCE,
                 manifest=True,
-            ),
-            _InstallArtifact(
-                kind="file",
-                install_relpath=".agents/skills/agentflow/SKILL.md",
-                source_relpath="codex/SKILL.md",
             ),
         ),
     ),
@@ -66,13 +66,8 @@ _TARGETS: tuple[_AgentTarget, ...] = (
             _InstallArtifact(
                 kind="folder",
                 install_relpath=".claude/skills/agentflow",
-                source_relpath="agent-skills",
+                source_relpath=_SKILL_SOURCE,
                 manifest=True,
-            ),
-            _InstallArtifact(
-                kind="file",
-                install_relpath=".claude/skills/agentflow/SKILL.md",
-                source_relpath="claude/SKILL.md",
             ),
         ),
     ),
@@ -87,13 +82,8 @@ _TARGETS: tuple[_AgentTarget, ...] = (
             _InstallArtifact(
                 kind="folder",
                 install_relpath=".github/skills/agentflow",
-                source_relpath="agent-skills",
+                source_relpath=_SKILL_SOURCE,
                 manifest=True,
-            ),
-            _InstallArtifact(
-                kind="file",
-                install_relpath=".github/skills/agentflow/SKILL.md",
-                source_relpath="copilot/SKILL.md",
             ),
         ),
     ),
@@ -108,7 +98,7 @@ _AGENT_LOOKUP: dict[str, _AgentTarget] = {
 
 
 class SkillsCommand(BaseCommand):
-    """Command to install bundled Agentflow skills for supported agents."""
+    """Install bundled Agentflow skills, or validate skills against the spec."""
 
     def execute(
         self,
@@ -117,6 +107,7 @@ class SkillsCommand(BaseCommand):
         force: bool = False,
         all_agents: bool = False,
         list_agents: bool = False,
+        validate_paths: list[str] | None = None,
         **kwargs: Any,
     ) -> int:
         """Execute the skills command.
@@ -127,11 +118,39 @@ class SkillsCommand(BaseCommand):
             force: Overwrite an existing installation.
             all_agents: Install for every supported agent.
             list_agents: Print supported agents and exit.
+            validate_paths: Skill directories (or folders of skills) to validate
+                against the Agent Skills specification instead of installing.
             **kwargs: Additional arguments.
 
         Returns:
             Exit code.
         """
+        if validate_paths:
+            return self._run_validate(validate_paths)
+        return self._run_install(
+            agent, path, force=force, all_agents=all_agents, list_agents=list_agents
+        )
+
+    def _run_validate(self, validate_paths: list[str]) -> int:
+        try:
+            self.output.command_header(
+                "skills",
+                "Validate skills against the Agent Skills specification (agentskills.io).",
+                color="magenta",
+            )
+            return self._validate(validate_paths)
+        except ValidationError as e:
+            return self.handle_error(e)
+
+    def _run_install(
+        self,
+        agent: str | None,
+        path: str,
+        *,
+        force: bool,
+        all_agents: bool,
+        list_agents: bool,
+    ) -> int:
         try:
             self.output.command_header(
                 "skills",
@@ -178,6 +197,59 @@ class SkillsCommand(BaseCommand):
             file_error = FileOperationError(f"Failed to install Agentflow skills: {e}")
             file_error.__cause__ = e
             return self.handle_error(file_error)
+
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
+
+    def _validate(self, paths: list[str]) -> int:
+        """Validate each skill found under *paths*. Returns 1 if any is invalid."""
+        try:
+            from agentflow.core.skills import validate_skill
+            from agentflow.core.skills.loader import iter_skill_dirs
+        except ImportError as exc:
+            raise ValidationError(
+                "Skill validation needs a 10xscale-agentflow release that ships "
+                "agentflow.core.skills.validate_skill. Upgrade 10xscale-agentflow.",
+                field="validate",
+            ) from exc
+
+        rows: list[list[str]] = []
+        invalid = 0
+        checked = 0
+        for raw_path in paths:
+            skill_dirs = iter_skill_dirs(raw_path)
+            if not skill_dirs:
+                self.output.error(
+                    f"No skill found at {raw_path}: expected a SKILL.md in it or in its "
+                    "subdirectories."
+                )
+                invalid += 1
+                continue
+
+            for skill_dir in skill_dirs:
+                checked += 1
+                issues = validate_skill(skill_dir)
+                errors = [issue for issue in issues if issue.level == "error"]
+                warnings = [issue for issue in issues if issue.level == "warning"]
+                for issue in errors:
+                    self.output.error(f"{skill_dir.name}: {issue.message}")
+                for issue in warnings:
+                    self.output.warning(f"{skill_dir.name}: {issue.message}")
+                if errors:
+                    invalid += 1
+                status = "invalid" if errors else "valid with warnings" if warnings else "valid"
+                rows.append([str(skill_dir), status, str(len(errors)), str(len(warnings))])
+
+        if rows:
+            self.output.print_table(
+                ["Skill", "Status", "Errors", "Warnings"], rows, title="Agent Skills validation"
+            )
+        if invalid:
+            self.output.error(f"{invalid} skill(s) failed validation.")
+            return 1
+        self.output.success(f"{checked} skill(s) conform to the Agent Skills specification.")
+        return 0
 
     # ------------------------------------------------------------------
     # Selection
@@ -280,7 +352,7 @@ class SkillsCommand(BaseCommand):
                         if strict:
                             paths = ", ".join(str(dest) for dest in existing)
                             raise FileOperationError(
-                                f"Skill already installed at {paths}. " "Use --force to overwrite.",
+                                f"Skill already installed at {paths}. Use --force to overwrite.",
                                 file_path=str(existing[0]),
                             )
                         step.skip("already installed — pass --force to overwrite")

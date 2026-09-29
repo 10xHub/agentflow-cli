@@ -239,7 +239,13 @@ class TestGraphServiceMethods:
         assert data1["data"]["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_stream_graph_exception_handling(self, service, mock_graph):
+    async def test_stream_graph_exception_handling(self, service, mock_graph, monkeypatch):
+        from agentflow_cli.src.app.core.config import settings as settings_module
+
+        # The reason is only generic in production; do not depend on which test cached
+        # the settings first.
+        production = settings_module.Settings(MODE="production", _env_file=None)
+        monkeypatch.setattr(settings_module, "get_settings", lambda: production)
         gi = GraphInputSchema(
             messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}],
             config={"thread_id": "t1"},

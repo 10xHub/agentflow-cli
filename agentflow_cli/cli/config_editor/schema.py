@@ -75,6 +75,7 @@ KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
         "authorization",
         "rate_limit",
         "websocket",
+        "ag_ui",
         "observability",
         "injectq",
         "store",
@@ -306,6 +307,28 @@ _SECTIONS: list[dict[str, Any]] = [
                     "agent's own model. Empty means clients cannot choose."
                 ),
             },
+        ],
+    },
+    {
+        "id": "ag_ui",
+        "title": "AG-UI",
+        "description": "Serve the graph over the AG-UI protocol, for clients such as CopilotKit.",
+        "key": "ag_ui",
+        "optional": True,
+        "off_summary": "The AG-UI endpoint (POST /v1/ag-ui) is not mounted.",
+        "default": {"enabled": True},
+        "fields": [
+            {
+                "path": ["ag_ui", "enabled"],
+                "default": False,
+                "label": "Enabled",
+                "type": "bool",
+                "help": "Mounts POST /v1/ag-ui. It uses the same auth as /v1/graph/stream.",
+            },
+        ],
+        "notes": [
+            'Needs the ag-ui extra: pip install "10xscale-agentflow-cli[ag-ui]".',
+            "Browser tools reach the model only when they are also listed in remote_tools.",
         ],
     },
     {

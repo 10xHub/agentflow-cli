@@ -20,7 +20,7 @@ agentflow = agentflow_cli.cli.main:main
 
 `agentflow init`
 
-- Scaffolds `agentflow.json`, `graph/__init__.py`, `graph/react.py`, and `skills/agent-skills`.
+- Scaffolds `agentflow.json`, `graph/__init__.py`, and `graph/react.py`, and suggests `agentflow skills` as a next step.
 - Options include `--path/-p`, `--force/-f`, `--prod`, `--verbose/-v`, and `--quiet/-q`.
 - `--prod` also adds production project files such as `pyproject.toml` and `.pre-commit-config.yaml`.
 
@@ -43,12 +43,13 @@ agentflow = agentflow_cli.cli.main:main
 
 `agentflow skills`
 
-- Installs the bundled Agentflow skill into an agent-specific project directory.
+- Installs the bundled Agentflow skill (an Agent Skills spec folder: `SKILL.md` + `references/`) into an agent-specific project directory. Every agent gets the same folder; paths inside it are relative to the skill directory.
 - Prompts for the target agent when `--agent` is omitted:
   - `1` / `codex`: `.agents/skills/agentflow`
   - `2` / `claude`: `.claude/skills/agentflow`
   - `3` / `github`: `.github/instructions/agentflow.instructions.md` and `.github/skills/agentflow`
-- Options include `--agent/-a`, `--path/-p`, `--force/-f`, `--verbose/-v`, and `--quiet/-q`.
+- Options include `--agent/-a`, `--path/-p`, `--force/-f`, `--all`, `--list/-l`, `--verbose/-v`, and `--quiet/-q`.
+- `--validate PATH` (repeatable) checks a skill directory, or a folder of skill directories, against the Agent Skills specification (https://agentskills.io/specification) and exits non-zero on errors. Nothing is installed.
 - Source templates: https://github.com/10xHub/agentflow-cli/tree/main/agentflow_cli/cli/templates/skills
 
 `agentflow version`

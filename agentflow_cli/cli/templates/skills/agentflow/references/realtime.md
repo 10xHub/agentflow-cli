@@ -46,12 +46,12 @@ app = AudioAgent(
 - Tools work like a normal `ToolNode` (reason -> tool -> respond, including barge-in). No
   sub-agents / handoff in v1.
 - `system_prompt`, `skills`, and `memory` work like `ReactAgent`: the agent's `system_prompt` (plus
-  the skills trigger table / session-mode skill content and the memory system prompt) is flattened
+  the skills catalog / session-mode skill content and the memory system prompt) is flattened
   into the single Gemini Live `system_instruction` at connect, and `{field}` placeholders are
   interpolated from state exactly like the turn-based path. Skill/memory **tools** are advertised
   normally. Caveat: `system_instruction` is fixed for the session, so state-dependent content
   (session-mode skill from a state field, memory preload) is a connect-time snapshot. Mid-session
-  dynamism goes through `set_skill` / memory tools, which work continuously.
+  dynamism goes through `activate_skill` / memory tools, which work continuously.
 
 `LiveAgent` (the graph root `AudioAgent` wraps) is at
 `from agentflow.core.realtime.live_agent import LiveAgent`. It is not re-exported from
