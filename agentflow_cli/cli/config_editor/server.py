@@ -31,7 +31,7 @@ from agentflow_cli.cli.config_editor.validation import has_errors, validate_conf
 
 
 LOOPBACK_HOST = "127.0.0.1"
-TOKEN_HEADER = "X-Agentflow-Token"  # noqa: S105 - a header name, not a secret
+TOKEN_HEADER = "X-Agentflow-Token"  # noqa: S105 - a header name, not a secret  # nosec B105
 MAX_BODY_BYTES = 1_000_000
 NEW_FILE_TEMPLATE: dict[str, Any] = {"agent": "graph.agent:app", "env": ".env"}
 

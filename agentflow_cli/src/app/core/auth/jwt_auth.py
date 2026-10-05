@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover
 
 
 # RFC 7518 3.2: an HMAC key must be at least as long as the hash output (256 bits for HS256).
-MIN_HMAC_SECRET_BYTES = 32
+MIN_HMAC_BYTES = 32
 
 
 def check_jwt_settings(settings: Settings) -> None:
@@ -27,10 +27,10 @@ def check_jwt_settings(settings: Settings) -> None:
     """
     algorithm = (settings.JWT_ALGORITHM or "").upper()
     secret = settings.JWT_SECRET_KEY or ""
-    if not algorithm.startswith("HS") or len(secret.encode()) >= MIN_HMAC_SECRET_BYTES:
+    if not algorithm.startswith("HS") or len(secret.encode()) >= MIN_HMAC_BYTES:
         return
     message = (
-        f"JWT_SECRET_KEY is shorter than {MIN_HMAC_SECRET_BYTES} bytes, which is too weak for "
+        f"JWT_SECRET_KEY is shorter than {MIN_HMAC_BYTES} bytes, which is too weak for "
         f"{algorithm}. Generate one with: "
         "python -c 'import secrets; print(secrets.token_urlsafe(48))'"
     )
