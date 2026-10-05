@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import pytest
-from agentflow.core.authz import ALL_SCOPES
 
-from agentflow_cli.src.app.core.auth.authorization import RoleBasedAuthorizationBackend
+from agentflow_cli.src.app.core.auth.authorization import (
+    RoleBasedAuthorizationBackend,
+    all_scopes,
+)
 
 
 ROLES = {
@@ -30,7 +32,35 @@ def test_member_gets_role_scopes_plus_defaults():
 
 def test_admin_wildcard_expands_to_all_scopes():
     b = _backend()
-    assert set(b.scopes_for({"role": "admin"})) == set(ALL_SCOPES)
+    assert set(b.scopes_for({"role": "admin"})) == set(all_scopes())
+
+
+def _required_scopes() -> set[str]:
+    """Every ``resource:action`` a route asks ``RequirePermission`` for."""
+    from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+    from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer
+    from agentflow_cli.src.app.routers.graph.router import router as graph
+    from agentflow_cli.src.app.routers.media.router import router as media
+    from agentflow_cli.src.app.routers.store.router import router as store
+
+    found: set[str] = set()
+
+    def walk(dependant):
+        for dep in dependant.dependencies:
+            if isinstance(dep.call, RequirePermission):
+                found.add(f"{dep.call.resource}:{dep.call.action}")
+            walk(dep)
+
+    for router in (checkpointer, graph, media, store):
+        for route in router.routes:
+            walk(route.dependant)
+    return found
+
+
+def test_wildcard_role_reaches_every_route():
+    required = _required_scopes()
+    assert {"store:read", "store:write", "store:delete"} <= required
+    assert required <= all_scopes()
 
 
 def test_no_role_gets_only_defaults():

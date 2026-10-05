@@ -422,6 +422,8 @@ class InitCommand(BaseCommand):
             "env": ".env",
             "auth": None,
             "thread_name_generator": None,
+            # AG-UI endpoint for clients such as CopilotKit. Off until turned on here.
+            "ag_ui": {"enabled": False},
         }
 
         if not is_prod:
@@ -453,7 +455,7 @@ class InitCommand(BaseCommand):
                 "window": context.get("rl_window", 60),
                 "by": context.get("rl_by", "ip"),
                 "trusted_proxy_headers": context.get("rl_trusted_proxy", False),
-                "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
+                "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"],
             }
 
         return config

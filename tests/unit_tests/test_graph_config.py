@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 
@@ -28,3 +29,61 @@ def test_graph_config_missing_agent_raises(tmp_path: Path):
 
     with pytest.raises(ValueError):
         _ = GraphConfig(str(cfg_path)).graph_path
+
+
+def test_graph_config_validates_remote_tools(tmp_path: Path):
+    cfg_path = tmp_path / "cfg.json"
+    cfg_path.write_text(
+        json.dumps(
+            {
+                "agent": "mod:func",
+                "remote_tools": [
+                    {
+                        "node": "tools",
+                        "name": "write_report",
+                        "description": "Write a report on the client.",
+                        "parameters": {"type": "object"},
+                    }
+                ],
+            }
+        )
+    )
+
+    tool = GraphConfig(str(cfg_path)).remote_tools[0]
+    assert tool.node_name == "tools"
+    assert tool.parameters == {"type": "object", "properties": {}, "required": []}
+
+
+def test_graph_config_rejects_remote_tool_key_typos(tmp_path: Path):
+    cfg_path = tmp_path / "cfg.json"
+    cfg_path.write_text(
+        json.dumps(
+            {
+                "agent": "mod:func",
+                "remote_tools": [
+                    {
+                        "nod": "tools",
+                        "name": "write_report",
+                        "description": "Write a report on the client.",
+                    }
+                ],
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="Invalid remote_tools configuration") as exc_info:
+        _ = GraphConfig(str(cfg_path)).remote_tools
+    assert isinstance(exc_info.value.__cause__, ValidationError)
+
+
+def test_graph_config_rejects_duplicate_remote_tools(tmp_path: Path):
+    tool = {
+        "node_name": "tools",
+        "name": "write_report",
+        "description": "Write a report on the client.",
+    }
+    cfg_path = tmp_path / "cfg.json"
+    cfg_path.write_text(json.dumps({"agent": "mod:func", "remote_tools": [tool, tool]}))
+
+    with pytest.raises(ValueError, match="Duplicate remote tool name 'write_report'"):
+        _ = GraphConfig(str(cfg_path)).remote_tools

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.5.0"
+version = "0.5.1"
 description = "CLI and API for 10xscale AgentFlow"
 readme = "README.md"
 license = {text = "MIT"}
@@ -88,6 +88,9 @@ otel = [
     "opentelemetry-sdk>=1.20.0",
     "opentelemetry-instrumentation-fastapi>=0.40b0",
     "opentelemetry-exporter-otlp>=1.20.0",
+]
+ag-ui = [
+    "ag-ui-protocol>=1.0,<2",
 ]
 
 [project.scripts]
@@ -356,4 +359,6 @@ dev = [
     "redis>=5.0.7",
     "PyJWT",
     "textxtract[pdf,docx,html,xml,md]>=0.2.0",
+    # The ag-ui extra, so the AG-UI router tests run in CI instead of failing.
+    "ag-ui-protocol>=1.0,<2",
 ]

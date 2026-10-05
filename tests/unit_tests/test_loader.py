@@ -13,7 +13,7 @@ from agentflow_cli.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
 )
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from agentflow_cli.src.app.core.config.graph_config import GraphConfig, RemoteToolConfig
 from agentflow_cli.src.app.loader import (
     attach_all_modules,
     load_and_bind_auth,
@@ -287,8 +287,8 @@ def test_load_thread_name_generator():
 def test_load_and_bind_auth():
     container = MagicMock(spec=InjectQ)
 
-    # Missing method/path
-    with pytest.raises(ValueError, match="Both 'method' and 'path' must be specified"):
+    # custom needs a path
+    with pytest.raises(ValueError, match="requires a 'path'"):
         load_and_bind_auth(container, {"method": "custom"})
 
     # Path existence check failure
@@ -302,27 +302,45 @@ def test_load_and_bind_auth():
             mock_auth_instance = MagicMock(spec=BaseAuth)
             mock_load_auth.return_value = mock_auth_instance
 
-            # test "custom" method
             load_and_bind_auth(container, {"method": "custom", "path": "my.auth.path:auth"})
             container.bind_instance.assert_called_with(
                 BaseAuth, mock_auth_instance, allow_none=True
             )
 
-            # test "jwt" method
-            from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+    # "none" binds no backend
+    load_and_bind_auth(container, {"method": "none"})
+    container.bind_instance.assert_called_with(BaseAuth, None, allow_none=True)
 
-            load_and_bind_auth(container, {"method": "jwt", "path": "some_path.py:auth"})
-            # JwtAuth is instantiated inside, so we check if standard JwtAuth was bound
-            args, kwargs = container.bind_instance.call_args
-            assert args[0] == BaseAuth
-            assert isinstance(args[1], JwtAuth)
-
-            # test "none" method
-            load_and_bind_auth(container, {"method": "none", "path": "some_path.py:auth"})
-            container.bind_instance.assert_called_with(BaseAuth, None, allow_none=True)
+    # An unknown method fails at startup instead of silently binding no backend
+    with pytest.raises(ValueError, match="Unsupported auth method"):
+        load_and_bind_auth(container, {"method": "oauth"})
 
 
-def test_load_and_bind_authorization():
+def test_load_and_bind_auth_jwt_needs_no_path(monkeypatch, tmp_path):
+    """The documented ``"auth": "jwt"`` config must boot (it has no path)."""
+    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+    from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+
+    monkeypatch.setenv("JWT_SECRET_KEY", "x" * 32)
+    monkeypatch.setenv("JWT_ALGORITHM", "HS256")
+    config_file = tmp_path / "agentflow.json"
+    config_file.write_text('{"agent": "graph.react:app", "auth": "jwt"}')
+
+    container = MagicMock(spec=InjectQ)
+    load_and_bind_auth(container, GraphConfig(str(config_file)).auth_config())
+
+    args, kwargs = container.bind_instance.call_args
+    assert args[0] == BaseAuth
+    assert isinstance(args[1], JwtAuth)
+
+
+def test_load_and_bind_authorization(monkeypatch):
+    from agentflow_cli.src.app.core.config import settings as settings_module
+
+    # The unconfigured default depends on MODE; do not depend on which test cached the
+    # settings first.
+    development = settings_module.Settings(MODE="development", _env_file=None)
+    monkeypatch.setattr(settings_module, "get_settings", lambda: development)
     container = MagicMock(spec=InjectQ)
 
     # Path provided
@@ -347,6 +365,13 @@ async def test_attach_all_modules():
     config.thread_name_generator_path = "mod:generator"
     config.authorization_path = "mod:authorization"
     config.store_path = None
+    config.remote_tools = [
+        RemoteToolConfig(
+            node="tools",
+            name="read_clipboard",
+            description="Read clipboard text.",
+        )
+    ]
 
     container = MagicMock(spec=InjectQ)
 
@@ -370,6 +395,9 @@ async def test_attach_all_modules():
         result = await attach_all_modules(config, container)
 
         assert result == mock_graph
+        mock_graph.attach_remote_tools.assert_called_once_with(
+            [config.remote_tools[0].to_tool_schema()], "tools"
+        )
         # verify bindings
         container.bind_instance.assert_any_call(BaseAuth, None, allow_none=True)
         container.bind_instance.assert_any_call(ThreadNameGenerator, mock_generator)
@@ -378,6 +406,7 @@ async def test_attach_all_modules():
         # Test branch where config has no thread name generator and no auth config
         config.thread_name_generator_path = None
         config.auth_config.return_value = None
+        config.remote_tools = []
 
         container.reset_mock()
         await attach_all_modules(config, container)

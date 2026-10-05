@@ -32,14 +32,13 @@ logger = logging.getLogger("agentflow_api")
 # draining for a fixed window and then moving on.
 SHUTDOWN_DRAIN_TIMEOUT_SECONDS = 30.0
 
-settings = get_settings()
-# redis_client = Redis(
-#     host=settings.REDIS_HOST,
-#     port=settings.REDIS_PORT,
-# )
-
+# GraphConfig loads the ``env`` file named in agentflow.json, so it must run before Settings
+# is first built. `agentflow api` loads that file itself, but plain `gunicorn ...main:app`
+# (the generated Dockerfile) does not, and Settings is cached after the first read.
 graph_path = os.environ.get("GRAPH_PATH", "agentflow.json")
 graph_config = GraphConfig(graph_path)
+
+settings = get_settings()
 # Load the container
 container: InjectQ = load_container(graph_config.injectq_path) or InjectQ.get_instance()
 
@@ -151,6 +150,8 @@ app = FastAPI(
     summary=settings.SUMMARY,
     docs_url=settings.DOCS_PATH if settings.DOCS_PATH else None,
     redoc_url=settings.REDOCS_PATH if settings.REDOCS_PATH else None,
+    # The schema lists every route and model; serve it only alongside the docs.
+    openapi_url="/openapi.json" if settings.DOCS_PATH or settings.REDOCS_PATH else None,
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
     root_path=settings.ROOT_PATH,
@@ -167,7 +168,9 @@ init_logger(settings.LOG_LEVEL)
 init_errors_handler(app)
 
 # init routes
-init_routes(app)
+# The evals viewer reads local report files and has no auth, so it is a development tool only.
+# The AG-UI endpoint is opt-in through agentflow.json.
+init_routes(app, evals=settings.MODE != "production", ag_ui=graph_config.ag_ui.enabled)
 
 # Secure by construction: refuse to boot if any non-public route forgot its
 # RequirePermission guard (a forgotten guard would otherwise ship an open endpoint).

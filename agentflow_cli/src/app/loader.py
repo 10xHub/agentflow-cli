@@ -258,12 +258,31 @@ def load_thread_name_generator(path: str | None) -> ThreadNameGenerator | None:
 
 
 def load_and_bind_auth(container: InjectQ, auth_config: dict) -> None:
-    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
+    """Bind the authentication backend described by ``GraphConfig.auth_config()``.
+
+    ``jwt`` needs no path; ``custom`` needs a ``path`` to a ``BaseAuth``. Any other method
+    is a configuration error and fails at startup rather than silently binding no backend.
+    """
+    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth, check_jwt_settings
+    from agentflow_cli.src.app.core.config.settings import get_settings
 
     method = auth_config.get("method")
-    path = auth_config.get("path")
-    if not path or not method:
-        raise ValueError("Both 'method' and 'path' must be specified in auth_config.")
+    if method == "jwt":
+        check_jwt_settings(get_settings())
+        auth_backend: BaseAuth | None = JwtAuth()
+    elif method == "none":
+        auth_backend = None
+    elif method == "custom":
+        auth_backend = _load_custom_auth(auth_config.get("path"))
+    else:
+        raise ValueError(f"Unsupported auth method: {method!r}. Use 'jwt' or 'custom'.")
+
+    container.bind_instance(BaseAuth, auth_backend, allow_none=True)
+
+
+def _load_custom_auth(path: str | None) -> BaseAuth:
+    if not path:
+        raise ValueError("Custom auth requires a 'path' in auth_config.")
 
     # Extract file path before the ':' for existence check
     module_or_path = path.split(":", 1)[0] if ":" in path else path
@@ -280,14 +299,10 @@ def load_and_bind_auth(container: InjectQ, auth_config: dict) -> None:
     if not file_path.exists():
         raise ValueError(f"Custom auth path does not exist: {module_or_path}")
 
-    auth_backends = {
-        "custom": lambda: load_auth(path),
-        "jwt": lambda: JwtAuth(),
-        "none": lambda: None,
-    }
-
-    auth_backend = auth_backends.get(method, lambda: None)()
-    container.bind_instance(BaseAuth, auth_backend, allow_none=True)
+    auth = load_auth(path)
+    if auth is None:  # load_auth only returns None for an empty path, checked above
+        raise ValueError("Custom auth requires a 'path' in auth_config.")
+    return auth
 
 
 # Built-in authorization backends selectable by name in ``agentflow.json``.
@@ -407,7 +422,19 @@ async def attach_all_modules(
     config: GraphConfig,
     container: InjectQ,
 ) -> CompiledGraph | None:
+    remote_tools = config.remote_tools
     graph = await load_graph(config.graph_path)
+
+    if remote_tools:
+        if graph is None:
+            raise RuntimeError("Cannot attach remote tools because the graph failed to load")
+        grouped: dict[str, list[dict]] = {}
+        for tool in remote_tools:
+            grouped.setdefault(tool.node_name, []).append(tool.to_tool_schema())
+        for node_name, schemas in grouped.items():
+            graph.attach_remote_tools(schemas, node_name)
+        logger.info("Attached %d configured remote tools", len(remote_tools))
+
     logger.info("All modules attached successfully")
 
     # This binding we have done already in the library

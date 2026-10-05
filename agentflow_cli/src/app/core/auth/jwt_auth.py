@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
-from agentflow_cli.src.app.core.config.settings import get_settings
+from agentflow_cli.src.app.core.config.settings import Settings, get_settings
 from agentflow_cli.src.app.core.exceptions import UserAccountError
 
 
@@ -13,6 +13,34 @@ try:
     import jwt
 except ImportError:  # pragma: no cover
     jwt = None  # type: ignore[assignment]
+
+
+# RFC 7518 3.2: an HMAC key must be at least as long as the hash output (256 bits for HS256).
+MIN_HMAC_BYTES = 32
+
+
+def check_jwt_settings(settings: Settings) -> None:
+    """Refuse a guessable HMAC secret at startup (production), warn about it otherwise.
+
+    A short HS* secret can be brute-forced offline from any one token, after which anyone can
+    mint a token for any ``user_id``.
+    """
+    algorithm = (settings.JWT_ALGORITHM or "").upper()
+    secret = settings.JWT_SECRET_KEY or ""
+    if not algorithm.startswith("HS") or len(secret.encode()) >= MIN_HMAC_BYTES:
+        return
+    message = (
+        f"JWT_SECRET_KEY is shorter than {MIN_HMAC_BYTES} bytes, which is too weak for "
+        f"{algorithm}. Generate one with: "
+        "python -c 'import secrets; print(secrets.token_urlsafe(48))'"
+    )
+    if settings.MODE == "production":
+        raise ValueError(message)
+    logger.warning(message)
+
+
+def _unauthorized(message: str, error_code: str) -> UserAccountError:
+    return UserAccountError(message=message, error_code=error_code, status_code=401)
 
 
 class JwtAuth(BaseAuth):
@@ -45,10 +73,7 @@ class JwtAuth(BaseAuth):
         """
 
         if credential is None:
-            raise UserAccountError(
-                message="Invalid token, please login again",
-                error_code="REVOKED_TOKEN",
-            )
+            raise _unauthorized("Invalid token, please login again", "REVOKED_TOKEN")
 
         settings = get_settings()
         jwt_secret_key = settings.JWT_SECRET_KEY
@@ -66,33 +91,32 @@ class JwtAuth(BaseAuth):
             raise UserAccountError(
                 message="JWT settings are not configured",
                 error_code="JWT_SETTINGS_NOT_CONFIGURED",
+                status_code=500,
             )
 
+        required = ["exp"]
+        if settings.JWT_ISSUER:
+            required.append("iss")
+        if settings.JWT_AUDIENCE:
+            required.append("aud")
         try:
             decoded_token = jwt.decode(
                 token,
                 jwt_secret_key,
                 algorithms=[jwt_algorithm],
-                options={"require": ["exp"]},
+                issuer=settings.JWT_ISSUER or None,
+                audience=settings.JWT_AUDIENCE or None,
+                options={"require": required},
             )
         except jwt.ExpiredSignatureError:
-            raise UserAccountError(
-                message="Token has expired, please login again",
-                error_code="EXPIRED_TOKEN",
-            )
+            raise _unauthorized("Token has expired, please login again", "EXPIRED_TOKEN")
         except jwt.InvalidTokenError as err:
-            logger.exception("JWT AUTH ERROR", exc_info=err)
-            raise UserAccountError(
-                message="Invalid token, please login again",
-                error_code="INVALID_TOKEN",
-            )
+            logger.warning("JWT rejected: %s", type(err).__name__)
+            raise _unauthorized("Invalid token, please login again", "INVALID_TOKEN")
 
         response.headers["WWW-Authenticate"] = 'Bearer realm="auth_required"'
 
         # check if user_id exists in the token
         if "user_id" not in decoded_token:
-            raise UserAccountError(
-                message="Invalid token, user_id missing",
-                error_code="INVALID_TOKEN",
-            )
+            raise _unauthorized("Invalid token, user_id missing", "INVALID_TOKEN")
         return decoded_token

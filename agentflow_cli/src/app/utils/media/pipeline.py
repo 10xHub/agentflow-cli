@@ -72,7 +72,7 @@ class DocumentPipeline:
         if media.kind == "data" and media.data_base64:
             decoded = b64decode(media.data_base64)
             filename = media.filename or "document.pdf"
-            extracted = await self.extractor.extract(decoded, filename)
+            extracted = await self.extractor.extract(decoded, filename, media.mime_type)
             if extracted:
                 return TextBlock(text=extracted)
             # Extraction returned None (unsupported type) — keep raw

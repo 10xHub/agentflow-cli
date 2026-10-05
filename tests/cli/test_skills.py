@@ -332,3 +332,97 @@ def test_accepting_the_overwrite_prompt_reinstalls(
 
     assert cmd.execute(path=str(tmp_path)) == 0
     assert not sentinel.exists()
+
+
+# --- Agent Skills spec conformance ------------------------------------------
+
+_TEMPLATE_SKILL = (
+    Path(__file__).resolve().parents[2]
+    / "agentflow_cli"
+    / "cli"
+    / "templates"
+    / "skills"
+    / "agentflow"
+)
+
+
+def test_bundled_skill_conforms_to_spec() -> None:
+    skills = pytest.importorskip("agentflow.core.skills")
+    if not hasattr(skills, "validate_skill"):
+        pytest.skip("installed 10xscale-agentflow predates validate_skill")
+    # No errors and no warnings: this also checks every references/... path in
+    # the SKILL.md body exists in the bundle.
+    assert skills.validate_skill(_TEMPLATE_SKILL) == []
+
+
+def test_every_agent_gets_the_same_relative_path_skill(cmd: SkillsCommand, tmp_path: Path) -> None:
+    assert cmd.execute(all_agents=True, path=str(tmp_path)) == 0
+    installed = [
+        tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md",
+        tmp_path / ".claude" / "skills" / "agentflow" / "SKILL.md",
+        tmp_path / ".github" / "skills" / "agentflow" / "SKILL.md",
+    ]
+    contents = {path.read_text(encoding="utf-8") for path in installed}
+    assert len(contents) == 1
+    content = contents.pop()
+    # Paths inside a skill are relative to the skill directory per the spec, so
+    # the same SKILL.md works wherever it is installed.
+    assert "`references/architecture.md`" in content
+    for prefix in (".claude/skills", ".agents/skills", ".github/skills"):
+        assert prefix not in content
+
+
+# --- --validate -----------------------------------------------------------
+
+
+def _write_skill(root: Path, name: str, frontmatter: str) -> Path:
+    skill_dir = root / name
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(f"---\n{frontmatter}\n---\nBody\n", encoding="utf-8")
+    return skill_dir
+
+
+@pytest.fixture
+def _needs_validator() -> None:
+    skills = pytest.importorskip("agentflow.core.skills")
+    if not hasattr(skills, "validate_skill"):
+        pytest.skip("installed 10xscale-agentflow predates validate_skill")
+
+
+@pytest.mark.usefixtures("_needs_validator")
+def test_validate_folder_of_valid_skills(
+    cmd: SkillsCommand, out: _CapturingOutput, tmp_path: Path
+) -> None:
+    _write_skill(tmp_path, "alpha", "name: alpha\ndescription: Does alpha things.")
+    _write_skill(tmp_path, "beta", "name: beta\ndescription: Does beta things.")
+
+    assert cmd.execute(validate_paths=[str(tmp_path)]) == 0
+    headers, rows = out.tables[-1]
+    assert headers == ["Skill", "Status", "Errors", "Warnings"]
+    assert [row[1] for row in rows] == ["valid", "valid"]
+    assert any("2 skill(s) conform" in s for s in out.successes)
+
+
+@pytest.mark.usefixtures("_needs_validator")
+def test_validate_reports_spec_errors(
+    cmd: SkillsCommand, out: _CapturingOutput, tmp_path: Path
+) -> None:
+    skill_dir = _write_skill(tmp_path, "Bad_Name", "name: Bad_Name\ndescription: d\nfoo: 1")
+
+    assert cmd.execute(validate_paths=[str(skill_dir)]) == 1
+    joined = " | ".join(out.errors)
+    assert "must be lowercase" in joined
+    assert "Unexpected frontmatter fields: foo" in joined
+    assert out.tables[-1][1][0][1] == "invalid"
+
+
+@pytest.mark.usefixtures("_needs_validator")
+def test_validate_missing_path(cmd: SkillsCommand, out: _CapturingOutput, tmp_path: Path) -> None:
+    assert cmd.execute(validate_paths=[str(tmp_path / "missing")]) == 1
+    assert any("No skill found" in e for e in out.errors)
+
+
+@pytest.mark.usefixtures("_needs_validator")
+def test_validate_bundled_template(cmd: SkillsCommand, out: _CapturingOutput) -> None:
+    assert cmd.execute(validate_paths=[str(_TEMPLATE_SKILL)]) == 0
+    assert out.warnings == []

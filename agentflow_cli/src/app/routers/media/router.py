@@ -28,6 +28,52 @@ router = APIRouter(tags=["Files"])
 # is buffered in memory.
 _UPLOAD_CHUNK_BYTES = 1024 * 1024
 
+# Stored types come from the uploader. Only types a browser displays without running
+# script are served inline; the rest are downloads.
+_INLINE_TYPES = frozenset(
+    {
+        "image/png",
+        "image/jpeg",
+        "image/gif",
+        "image/webp",
+        "image/avif",
+        "image/bmp",
+        "application/pdf",
+        "text/plain",
+    }
+)
+_INLINE_PREFIXES = ("audio/", "video/")
+
+
+def _is_active_type(mime: str) -> bool:
+    """Whether a browser would run this type as a page or script, even from a blob: URL.
+
+    Such files are served as opaque bytes, so neither a navigation nor ``response.blob()``
+    keeps the active type.
+    """
+    subtype = mime.partition("/")[2]
+    return (
+        subtype in {"html", "xml", "xhtml+xml", "svg+xml"}
+        or subtype.endswith("+xml")
+        or "javascript" in subtype
+        or "ecmascript" in subtype
+    )
+
+
+def _download_response(file_id: str, data: bytes, mime_type: str | None) -> Response:
+    """Serve stored bytes so an uploaded HTML or SVG file cannot run script on this origin."""
+    mime = (mime_type or "").split(";", 1)[0].strip().lower()
+    if mime in _INLINE_TYPES or mime.startswith(_INLINE_PREFIXES):
+        disposition = "inline"
+    else:
+        disposition = f'attachment; filename="{file_id}"'
+        if not mime or _is_active_type(mime):
+            mime = "application/octet-stream"
+    headers = {"Content-Disposition": disposition, "X-Content-Type-Options": "nosniff"}
+    if mime != "application/pdf":  # browsers will not render a PDF under a sandbox CSP
+        headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    return Response(content=data, media_type=mime or "application/octet-stream", headers=headers)
+
 
 # ------------------------------------------------------------------
 # 4.1  POST /v1/files/upload
@@ -114,7 +160,7 @@ async def get_file(
         # 404, not 403: do not confirm that someone else's file_id exists.
         raise HTTPException(status_code=404, detail="File not found")
 
-    return Response(content=data, media_type=mime_type)
+    return _download_response(file_id, data, mime_type)
 
 
 # ------------------------------------------------------------------
@@ -189,7 +235,6 @@ async def get_multimodal_config(
     return success_response(
         MultimodalConfigResponse(
             media_storage_type=settings.MEDIA_STORAGE_TYPE.value,
-            media_storage_path=settings.MEDIA_STORAGE_PATH,
             media_max_size_mb=settings.MEDIA_MAX_SIZE_MB,
             document_handling=settings.DOCUMENT_HANDLING,
         ),

@@ -29,7 +29,7 @@ Importable package: `agentflow_cli/`. Two halves:
 | Path | What lives there |
 |---|---|
 | `agentflow_cli/cli/` | The Typer CLI. `main.py` (command definitions), `commands/` (one class per command: api, build, eval, init, skills, test, version), `core/` (config, output, validation), `constants.py`, `templates/` (project scaffolds: `dev/` minimal, `prod/` full) |
-| `agentflow_cli/src/app/` | The FastAPI app. `main.py` + `loader.py` (build app from `agentflow.json`), `routers/` (graph, checkpointer, store, media, ping), `core/auth/`, `core/config/`, `core/middleware/` (rate_limit, security_headers, request_limits), `tasks/`, `utils/`, `worker.py` |
+| `agentflow_cli/src/app/` | The FastAPI app. `main.py` + `loader.py` (build app from `agentflow.json`), `routers/` (graph, checkpointer, store, media, ping, ag_ui), `core/auth/`, `core/config/`, `core/middleware/` (rate_limit, security_headers, request_limits), `tasks/`, `utils/`, `worker.py` |
 
 Public exports from the package root (`from agentflow_cli import ...`): `BaseAuth`,
 `SnowFlakeIdGenerator`, `ThreadNameGenerator`.
@@ -45,11 +45,11 @@ Public exports from the package root (`from agentflow_cli import ...`): `BaseAut
 | `agentflow build` | Generate a `Dockerfile` (and optionally `docker-compose.yml` / `k8s.yaml`) | `--output/-o`, `--force/-f`, `--python-version` (3.13), `--port`, `--docker-compose/--no-docker-compose`, `--k8s/--no-k8s`, `--service-name` |
 | `agentflow eval` | Run agent evaluations; discovers `*_eval.py`/`eval_*.py`, runs cases (optionally `--parallel`), writes HTML+JSON to `eval_reports/` | `--output/-o`, `--no-report`, `--threshold/-t`, `--open`, `--parallel/-p`, `--max-concurrency/-c` |
 | `agentflow test` | Run project tests via pytest (args after `--` forwarded verbatim) | `--coverage/-C`, `--html`, `-k`, path arg |
-| `agentflow skills` | Install bundled Agentflow skills for Codex/Claude/GitHub | `--agent/-a`, `--path/-p`, `--force/-f`, `--all`, `--list/-l` |
+| `agentflow skills` | Install the bundled Agentflow skill (Agent Skills spec) for Codex/Claude/GitHub, or validate skills | `--agent/-a`, `--path/-p`, `--force/-f`, `--all`, `--list/-l`, `--validate PATH` |
 | `agentflow version` | Show CLI + core framework version | both resolve from installed distribution metadata |
 | `agentflow audit` | Read-only audit of the interpreter, installed CLI/core packages, evaluation-API compatibility, `agentflow.json`, and the default port. Exits `1` on failure, `0` on warnings only, so it works as a CI gate | `-v/--verbose`, `-q/--quiet` |
 | `agentflow demo` | Preview the animation/timeline/progress themes with no side effects (`Diagnostics` help panel) | `--style` (all\|typing\|network\|init\|build\|eval; `play`/`api` alias to typing/network) |
-| `agentflow config <path\|list\|get\|set\|unset\|validate>` | Sub-app (`Manage` panel) for user-level preferences in `user_config.py` | dotted keys; `set` parses a JSON value, falling back to a plain string |
+| `agentflow config` | Browser editor for `agentflow.json` (`Manage` panel). Loopback-only stdlib HTTP server in `cli/config_editor/` (`schema.py` lists every key, `validation.py` reuses the `graph_config` parsers, `store.py` does conflict-checked atomic writes with a `.bak`). The page is a Preact + Tailwind app whose source lives in `config-editor-ui/`; `npm run build` there writes the committed `static/app.js` and `static/app.css`, so rebuild after editing `config-editor-ui/src` | `--config/-c`, `--port/-p` (0 = any free port), `--open/--no-open` |
 
 Defaults (from `cli/constants.py`): `DEFAULT_HOST="127.0.0.1"`, `DEFAULT_PORT=8000`,
 `DEFAULT_CONFIG_FILE="agentflow.json"`.
@@ -59,9 +59,7 @@ Root options apply to every command and are resolved in `main.root`:
 `--no-color`, `--progress` (auto\|tty\|plain\|json\|quiet),
 `--animation/--no-animation`, `--fullscreen/--no-fullscreen`, `--cwd`, `-v/--verbose`
 (counted), `-q/--quiet`, `--debug`, `-y/--yes`, `--non-interactive`, `-V/--version`.
-`output.format`, `output.color`, and `output.progress` from the user config file
-(`platformdirs`, e.g. `~/.config/agentflow/config.json`) supply the defaults; explicit
-flags win. `AGENTFLOW_NO_FULLSCREEN=1` opts out of the alternate-screen surface.
+`AGENTFLOW_NO_FULLSCREEN=1` opts out of the alternate-screen surface.
 
 ## `agentflow.json` (the config contract)
 
@@ -79,6 +77,7 @@ Parsed by `agentflow_cli/src/app/core/config/graph_config.py`. Supported keys:
 | `store` | `"module:attr"` -> a `BaseStore` |
 | `redis` | Redis URL string |
 | `rate_limit` | Object (see below) |
+| `ag_ui` | `{"enabled": bool}`, default off. Mounts `POST /v1/ag-ui` (AG-UI protocol, for CopilotKit and other AG-UI clients). Needs the `ag-ui` extra |
 
 `rate_limit` object: `enabled`, `requests` (default 100), `window` secs (60), `by` (`ip` |
 `global`), `backend` (`memory` | `redis` | `custom`), `trusted_proxy_headers` (honour
@@ -115,7 +114,7 @@ and for redis backend a `redis` sub-object `{ "url", "prefix" }` (or shorthand U
 ## HTTP + WebSocket surface (all under `/v1` except ping)
 
 - **Graph** (`tags=["Graph"]`): `POST /v1/graph/invoke`, `POST /v1/graph/stream`,
-  `POST /v1/graph/stop`, `POST /v1/graph/setup`, `POST /v1/graph/fix`, `GET /v1/graph`,
+  `POST /v1/graph/stop`, `POST /v1/graph/fix`, `GET /v1/graph`,
   `WS /v1/graph/ws`.
 - **Checkpointer / threads**: `GET/POST /v1/threads`, `GET/DELETE /v1/threads/{thread_id}`,
   `GET /v1/threads/{thread_id}/state`, `GET /v1/threads/{thread_id}/messages`,
@@ -124,6 +123,14 @@ and for redis backend a `redis` sub-object `{ "url", "prefix" }` (or shorthand U
   `/v1/store/memories/forget`, `/v1/store/memories/{memory_id}`, `POST /v1/store/search`.
 - **Media / files** (`tags=["Files"]`): `POST /v1/files/upload`, `GET /v1/files/{file_id}`,
   `/{file_id}/info`, `/{file_id}/url`, `GET /v1/config/multimodal`.
+- **AG-UI** (`tags=["AG-UI"]`, only when `ag_ui.enabled`): `POST /v1/ag-ui`. `routers/ag_ui/`:
+  `converter.py` (RunAgentInput -> new user/tool messages only; the checkpoint is the record),
+  `event_mapper.py` (StreamChunk -> AG-UI events), `service.py` (runs `GraphService.stream_chunks`).
+  `RUN_FINISHED` carries an `outcome` only for `interrupt()` pauses (CopilotKit's pinned
+  `@ag-ui/core` 0.0.59 rejects the newer `success`/`cancelled` outcome shapes). Browser tools
+  from `RunAgentInput.tools` go to the graph as the server-owned `remote_tools` run-config key
+  (via `GraphService.stream_chunks(..., server_config=...)`); `RunAgentInput.resume` becomes the
+  graph `resume` input. `GraphInputSchema.resume` also resumes over `/v1/graph/invoke|stream`.
 - **Ping**: `GET /ping`.
 
 Routers are wired in `routers/setup_router.py` (`init_routes`). The `a2a.py` / `a2ui.py` stubs
@@ -143,7 +150,7 @@ In production: set `MODE=production`, `IS_DEBUG=false`, a non-`*` `ORIGINS`, and
 
 ## Optional extras (`pyproject.toml`)
 
-`sentry`, `firebase`, `snowflakekit`, `redis`, `jwt`, `media` (document text extraction via
+`sentry`, `firebase`, `snowflakekit`, `redis`, `jwt`, `ag-ui` (AG-UI endpoint), `media` (document text extraction via
 `textxtract`), `gcloud` (Cloud Logging), `otel` (includes FastAPI instrumentation + OTLP exporter).
 
 ## Development workflow

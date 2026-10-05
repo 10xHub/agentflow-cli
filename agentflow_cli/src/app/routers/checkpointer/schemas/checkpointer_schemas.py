@@ -3,7 +3,9 @@
 from typing import Any
 
 from agentflow.core.state import Message
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from agentflow_cli.src.app.core.auth.request_config import client_tool_call_error
 
 
 class ConfigSchema(BaseModel):
@@ -31,6 +33,13 @@ class PutMessagesSchema(ConfigSchema):
 
     messages: list[Message] = Field(..., description="List of messages to store")
     metadata: dict[str, Any] | None = Field(None, description="Optional metadata")
+
+    @field_validator("messages")
+    @classmethod
+    def messages_must_not_call_tools(cls, v: list[Message]) -> list[Message]:
+        if error := client_tool_call_error(v):
+            raise ValueError(error)
+        return v
 
 
 class GetMessageSchema(ConfigSchema):

@@ -40,9 +40,9 @@ def test_debug_mode_warning_in_production(caplog):
 
 def test_docs_enabled_warning_in_production(caplog):
     """Test warning for API docs enabled in production."""
-    with patch.dict(os.environ, {"MODE": "production"}):
+    with patch.dict(os.environ, {"MODE": "production", "DOCS_PATH": "/docs"}):
         settings = Settings()
-        # Default has DOCS_PATH="/docs"
+        # Production turns docs off by default; the warning is for an explicit path.
         assert "API documentation endpoints are enabled" in caplog.text
 
 

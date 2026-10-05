@@ -17,7 +17,6 @@ class MediaStorageType(StrEnum):
     MEMORY = "memory"
     LOCAL = "local"
     CLOUD = "cloud"
-    PG = "pg"
 
 
 class MediaSettings(BaseSettings):
@@ -33,6 +32,10 @@ class MediaSettings(BaseSettings):
     # ``MEDIA_ALLOWED_CONTENT_TYPES=image/*,application/pdf`` to restrict. Entries may
     # be exact (``image/png``) or wildcard subtype (``image/*``).
     MEDIA_ALLOWED_CONTENT_TYPES: str = ""
+
+    # Deny files with no recorded owner (uploaded before ownership tracking, or while auth
+    # was off) instead of letting any authenticated user read them.
+    MEDIA_REQUIRE_OWNER: bool = False
 
     def allowed_content_types(self) -> list[str]:
         """Parsed, normalized allowlist. Empty list == allow all."""

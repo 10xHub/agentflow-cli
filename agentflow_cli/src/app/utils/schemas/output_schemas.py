@@ -7,7 +7,7 @@ T = TypeVar("T")
 
 
 class ErrorSchemas(BaseModel):
-    loc: list[str] = Field(..., title="Location")
+    loc: list[str | int] = Field(..., title="Location")
     msg: str = Field(..., title="Error message")
     type: str = Field(..., title="Error type")
 

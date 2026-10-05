@@ -6,6 +6,7 @@ import inspect
 import json
 import logging
 import time
+from collections import OrderedDict
 from typing import Any
 
 from agentflow.storage.checkpointer import BaseCheckpointer
@@ -23,6 +24,61 @@ logger = logging.getLogger("agentflow-cli.media")
 
 _SIGNED_URL_NAMESPACE = "media:signed-url"
 _EXTRACTION_NAMESPACE = "media:extraction"
+
+# In-process caches in front of the shared checkpointer cache. Bounded so a stream of new
+# uploads cannot grow a worker's memory without limit.
+MAX_SIGNED_URL_ENTRIES = 4096
+MAX_EXTRACTION_ENTRIES = 512
+MAX_EXTRACTION_CHARS = 32_000_000
+
+
+class _BoundedCache(OrderedDict):
+    """A dict that evicts least-recently-used entries past ``max_entries`` or ``max_chars``.
+
+    ``max_chars`` sums ``len()`` of string values, so a few large extractions cannot hold
+    more memory than the entry count suggests.
+    """
+
+    def __init__(self, max_entries: int, max_chars: int | None = None):
+        super().__init__()
+        self.max_entries = max_entries
+        self.max_chars = max_chars
+        self._chars = 0
+
+    @staticmethod
+    def _size(value: Any) -> int:
+        return len(value) if isinstance(value, str) else 0
+
+    def get(self, key: Any, default: Any = None) -> Any:
+        if key not in self:
+            return default
+        self.move_to_end(key)
+        return self[key]
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        if key in self:
+            self._chars -= self._size(self[key])
+        super().__setitem__(key, value)
+        self.move_to_end(key)
+        self._chars += self._size(value)
+        while len(self) > self.max_entries or (
+            self.max_chars is not None and self._chars > self.max_chars and len(self) > 1
+        ):
+            self.popitem(last=False)
+
+    def __delitem__(self, key: Any) -> None:
+        self._chars -= self._size(self[key])
+        super().__delitem__(key)
+
+    def pop(self, key: Any, *default: Any) -> Any:
+        if key in self:
+            self._chars -= self._size(self[key])
+        return super().pop(key, *default)
+
+    def popitem(self, last: bool = True) -> tuple[Any, Any]:
+        key, value = super().popitem(last=last)
+        self._chars -= self._size(value)
+        return key, value
 
 
 def _build_config_instance(config_cls: type[Any], values: dict[str, Any]) -> Any:
@@ -104,11 +160,6 @@ def _create_media_store(settings: MediaSettings) -> BaseMediaStore:
             prefix=settings.MEDIA_CLOUD_PREFIX,
         )
 
-    if stype == MediaStorageType.PG:
-        from agentflow.media.storage.pg_store import PgBlobStore
-
-        return PgBlobStore()
-
     raise ValueError(f"Unknown MEDIA_STORAGE_TYPE: {stype}")
 
 
@@ -140,8 +191,10 @@ class MediaService:
         self._checkpointer = checkpointer
         self._store: BaseMediaStore | None = None
         self._pipeline: DocumentPipeline | None = None
-        self._extraction_cache: dict[str, str] = {}  # file_id -> extracted text
-        self._signed_url_cache: dict[str, dict[str, Any]] = {}  # file_id -> signed URL payload
+        # file_id -> extracted text
+        self._extraction_cache = _BoundedCache(MAX_EXTRACTION_ENTRIES, MAX_EXTRACTION_CHARS)
+        # file_id -> signed URL payload
+        self._signed_url_cache = _BoundedCache(MAX_SIGNED_URL_ENTRIES)
 
     @property
     def store(self) -> BaseMediaStore:
@@ -198,7 +251,7 @@ class MediaService:
         owner_id = metadata.get("owner_id")
 
         if owner_id is None:
-            if getattr(self._settings, "MEDIA_REQUIRE_OWNER", False):
+            if self._settings.MEDIA_REQUIRE_OWNER:
                 raise PermissionError(f"File has no recorded owner: {file_id}")
             logger.warning(
                 "File %s has no recorded owner (uploaded before ownership tracking); "
@@ -265,7 +318,7 @@ class MediaService:
             mime_type
         ):
             try:
-                text = await self.pipeline.extractor.extract(data, filename)
+                text = await self.pipeline.extractor.extract(data, filename, mime_type)
                 if text:
                     result["extracted_text"] = text
                     await self._cache_extraction(storage_key, text)

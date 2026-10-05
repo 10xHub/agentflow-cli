@@ -7,8 +7,13 @@ database round-trip per request.
 
 Cache tiers:
 
-- **L1**: a bounded in-process LRU (per worker). Immutable owners, no expiry.
+- **L1**: a bounded in-process LRU (per worker) with a short TTL.
 - **L2** (optional): a shared Redis, so workers/instances do not each re-hit the database.
+
+Deleting a thread evicts it from this worker's L1 and from L2, but another worker's L1 cannot
+be reached. A deleted id can be created again by a different user, so a stale L1 entry would
+keep granting the old owner access on that worker. The L1 TTL bounds how long that lasts; the
+L2 TTL covers an eviction that failed to reach Redis.
 
 Only *positive* results (a known owner) are cached. A ``None`` result (the thread does not
 exist yet) is **never** cached: a nonexistent thread can become owned by the very next
@@ -20,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 
@@ -30,6 +36,9 @@ logger = logging.getLogger("agentflow-cli.authorization")
 # (``aget_thread_owner`` raised ``NotImplementedError``). Propagated so the caller can
 # degrade gracefully instead of treating every thread as unowned.
 OwnerLookup = Callable[[str], Awaitable["str | int | None"]]
+
+DEFAULT_L1_TTL_SECONDS = 30.0
+DEFAULT_L2_TTL_SECONDS = 3600
 
 
 class ThreadOwnershipResolver:
@@ -44,6 +53,8 @@ class ThreadOwnershipResolver:
             never fail a request.
         max_size: L1 LRU capacity (entries).
         redis_prefix: key namespace for L2 entries.
+        l1_ttl: seconds an L1 entry is trusted; bounds staleness after a delete elsewhere.
+        l2_ttl: seconds an L2 entry lives in Redis.
     """
 
     def __init__(
@@ -53,12 +64,17 @@ class ThreadOwnershipResolver:
         redis: object | None = None,
         max_size: int = 10_000,
         redis_prefix: str = "af:authz:owner",
+        l1_ttl: float = DEFAULT_L1_TTL_SECONDS,
+        l2_ttl: int = DEFAULT_L2_TTL_SECONDS,
     ) -> None:
         self._lookup = lookup
         self._redis = redis
         self._max_size = max(1, max_size)
         self._prefix = redis_prefix
-        self._l1: OrderedDict[str, str] = OrderedDict()
+        self._l1_ttl = l1_ttl
+        self._l2_ttl = l2_ttl
+        # key -> (owner, monotonic expiry)
+        self._l1: OrderedDict[str, tuple[str, float]] = OrderedDict()
         self._lock = asyncio.Lock()
 
     # ------------------------------------------------------------------ public
@@ -100,14 +116,19 @@ class ThreadOwnershipResolver:
 
     async def _l1_get(self, key: str) -> str | None:
         async with self._lock:
-            owner = self._l1.get(key)
-            if owner is not None:
-                self._l1.move_to_end(key)  # mark most-recently-used
+            entry = self._l1.get(key)
+            if entry is None:
+                return None
+            owner, expires_at = entry
+            if time.monotonic() >= expires_at:
+                del self._l1[key]
+                return None
+            self._l1.move_to_end(key)  # mark most-recently-used
             return owner
 
     async def _l1_put(self, key: str, owner: str) -> None:
         async with self._lock:
-            self._l1[key] = owner
+            self._l1[key] = (owner, time.monotonic() + self._l1_ttl)
             self._l1.move_to_end(key)
             while len(self._l1) > self._max_size:
                 self._l1.popitem(last=False)  # evict least-recently-used
@@ -133,8 +154,10 @@ class ThreadOwnershipResolver:
         if self._redis is None:
             return
         try:
-            # No expiry: ownership is immutable, invalidated only by evict() on delete.
-            await self._redis.set(self._redis_key(key), owner)  # type: ignore[attr-defined]
+            # evict() removes the entry on delete; the TTL covers an eviction that failed.
+            await self._redis.set(  # type: ignore[attr-defined]
+                self._redis_key(key), owner, ex=self._l2_ttl
+            )
         except Exception as exc:
             logger.debug("Ownership L2 set failed for %s: %s", key, exc)
 

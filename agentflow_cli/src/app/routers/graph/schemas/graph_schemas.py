@@ -4,6 +4,8 @@ from agentflow.core.state import Message
 from agentflow.utils import ResponseGranularity
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from agentflow_cli.src.app.core.auth.request_config import client_tool_call_error
+
 
 class GraphInputSchema(BaseModel):
     """
@@ -11,7 +13,17 @@ class GraphInputSchema(BaseModel):
     """
 
     messages: list[Message] = Field(
-        ..., description="List of messages to process through the graph"
+        default_factory=list,
+        description=(
+            "List of messages to process through the graph. Required unless `resume` is set."
+        ),
+    )
+    resume: Any = Field(
+        default=None,
+        description=(
+            "Answer for a thread paused by interrupt(); the paused node runs again and "
+            "interrupt() returns this value. Send it, possibly as null, only to resume."
+        ),
     )
     initial_state: dict[str, Any] | None = Field(
         default=None,
@@ -30,10 +42,21 @@ class GraphInputSchema(BaseModel):
 
     @field_validator("messages")
     @classmethod
-    def messages_must_not_be_empty(cls, v: list[Message]) -> list[Message]:
-        if not v:
-            raise ValueError("messages must contain at least one message")
+    def messages_must_not_carry_tool_calls(cls, v: list[Message]) -> list[Message]:
+        if error := client_tool_call_error(v):
+            raise ValueError(error)
         return v
+
+    @model_validator(mode="after")
+    def messages_or_resume(self) -> "GraphInputSchema":
+        if not self.messages and not self.is_resume:
+            raise ValueError("messages must contain at least one message")
+        return self
+
+    @property
+    def is_resume(self) -> bool:
+        """Whether the request resumes an interrupt() (``resume`` was sent, even as null)."""
+        return "resume" in self.model_fields_set
 
     response_granularity: ResponseGranularity = Field(
         default=ResponseGranularity.LOW,
@@ -132,7 +155,7 @@ class ToolSchema(BaseModel):
         description=(
             "Where the tool is defined: 'local' (a Python function on the node), "
             "'mcp' (provided by a connected MCP server), or 'remote' "
-            "(client-side tool attached via /v1/graph/setup)."
+            "(client-side tool declared in agentflow.json)."
         ),
     )
     parameters: dict[str, Any] = Field(
@@ -232,23 +255,6 @@ class GraphStopSchema(BaseModel):
 
     config: dict[str, Any] | None = Field(
         default=None, description="Optional configuration for the stop operation"
-    )
-
-
-class RemoteToolSchema(BaseModel):
-    """Schema for remote tool execution."""
-
-    node_name: str = Field(..., description="Name of the node representing the tool")
-    name: str = Field(..., description="Name of the tool to execute")
-    description: str = Field(..., description="Description of the tool")
-    parameters: dict[str, Any] = Field(..., description="Parameters for the tool")
-
-
-class GraphSetupSchema(BaseModel):
-    """Schema for setting up graph execution."""
-
-    tools: list[RemoteToolSchema] = Field(
-        ..., description="List of remote tools available for the graph"
     )
 
 
@@ -354,6 +360,10 @@ class WsGraphInputSchema(BaseModel):
                 raise ValueError("tool_result must not be empty for invoke_type='resume'")
             if not (self.config or {}).get("thread_id"):
                 raise ValueError("config.thread_id is required for invoke_type='resume'")
+        # Resume sends tool *results*; neither run type may carry a tool call.
+        for messages in (self.messages, self.tool_result):
+            if error := client_tool_call_error(messages):
+                raise ValueError(error)
         return self
 
     def to_graph_input(self) -> "GraphInputSchema":

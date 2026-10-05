@@ -5,6 +5,7 @@ This module provides a reusable dependency that combines authentication and
 authorization checks, reducing code duplication across routers.
 """
 
+import email.message
 from collections.abc import Callable
 from typing import Any, NoReturn
 
@@ -16,7 +17,9 @@ from starlette.requests import HTTPConnection
 from agentflow_cli.src.app.core import logger
 from agentflow_cli.src.app.core.auth.auth_backend import BaseAuth
 from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+from agentflow_cli.src.app.core.auth.request_config import normalize_thread_id
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from agentflow_cli.src.app.core.exceptions.general_exception import GeneralException
 from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 
 
@@ -97,6 +100,23 @@ def _extract_credential(
 WS_POLICY_VIOLATION = 1008
 
 
+def _is_json_content_type(content_type: str | None) -> bool:
+    """Whether FastAPI parses a body with this content type as JSON.
+
+    Mirrors ``fastapi.routing``: a missing content type, ``application/json`` and any
+    ``application/*+json`` are all parsed as JSON. Reading fewer types here would let a
+    request skip the thread check while the route still receives its body.
+    """
+    if not content_type:
+        return True
+    message = email.message.Message()
+    message["content-type"] = content_type
+    if message.get_content_maintype() != "application":
+        return False
+    subtype = message.get_content_subtype()
+    return subtype == "json" or subtype.endswith("+json")
+
+
 def _reject(connection: HTTPConnection, status_code: int, detail: str) -> NoReturn:
     """Reject a connection with the error type appropriate to its protocol.
 
@@ -149,7 +169,7 @@ class RequirePermission:
         self.action = action
         self.extract_resource_id_fn = extract_resource_id
 
-    async def __call__(
+    async def __call__(  # noqa: PLR0912
         self,
         connection: HTTPConnection,
         response: Response,
@@ -203,6 +223,12 @@ class RequirePermission:
                 # JWT/custom backends signal auth failure with HTTPException; convert it
                 # to a clean WebSocket close on WS routes (see _reject).
                 _reject(connection, exc.status_code, str(exc.detail))
+            except GeneralException as exc:
+                # JwtAuth raises UserAccountError (401). HTTP routes render it through its
+                # exception handler; a WebSocket has no handler, so close it cleanly.
+                if isinstance(connection, WebSocket):
+                    _reject(connection, exc.status_code, exc.message)
+                raise
             if user_result and "user_id" not in user_result:
                 logger.error("Authentication failed: 'user_id' not found in user info")
             user = user_result or {}
@@ -293,29 +319,33 @@ class RequirePermission:
         return None
 
     async def _extract_resource_id_from_body(self, connection: HTTPConnection) -> str | None:
-        """Extract resource ID (like thread_id) from the request body.
+        """Extract the thread ID a request body targets.
 
-        Only parsed if content-type is JSON and connection is a standard HTTP Request.
+        The body is read exactly when FastAPI would parse it as JSON, and the ID is normalised
+        the same way the services normalise it, so the thread checked here is the thread that
+        runs. Routes read either the root ``thread_id`` (stop, fix) or ``config.thread_id``
+        (invoke, stream); a body that names two different threads is rejected rather than
+        letting the check and the service pick different ones.
         """
         from starlette.requests import Request
 
         if not isinstance(connection, Request):
             return None
-
-        content_type = connection.headers.get("content-type", "")
-        if "application/json" not in content_type.lower():
+        if not _is_json_content_type(connection.headers.get("content-type")):
             return None
 
         try:
             body = await connection.json()
-            if isinstance(body, dict):
-                # 1. Root level thread_id
-                if body.get("thread_id"):
-                    return str(body["thread_id"])
-                # 2. Nested inside config block
-                cfg = body.get("config")
-                if isinstance(cfg, dict) and "thread_id" in cfg and cfg["thread_id"]:
-                    return str(cfg["thread_id"])
         except Exception as exc:
-            logger.debug("Failed to extract thread_id from request body: %s", exc)
-        return None
+            # FastAPI rejects a malformed body itself before the route runs.
+            logger.debug("Failed to parse request body for thread_id: %s", exc)
+            return None
+        if not isinstance(body, dict):
+            return None
+
+        root_id = normalize_thread_id(body.get("thread_id"))
+        cfg = body.get("config")
+        config_id = normalize_thread_id(cfg.get("thread_id")) if isinstance(cfg, dict) else None
+        if root_id and config_id and root_id != config_id:
+            _reject(connection, 400, "thread_id and config.thread_id must match")
+        return root_id or config_id

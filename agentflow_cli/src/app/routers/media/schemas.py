@@ -35,6 +35,5 @@ class FileAccessUrlResponse(BaseModel):
 
 class MultimodalConfigResponse(BaseModel):
     media_storage_type: str
-    media_storage_path: str
     media_max_size_mb: float
     document_handling: str

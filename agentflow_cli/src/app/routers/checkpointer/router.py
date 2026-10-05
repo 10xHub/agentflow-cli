@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from injectq.integrations import InjectAPI
 
 from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+from agentflow_cli.src.app.core.auth.request_config import client_config
 from agentflow_cli.src.app.utils.response_helper import success_response
 from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_responses
 
@@ -112,9 +113,9 @@ async def put_state(
         Success response or error
     """
     validate_thread_id(thread_id)
-    config = {"thread_id": thread_id}
-    if payload.config:
-        config.update(payload.config)
+    # The path thread_id is the one RequirePermission checked; it is applied last so the
+    # body config cannot redirect the call to another thread.
+    config = {**client_config(payload.config), "thread_id": thread_id}
 
     res = await service.put_state(
         config,
@@ -198,9 +199,9 @@ async def put_messages(
     if not payload.messages:
         raise HTTPException(status_code=422, detail="messages must not be empty")
 
-    config = {"thread_id": thread_id}
-    if payload.config:
-        config.update(payload.config)
+    # The path thread_id is the one RequirePermission checked; it is applied last so the
+    # body config cannot redirect the call to another thread.
+    config = {**client_config(payload.config), "thread_id": thread_id}
 
     res = await service.put_messages(
         config,
@@ -340,9 +341,9 @@ async def delete_message(
     if not message_id or (isinstance(message_id, str) and not str(message_id).strip()):
         raise HTTPException(status_code=422, detail="message_id is required and cannot be empty")
 
-    config = {"thread_id": thread_id}
-    if payload.config:
-        config.update(payload.config)
+    # The path thread_id is the one RequirePermission checked; it is applied last so the
+    # body config cannot redirect the call to another thread.
+    config = {**client_config(payload.config), "thread_id": thread_id}
 
     await service.delete_message(
         config,
@@ -465,9 +466,9 @@ async def delete_thread(
         Success response or error
     """
     validate_thread_id(thread_id)
-    config = {"thread_id": thread_id}
-    if payload.config:
-        config.update(payload.config)
+    # The path thread_id is the one RequirePermission checked; it is applied last so the
+    # body config cannot redirect the call to another thread.
+    config = {**client_config(payload.config), "thread_id": thread_id}
 
     res = await service.delete_thread(
         config,

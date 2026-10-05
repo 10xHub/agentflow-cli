@@ -43,21 +43,47 @@ def _has_permission_guard(dependant) -> bool:
     return False
 
 
+def _is_guard(dependency: object) -> bool:
+    """True for a ``Depends(RequirePermission(...))`` given at ``include_router`` time."""
+    return isinstance(getattr(dependency, "dependency", None), RequirePermission)
+
+
+def _iter_routes(routes, prefix: str = "", guarded: bool = False):
+    """Yield ``(full_path, route, guarded_by_include)`` for every route, however nested.
+
+    FastAPI 0.139 keeps ``include_router`` lazy: ``app.routes`` holds one wrapper per
+    included router instead of copies of its routes, so a plain walk of ``app.routes`` sees
+    no ``APIRoute`` at all. The wrapper carries the router and its include prefix and
+    dependencies; older releases copy the routes, which the plain branch handles.
+    """
+    for route in routes:
+        included = getattr(route, "original_router", None)
+        context = getattr(route, "include_context", None)
+        if included is not None and context is not None:
+            yield from _iter_routes(
+                included.routes,
+                prefix + (getattr(context, "prefix", "") or ""),
+                guarded or any(_is_guard(dep) for dep in getattr(context, "dependencies", [])),
+            )
+        elif isinstance(route, APIRoute | APIWebSocketRoute):
+            yield prefix + route.path, route, guarded
+
+
 def find_unprotected_routes(
     app: FastAPI, public_paths: frozenset[str] = DEFAULT_PUBLIC_PATHS
 ) -> list[str]:
-    """Return ``"METHODS path"`` for every route missing a RequirePermission guard."""
+    """Return ``"METHODS path"`` for every route missing a RequirePermission guard.
+
+    Starlette infra routes (docs, openapi.json, redoc) are not APIRoutes and are skipped.
+    """
     unprotected: list[str] = []
-    for route in app.routes:
-        if not isinstance(route, APIRoute | APIWebSocketRoute):
-            # Starlette infra routes (docs, openapi.json, redoc) are not APIRoutes.
-            continue
-        if route.path in public_paths:
+    for path, route, guarded in _iter_routes(app.routes):
+        if path in public_paths or guarded:
             continue
         dependant = getattr(route, "dependant", None)
         if dependant is None or not _has_permission_guard(dependant):
             methods = ",".join(sorted(getattr(route, "methods", None) or ["WS"]))
-            unprotected.append(f"{methods} {route.path}")
+            unprotected.append(f"{methods} {path}")
     return unprotected
 
 

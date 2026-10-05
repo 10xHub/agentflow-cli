@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections.abc import AsyncIterable
 from datetime import datetime
 from typing import Any
@@ -14,13 +13,18 @@ from injectq import InjectQ, inject, singleton
 from pydantic import BaseModel
 
 from agentflow_cli.src.app.core import logger
+from agentflow_cli.src.app.core.auth.request_config import (
+    client_config,
+    normalize_thread_id,
+    tool_result_ids,
+    unanswered_tool_calls,
+)
 from agentflow_cli.src.app.core.config.graph_config import GraphConfig
 from agentflow_cli.src.app.core.utils.log_sanitizer import sanitize_for_logging
 from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     GraphInvokeOutputSchema,
     GraphSchema,
-    GraphSetupSchema,
     GraphToolsSchema,
     ObservabilitySchema,
     ObsEventSchema,
@@ -35,6 +39,17 @@ from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import
 )
 from agentflow_cli.src.app.utils import DefaultThreadNameGenerator, ThreadNameGenerator
 from agentflow_cli.src.app.utils.telemetry_store import TelemetryStore
+
+
+def _run_tool_names(config: dict[str, Any]) -> set[str]:
+    """Names of the per-run client tools in ``config["remote_tools"]`` (server-owned key)."""
+    names: set[str] = set()
+    for item in config.get("remote_tools") or []:
+        if isinstance(item, dict):
+            spec = item.get("function") if isinstance(item.get("function"), dict) else item
+            if isinstance(spec.get("name"), str):
+                names.add(spec["name"])
+    return names
 
 
 def _reraise_framework_errors(exc: Exception) -> None:
@@ -74,6 +89,11 @@ def _reraise_framework_errors(exc: Exception) -> None:
     )
     if isinstance(exc, typed):
         raise exc
+
+
+# A taken generated id is retried with a fresh one; each retry is another prediction the
+# claimer would have had to get right.
+MAX_THREAD_ID_ATTEMPTS = 5
 
 
 @singleton
@@ -297,7 +317,7 @@ class GraphService:
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
             # Start with client config if provided, then overlay trusted attributes
-            stop_config = dict(config) if config else {}
+            stop_config = client_config(config)
             stop_config.update(
                 {
                     "thread_id": thread_id,
@@ -322,17 +342,107 @@ class GraphService:
                 status_code=500, detail=f"Graph stop failed for thread {thread_id}: {e!s}"
             )
 
+    def _reject_tool_start_node(self, initial_state: dict[str, Any]) -> None:
+        """Allow a run to start on any node except a ``ToolNode``.
+
+        Clients may pick the start node, e.g. to jump straight to one agent. A ``ToolNode``
+        runs the tool calls in the last message of the saved context without asking the
+        model, so starting there would execute tools the model never requested.
+        """
+        from agentflow.core.graph import ToolNode
+
+        node_name = initial_state.get("current_node")
+        if not isinstance(node_name, str):
+            return
+        state_graph = getattr(self._graph, "_state_graph", None)
+        nodes = getattr(state_graph, "nodes", {}) if state_graph else {}
+        node = nodes.get(node_name)
+        if node is not None and isinstance(getattr(node, "func", None), ToolNode):
+            raise ValueError(f"current_node '{node_name}' is a tool node; runs cannot start there")
+
+    def _remote_tool_names(self) -> set[str]:
+        """Names of the tools the client runs (remote tools), across every ToolNode."""
+        from agentflow.core.graph import ToolNode
+
+        state_graph = getattr(self._graph, "_state_graph", None)
+        nodes = getattr(state_graph, "nodes", {}) if state_graph else {}
+        names: set[str] = set()
+        for node in nodes.values():
+            tool_node = getattr(node, "func", None)
+            if isinstance(tool_node, ToolNode):
+                names.update(n for n in getattr(tool_node, "remote_tool_names", None) or [] if n)
+        return names
+
+    def _server_tool_names(self) -> set[str]:
+        """Names of the tools the server runs itself (local and MCP), across every ToolNode."""
+        from agentflow.core.graph import ToolNode
+
+        state_graph = getattr(self._graph, "_state_graph", None)
+        nodes = getattr(state_graph, "nodes", {}) if state_graph else {}
+        names: set[str] = set()
+        for node in nodes.values():
+            tool_node = getattr(node, "func", None)
+            if isinstance(tool_node, ToolNode):
+                names.update(getattr(tool_node, "_funcs", None) or {})
+                names.update(getattr(tool_node, "mcp_tools", None) or [])
+        return names
+
+    async def _check_tool_results(self, messages: list[Any], config: dict[str, Any]) -> None:
+        """Accept a tool result only as the answer to a remote tool call awaiting one.
+
+        Remote tools run on the client, which sends their results back to resume the run.
+        Anything else is a forged result: an answer to a call the model never made, a second
+        answer to the same call, or an answer to a server tool the client never ran.
+        """
+        result_ids = tool_result_ids(messages)
+        if not result_ids:
+            return
+        if len(set(result_ids)) != len(result_ids):
+            raise ValueError("Each tool call can be answered only once")
+
+        state = await self.checkpointer.aget_state(config) if self.checkpointer else None
+        pending = unanswered_tool_calls(getattr(state, "context", None))
+        # A client tool can never carry a server tool's name: otherwise a client could declare
+        # it and post a "result" for a server tool call (one paused for approval, say).
+        remote = self._remote_tool_names() | (_run_tool_names(config) - self._server_tool_names())
+        for call_id in result_ids:
+            if call_id not in pending or pending[call_id] not in remote:
+                raise ValueError(f"No remote tool call '{call_id}' is waiting for a result")
+
+    async def _new_thread_id(self) -> str:
+        """Generate a thread id that nobody owns yet.
+
+        The permission check approved "a new thread", so the id handed out here must really
+        be new. Generated ids (Snowflake by default) are predictable, and a client may create
+        a thread under any id it likes, so another user could have claimed the next id
+        first; running on it would put this user's messages in their thread.
+        """
+        for _ in range(MAX_THREAD_ID_ATTEMPTS):
+            thread_id = str(await InjectQ.get_instance().atry_get("generated_id") or uuid4())
+            try:
+                owner = await self.checkpointer.aget_thread_owner(thread_id)
+            except NotImplementedError:
+                return thread_id  # the checkpointer cannot tell; keep the old behaviour
+            if owner is None:
+                return thread_id
+            logger.warning("Generated thread id %s is already taken; generating another", thread_id)
+        raise RuntimeError("Could not generate an unused thread id")
+
     async def _prepare_input(
         self,
         graph_input: GraphInputSchema,
         user_id: str | None = None,
+        server_config: dict[str, Any] | None = None,
     ):
         is_new_thread = False
-        config = dict(graph_input.config or {})
-        if config.get("thread_id") and str(config["thread_id"]).strip():
-            thread_id = str(config["thread_id"]).strip()
-        else:
-            thread_id = await InjectQ.get_instance().atry_get("generated_id") or str(uuid4())
+        config = client_config(graph_input.config)
+        # Server-owned keys set by a trusted caller (a protocol adapter), after the client's
+        # own config has been stripped of them.
+        config.update(server_config or {})
+        # Same normalisation as the permission check, so the checked thread is the one used.
+        thread_id = normalize_thread_id(config.get("thread_id"))
+        if thread_id is None:
+            thread_id = await self._new_thread_id()
             is_new_thread = True
 
         # update thread id
@@ -351,7 +461,10 @@ class GraphService:
         input_data: dict = {
             "messages": preprocessed,
         }
+        if graph_input.is_resume:
+            input_data["resume"] = graph_input.resume
         if graph_input.initial_state:
+            self._reject_tool_start_node(graph_input.initial_state)
             input_data["state"] = graph_input.initial_state
 
         return (
@@ -388,6 +501,7 @@ class GraphService:
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
+            await self._check_tool_results(input_data["messages"], config)
 
             # Try to save thread info in the db even for existing threads
             # this will help in updating last accessed time
@@ -481,6 +595,26 @@ class GraphService:
         Yields:
             str: Individual JSON chunks from graph execution with newline delimiters.
         """
+        async for chunk in self.stream_chunks(graph_input, user):
+            yield chunk.model_dump_json(serialize_as_any=True) + "\n"
+
+    async def stream_chunks(
+        self,
+        graph_input: GraphInputSchema,
+        user: dict[str, Any],
+        server_config: dict[str, Any] | None = None,
+    ) -> AsyncIterable[StreamChunk]:
+        """
+        Streams the graph execution as ``StreamChunk`` objects.
+
+        Shared by the NDJSON stream and protocol adapters such as AG-UI. The graph reuses one
+        chunk object for successive messages, so consume each chunk before asking for the next.
+        ``server_config`` carries server-owned run config (for example per-run
+        ``remote_tools``) that a client could not set through ``graph_input.config``.
+
+        Yields:
+            StreamChunk: Graph output; failures arrive as an ``ERROR`` chunk, never raised.
+        """
         # Initialize meta here so it is available in the except blocks even if
         # _prepare_input raises before assigning it.
         meta: dict[str, Any] = {}
@@ -490,10 +624,13 @@ class GraphService:
             logger.debug(f"Streaming graph with input: {graph_input.messages}")
 
             # Prepare the config
-            input_data, config, meta = await self._prepare_input(graph_input, user.get("user_id"))
+            input_data, config, meta = await self._prepare_input(
+                graph_input, user.get("user_id"), server_config
+            )
             # add user inside config
             config["user"] = user
             config["user_id"] = user.get("user_id", "anonymous")
+            await self._check_tool_results(input_data["messages"], config)
 
             # Try to save thread info in the db even for existing threads
             # this will help in updating last accessed time
@@ -528,7 +665,7 @@ class GraphService:
                     StreamEvent.ERROR,
                 ):
                     run_status = "error"
-                yield chunk.model_dump_json(serialize_as_any=True) + "\n"
+                yield chunk
                 if (
                     self.config.thread_name_generator_path
                     and meta["is_new_thread"]
@@ -549,13 +686,10 @@ class GraphService:
                 )
                 meta["thread_name"] = thread_name
 
-                yield (
-                    StreamChunk(
-                        event=StreamEvent.UPDATES,
-                        data={"status": "completed"},
-                        metadata=meta,
-                    ).model_dump_json(serialize_as_any=True)
-                    + "\n"
+                yield StreamChunk(
+                    event=StreamEvent.UPDATES,
+                    data={"status": "completed"},
+                    metadata=meta,
                 )
 
         except Exception as e:
@@ -587,13 +721,10 @@ class GraphService:
 
             is_production = get_settings().MODE == "production"
             reason = _sanitize_error_message(str(e), "GRAPH_STREAM_ERROR", is_production)
-            yield (
-                StreamChunk(
-                    event=StreamEvent.ERROR,
-                    data={"reason": reason},
-                    metadata=meta,
-                ).model_dump_json(serialize_as_any=True)
-                + "\n"
+            yield StreamChunk(
+                event=StreamEvent.ERROR,
+                data={"reason": reason},
+                metadata=meta,
             )
 
     async def realtime_graph(
@@ -609,7 +740,7 @@ class GraphService:
         normalized RealtimeEvents. The compiled graph must be rooted at a LiveAgent (e.g.
         an ``AudioAgent``); otherwise ``arealtime`` raises.
         """
-        thread_id = init.get("thread_id") or str(uuid4())
+        thread_id = normalize_thread_id(init.get("thread_id")) or await self._new_thread_id()
         config: dict[str, Any] = {
             "thread_id": thread_id,
             "user": user,
@@ -618,7 +749,7 @@ class GraphService:
         # Map the client init frame onto RealtimeConfig field names so the live agent can
         # apply per-session overrides (model/voice/modalities/vad/...). Only present keys
         # are forwarded; absent ones fall back to the agent's build-time config.
-        realtime = self._realtime_overrides(init)
+        realtime = self._restrict_realtime_overrides(self._realtime_overrides(init))
         if realtime:
             config["realtime"] = realtime
         await self._save_thread(config, thread_id)
@@ -651,6 +782,43 @@ class GraphService:
         if isinstance(overrides.get("response_modalities"), str):
             overrides["response_modalities"] = [overrides["response_modalities"]]
         return overrides
+
+    def _live_tools_tags(self) -> set[str] | None:
+        """The tag filter the live agent was built with, or ``None`` when it has none."""
+        find_live_nodes = getattr(self._graph, "_find_live_nodes", None)
+        for _name, node in find_live_nodes() if callable(find_live_nodes) else []:
+            realtime_config = getattr(getattr(node, "func", None), "realtime_config", None)
+            tags = getattr(realtime_config, "tools_tags", None)
+            if tags:
+                return {str(tag) for tag in tags}
+        return None
+
+    def _restrict_realtime_overrides(self, overrides: dict[str, Any]) -> dict[str, Any]:
+        """Drop the init-frame overrides a client is not allowed to make.
+
+        ``model`` is honoured only when listed in ``websocket.realtime_models``. ``tools_tags``
+        may only narrow the agent's own filter: widening it, or clearing it (an empty filter
+        advertises every tool), would expose tools the agent was built to hide.
+        """
+        restricted = dict(overrides)
+        model = restricted.get("model")
+        if model is not None and model not in self.config.websocket.realtime_models:
+            logger.info(
+                "Realtime init model %r is not in websocket.realtime_models; ignored", model
+            )
+            restricted.pop("model")
+
+        if "tools_tags" in restricted:
+            requested = restricted.pop("tools_tags")
+            if isinstance(requested, str):
+                requested = [requested]
+            if not isinstance(requested, list):
+                requested = []
+            base = self._live_tools_tags()
+            tags = [str(tag) for tag in requested if base is None or str(tag) in base]
+            if tags:
+                restricted["tools_tags"] = tags
+        return restricted
 
     async def graph_details(self) -> GraphSchema:
         try:
@@ -1000,7 +1168,7 @@ class GraphService:
             logger.debug(f"User info: {sanitize_for_logging(user)}")
 
             # Start with client config if provided, then overlay trusted attributes
-            fix_config = dict(config) if config else {}
+            fix_config = client_config(config)
             fix_config.update(
                 {"thread_id": thread_id, "user": user, "user_id": user.get("user_id", "anonymous")}
             )
@@ -1049,64 +1217,3 @@ class GraphService:
             _reraise_framework_errors(e)
             logger.error(f"Fix graph operation failed: {e}")
             raise HTTPException(status_code=500, detail=f"Fix graph operation failed: {e!s}")
-
-    async def setup(self, data: GraphSetupSchema) -> dict:
-        from agentflow_cli.src.app.core.config.settings import get_settings
-
-        settings = get_settings()
-        has_auth = False
-        if self.config:
-            backend = self.config.auth_config()
-            from unittest.mock import Mock
-
-            if (
-                backend
-                and not isinstance(backend, Mock)
-                and (
-                    (isinstance(backend, dict) and backend.get("method") != "none")
-                    or (isinstance(backend, str) and backend != "none")
-                )
-            ):
-                has_auth = True
-        if settings.MODE == "production" or has_auth:
-            # Name the condition that actually tripped: reporting only
-            # "production/multi-tenant" sends people auditing MODE when it was
-            # the auth backend, and vice versa.
-            reasons = []
-            if settings.MODE == "production":
-                reasons.append("MODE is 'production'")
-            if has_auth:
-                reasons.append("an auth backend is configured in agentflow.json")
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "Dynamic tool setup is disabled because "
-                    + " and ".join(reasons)
-                    + ". Registration mutates process-wide graph state, so it is unsafe to "
-                    "expose once requests can come from more than one tenant. Attach the tools "
-                    "statically instead via CompiledGraph.attach_remote_tools()."
-                ),
-            )
-
-        # lets create tools
-        remote_tools = defaultdict(list)
-        for tool in data.tools:
-            remote_tools[tool.node_name].append(
-                {
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.parameters,
-                    },
-                }
-            )
-
-        # Now call setup on graph
-        for node_name, tool in remote_tools.items():
-            self._graph.attach_remote_tools(tool, node_name)
-
-        return {
-            "status": "success",
-            "details": f"Added tools to nodes: {list(remote_tools.keys())}",
-        }

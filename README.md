@@ -190,6 +190,7 @@ agentflow skills --all          # install for every supported agent
 agentflow skills --agent claude # install for one
 agentflow skills --list         # show supported agents
 agentflow skills --force        # overwrite an existing install
+agentflow skills --validate ./.agents/skills  # check skills against the Agent Skills spec
 ```
 
 Run without flags to get a checklist of the supported agents. Each row shows
@@ -225,20 +226,14 @@ run — so it works as a CI gate.
 
 ### `agentflow config`
 
-Manage cross-platform user-level CLI preferences, stored as JSON in the per-user
-config directory (`platformdirs`, e.g. `~/.config/agentflow/config.json` on Linux).
-Keys are dot-separated; the output preferences read at startup are
-`output.format` (`human`, `plain`, `json`, `jsonl`), `output.color` (`auto`,
-`always`, `never`), and `output.progress` (`auto`, `tty`, `plain`, `json`, `quiet`).
-Command-line flags always win over the stored values.
+Open a local browser editor for `agentflow.json`: switch optional sections (auth,
+authorization, rate limiting, observability, ...) on or off, fill in their fields,
+**Validate** without saving, and **Save** to write the file. Saving is blocked while
+there are errors, and the previous file is kept as `agentflow.json.bak`.
 
 ```bash
-agentflow config path                      # where preferences are stored
-agentflow config list                      # every stored preference
-agentflow config set output.format plain
-agentflow config get output.format
-agentflow config unset output.format
-agentflow config validate                  # parse the file and check known keys
+agentflow config                           # edit ./agentflow.json
+agentflow config -c path/to/agentflow.json --port 8765 --no-open
 ```
 
 ### `agentflow demo`
@@ -264,6 +259,7 @@ The configuration file (`agentflow.json`) defines your agent, authentication, an
   "checkpointer": null,
   "injectq": null,
   "store": null,
+  "remote_tools": [],
   "redis": null,
   "thread_name_generator": null,
   "rate_limit": {}
@@ -281,6 +277,7 @@ The configuration file (`agentflow.json`) defines your agent, authentication, an
 | `checkpointer` | string \| null | Path to a custom checkpointer |
 | `injectq` | string \| null | Path to an InjectQ container |
 | `store` | string \| null | Path to a data store |
+| `remote_tools` | array | Trusted schemas for tools executed by clients; attached at startup |
 | `redis` | string \| null | Redis connection URL |
 | `rate_limit` | object \| null | Sliding-window rate limiting configuration |
 | `thread_name_generator` | string \| null | Path to a custom thread name generator |

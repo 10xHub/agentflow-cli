@@ -3,7 +3,13 @@ import sys
 
 from fastapi.logger import logger as fastapi_logger
 
+from agentflow_cli.src.app.core.config.settings import LOGGER_NAME
 from agentflow_cli.src.app.core.utils.log_sanitizer import SanitizingFormatter
+
+
+# Top-level names of the loggers the API server writes to; children ("agentflow-cli.media",
+# "agentflow_api.rate_limit", ...) reach these handlers through propagation.
+APP_LOGGER_NAMES = (LOGGER_NAME, "agentflow-cli", "agentflow_api", "agentflow_cli")
 
 
 def init_logger(level: int | str = logging.INFO) -> None:
@@ -47,9 +53,13 @@ def init_logger(level: int | str = logging.INFO) -> None:
     # Add console handler to logger
     fastapi_logger.addHandler(console_handler)
 
-    # Route application loggers through the same sanitizing console handler.
-    # NOTE: addHandler expects a logging.Handler, not a Logger.
-    for logger_name in ("db_client", "tortoise", "injector", "BACKEND_BASE", "PACKAGE"):
+    # Route application loggers through the same sanitizing console handler. They stop
+    # propagating so an unsanitized copy does not also reach the root (or last-resort) handler.
+    for logger_name in dict.fromkeys(APP_LOGGER_NAMES):
         app_logger = logging.getLogger(logger_name)
         app_logger.setLevel(level)
+        for handler in list(app_logger.handlers):
+            if isinstance(handler.formatter, SanitizingFormatter):
+                app_logger.removeHandler(handler)  # init_logger may run more than once
         app_logger.addHandler(console_handler)
+        app_logger.propagate = False

@@ -181,8 +181,9 @@ class TestSubprotocolToken:
 
 
 class TestWebSocketConfig:
-    def test_absent_is_unlimited(self):
-        assert WebSocketConfig.from_dict({}).max_connections is None
+    def test_absent_gets_a_finite_default(self):
+        # Unlimited must be an explicit choice (0 or null); see test_websocket_limits.py.
+        assert WebSocketConfig.from_dict({}).max_connections == 1000
 
     def test_zero_is_unlimited(self):
         assert WebSocketConfig.from_dict({"max_connections": 0}).max_connections is None

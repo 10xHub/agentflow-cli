@@ -1,0 +1,422 @@
+"""Tests for the ``agentflow config`` browser editor backend."""
+
+from __future__ import annotations
+
+import http.client
+import json
+from pathlib import Path
+
+import pytest
+from typer.testing import CliRunner
+
+import agentflow_cli.cli.main as main_mod
+from agentflow_cli.cli.config_editor import (
+    ConfigConflictError,
+    ConfigEditorServer,
+    ConfigFileStore,
+    build_schema,
+    validate_config,
+)
+from agentflow_cli.cli.config_editor.schema import AUTHORIZATION_SCOPES, KNOWN_TOP_LEVEL_KEYS
+from agentflow_cli.cli.config_editor.server import TOKEN_HEADER
+
+
+def _levels(issues: list[dict], path: str) -> list[str]:
+    return [issue["level"] for issue in issues if issue["path"] == path]
+
+
+# ---------------------------------------------------------------------------
+# schema
+# ---------------------------------------------------------------------------
+
+
+def test_schema_is_json_and_fields_live_under_their_section() -> None:
+    schema = json.loads(json.dumps(build_schema()))
+    ids = [section["id"] for section in schema["sections"]]
+    assert len(ids) == len(set(ids))
+    for section in schema["sections"]:
+        for field in section["fields"]:
+            if section["key"] is not None:
+                assert field["path"][0] == section["key"]
+            assert field["path"][0] in KNOWN_TOP_LEVEL_KEYS
+
+
+def test_schema_scopes_match_api_scopes() -> None:
+    from agentflow_cli.src.app.core.auth.authorization import all_scopes
+
+    assert set(AUTHORIZATION_SCOPES) == set(all_scopes())
+
+
+def test_build_schema_returns_independent_copies() -> None:
+    first = build_schema()
+    first["sections"][0]["title"] = "changed"
+    assert build_schema()["sections"][0]["title"] != "changed"
+
+
+# ---------------------------------------------------------------------------
+# validation
+# ---------------------------------------------------------------------------
+
+
+def test_minimal_config_has_no_errors() -> None:
+    issues = validate_config({"agent": "graph.react:app", "env": ".env"})
+    assert not [issue for issue in issues if issue["level"] == "error"]
+
+
+@pytest.mark.parametrize("config", [{}, {"agent": ""}])
+def test_agent_is_required(config: dict) -> None:
+    assert _levels(validate_config(config), "agent") == ["error"]
+
+
+def test_non_object_config_is_rejected() -> None:
+    assert validate_config([])[0]["level"] == "error"
+
+
+@pytest.mark.parametrize("value", ["graph.react", "graph react:app", 42])
+def test_agent_must_be_an_import_path(value: object) -> None:
+    assert _levels(validate_config({"agent": value}), "agent") == ["error"]
+
+
+@pytest.mark.parametrize(
+    ("auth", "path", "expected"),
+    [
+        ("jwt", "auth", []),
+        ("basic", "auth", ["error"]),
+        ({"method": "custom", "path": "auth.backend:Auth"}, "auth.path", []),
+        ({"method": "custom"}, "auth.path", ["error"]),
+        ({"method": "jwt", "path": "x:y"}, "auth.method", ["error"]),
+        (123, "auth", ["error"]),
+    ],
+)
+def test_auth_variants(auth: object, path: str, expected: list[str]) -> None:
+    issues = validate_config({"agent": "graph.react:app", "auth": auth})
+    assert _levels(issues, path) == expected
+
+
+@pytest.mark.parametrize(
+    ("authorization", "path", "expected"),
+    [
+        ("ownership", "authorization", []),
+        ("ALLOW_ALL", "authorization", []),
+        ("auth.perm:Backend", "authorization", []),
+        ("everyone", "authorization", ["error"]),
+        ({"backend": "acl"}, "authorization.backend", ["error"]),
+        ({"backend": "rbac", "roles": {"admin": "*"}}, "authorization.roles.admin", ["error"]),
+        (
+            {"backend": "rbac", "roles": {"a": []}, "isolation": "x"},
+            "authorization.isolation",
+            ["error"],
+        ),
+        ({"backend": "rbac", "roles": {}}, "authorization.roles", ["warning"]),
+        ({"type": "rbac", "role_scopes": {"a": ["graph:read"]}}, "authorization.roles", []),
+    ],
+)
+def test_authorization_variants(authorization: object, path: str, expected: list[str]) -> None:
+    issues = validate_config({"agent": "graph.react:app", "authorization": authorization})
+    assert _levels(issues, path) == expected
+
+
+def test_rate_limit_uses_server_parser() -> None:
+    issues = validate_config(
+        {"agent": "graph.react:app", "rate_limit": {"by": "country", "backend": "redis"}}
+    )
+    assert _levels(issues, "rate_limit") == ["error"]
+    assert "rate_limit.by" in next(i["message"] for i in issues if i["path"] == "rate_limit")
+
+
+def test_rate_limit_unset_env_var_is_only_a_warning(monkeypatch) -> None:
+    monkeypatch.delenv("AF_TEST_REDIS_URL", raising=False)
+    issues = validate_config(
+        {
+            "agent": "graph.react:app",
+            "rate_limit": {"backend": "redis", "redis": {"url": "${AF_TEST_REDIS_URL}"}},
+        }
+    )
+    assert _levels(issues, "rate_limit") == []
+    assert _levels(issues, "rate_limit.redis.url") == ["warning"]
+
+
+def test_rate_limit_memory_backend_warns() -> None:
+    issues = validate_config({"agent": "graph.react:app", "rate_limit": {"backend": "memory"}})
+    assert _levels(issues, "rate_limit.backend") == ["warning"]
+
+
+def test_websocket_rejects_negative_limit() -> None:
+    issues = validate_config({"agent": "graph.react:app", "websocket": {"max_connections": -1}})
+    assert _levels(issues, "websocket") == ["error"]
+
+
+def test_ag_ui_is_known_and_validated() -> None:
+    ok = validate_config({"agent": "graph.react:app", "ag_ui": {"enabled": True}})
+    assert _levels(ok, "ag_ui") == []
+    bad = validate_config({"agent": "graph.react:app", "ag_ui": {"enabled": "maybe"}})
+    assert _levels(bad, "ag_ui") == ["error"]
+
+
+def test_observability_checks() -> None:
+    issues = validate_config(
+        {"agent": "graph.react:app", "observability": {"level": "all", "logfire": []}}
+    )
+    assert _levels(issues, "observability.level") == ["error"]
+    assert _levels(issues, "observability.logfire") == ["error"]
+    assert _levels(issues, "observability") == ["warning"]
+
+
+def test_remote_tools_duplicates_are_errors() -> None:
+    tool = {"node": "MAIN", "name": "locate", "description": "Find the user"}
+    issues = validate_config({"agent": "graph.react:app", "remote_tools": [tool, tool]})
+    assert _levels(issues, "remote_tools") == ["error"]
+
+
+def test_test_and_evaluation_ranges() -> None:
+    issues = validate_config(
+        {
+            "agent": "graph.react:app",
+            "test": {"coverage": "yes", "coverage_threshold": 120},
+            "evaluation": {"threshold": 2, "max_concurrency": 0, "parallel": 1},
+        }
+    )
+    for path in (
+        "test.coverage",
+        "test.coverage_threshold",
+        "evaluation.threshold",
+        "evaluation.max_concurrency",
+        "evaluation.parallel",
+    ):
+        assert _levels(issues, path) == ["error"], path
+
+
+def test_unknown_keys_are_warnings_on_core_section() -> None:
+    issues = validate_config({"agent": "graph.react:app", "routers": {}})
+    [issue] = [i for i in issues if i["path"] == "routers"]
+    assert issue["level"] == "warning"
+    assert issue["section"] == "core"
+
+
+def test_plugins_and_checkpointer_warning() -> None:
+    issues = validate_config(
+        {"agent": "graph.react:app", "store": "not a path", "checkpointer": "graph.deps:cp"}
+    )
+    assert _levels(issues, "store") == ["error"]
+    assert _levels(issues, "checkpointer") == ["warning"]
+
+
+def test_file_checks_use_base_dir(tmp_path: Path) -> None:
+    (tmp_path / "graph").mkdir()
+    (tmp_path / "graph" / "react.py").write_text("app = None\n")
+    config = {"agent": "graph.react:app", "env": ".env", "store": "graph.missing:store"}
+    issues = validate_config(config, tmp_path)
+    assert _levels(issues, "agent") == []
+    assert _levels(issues, "env") == ["warning"]
+    assert _levels(issues, "store") == ["warning"]
+
+
+# ---------------------------------------------------------------------------
+# store
+# ---------------------------------------------------------------------------
+
+
+def test_store_creates_new_file_without_backup(tmp_path: Path) -> None:
+    store = ConfigFileStore(tmp_path / "agentflow.json")
+    loaded = store.load()
+    assert loaded.config is None and loaded.version is None
+
+    version = store.save({"agent": "graph.react:app"}, None)
+    assert store.load().version == version
+    assert json.loads(store.path.read_text()) == {"agent": "graph.react:app"}
+    assert not store.backup_path.exists()
+
+
+def test_store_keeps_key_order_and_backup(tmp_path: Path) -> None:
+    path = tmp_path / "agentflow.json"
+    path.write_text(json.dumps({"env": ".env", "agent": "a:b", "custom": 1}))
+    store = ConfigFileStore(path)
+    version = store.load().version
+
+    store.save({"agent": "a:c", "auth": "jwt", "env": ".env", "custom": 1}, version)
+
+    assert list(json.loads(path.read_text())) == ["env", "agent", "custom", "auth"]
+    assert json.loads(store.backup_path.read_text())["agent"] == "a:b"
+    assert path.read_text().endswith("}\n")
+
+
+def test_store_detects_concurrent_edits(tmp_path: Path) -> None:
+    path = tmp_path / "agentflow.json"
+    path.write_text('{"agent": "a:b"}')
+    store = ConfigFileStore(path)
+    version = store.load().version
+    path.write_text('{"agent": "x:y"}')
+    with pytest.raises(ConfigConflictError):
+        store.save({"agent": "a:c"}, version)
+    with pytest.raises(ConfigConflictError):
+        ConfigFileStore(tmp_path / "other.json").save({"agent": "a:b"}, "stale")
+
+
+@pytest.mark.parametrize("content", ["{broken", "[1, 2]"])
+def test_store_reports_unparseable_files(tmp_path: Path, content: str) -> None:
+    path = tmp_path / "agentflow.json"
+    path.write_text(content)
+    loaded = ConfigFileStore(path).load()
+    assert loaded.config is None
+    assert loaded.version is not None
+    assert loaded.parse_error
+
+
+# ---------------------------------------------------------------------------
+# HTTP server
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def editor(tmp_path: Path):
+    path = tmp_path / "agentflow.json"
+    path.write_text(json.dumps({"agent": "graph.react:app", "custom": True}))
+    server = ConfigEditorServer(path, token="secret-token")
+    server.start_in_background()
+    yield server
+    server.shutdown()
+
+
+def _request(
+    server: ConfigEditorServer,
+    method: str,
+    route: str,
+    body: object = None,
+    *,
+    token: str | None = "secret-token",  # noqa: S107
+    host: str | None = None,
+    content_type: str = "application/json",
+) -> tuple[int, dict | str]:
+    conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=5)
+    headers = {"Host": host or f"127.0.0.1:{server.port}"}
+    if token is not None:
+        headers[TOKEN_HEADER] = token
+    payload = None
+    if body is not None:
+        payload = json.dumps(body).encode()
+        headers["Content-Type"] = content_type
+    conn.request(method, route, body=payload, headers=headers)
+    response = conn.getresponse()
+    raw = response.read().decode()
+    conn.close()
+    if response.getheader("Content-Type", "").startswith("application/json"):
+        return response.status, json.loads(raw)
+    return response.status, raw
+
+
+def test_server_serves_page_without_token(editor: ConfigEditorServer) -> None:
+    status, body = _request(editor, "GET", "/", token=None)
+    assert status == 200
+    assert "Agentflow Config" in body
+    assert editor.url.endswith("#token=secret-token")
+
+
+@pytest.mark.parametrize(
+    ("route", "content_type"),
+    [("/app.js", "text/javascript"), ("/app.css", "text/css")],
+)
+def test_server_serves_built_assets(
+    editor: ConfigEditorServer, route: str, content_type: str
+) -> None:
+    conn = http.client.HTTPConnection("127.0.0.1", editor.port, timeout=5)
+    conn.request("GET", route, headers={"Host": f"127.0.0.1:{editor.port}"})
+    response = conn.getresponse()
+    body = response.read()
+    conn.close()
+    assert response.status == 200
+    assert response.getheader("Content-Type", "").startswith(content_type)
+    assert body
+
+
+def test_server_requires_token_and_loopback_host(editor: ConfigEditorServer) -> None:
+    assert _request(editor, "GET", "/api/state", token=None)[0] == 403
+    assert _request(editor, "GET", "/api/state", token="wrong")[0] == 403
+    assert _request(editor, "GET", "/api/state", host="evil.example:80")[0] == 403
+    assert _request(editor, "GET", "/nope")[0] == 404
+
+
+def test_server_state(editor: ConfigEditorServer) -> None:
+    status, body = _request(editor, "GET", "/api/state")
+    assert status == 200
+    assert body["exists"] is True
+    assert body["config"] == {"agent": "graph.react:app", "custom": True}
+    assert body["schema"]["sections"]
+    assert any(issue["path"] == "custom" for issue in body["issues"])
+
+
+def test_server_state_for_missing_file(tmp_path: Path) -> None:
+    server = ConfigEditorServer(tmp_path / "agentflow.json", token="t")
+    server.start_in_background()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=5)
+        conn.request("GET", "/api/state", headers={TOKEN_HEADER: "t"})
+        body = json.loads(conn.getresponse().read())
+        conn.close()
+    finally:
+        server.shutdown()
+    assert body["exists"] is False
+    assert body["config"]["agent"]
+
+
+def test_server_validate(editor: ConfigEditorServer) -> None:
+    status, body = _request(editor, "POST", "/api/validate", {"config": {"agent": ""}})
+    assert status == 200
+    assert any(issue["path"] == "agent" for issue in body["issues"])
+    status, _ = _request(editor, "POST", "/api/validate", {"config": {}}, content_type="text/plain")
+    assert status == 415
+
+
+def test_server_save_flow(editor: ConfigEditorServer) -> None:
+    _, state = _request(editor, "GET", "/api/state")
+    config = {**state["config"], "auth": "jwt"}
+
+    status, body = _request(
+        editor, "POST", "/api/save", {"config": {}, "version": state["version"]}
+    )
+    assert status == 422
+
+    status, body = _request(editor, "POST", "/api/save", {"config": config, "version": "stale"})
+    assert status == 409
+
+    status, body = _request(
+        editor, "POST", "/api/save", {"config": config, "version": state["version"]}
+    )
+    assert status == 200
+    assert body["backup"]
+    assert json.loads(editor.store.path.read_text()) == config
+    assert list(body["config"]) == ["agent", "custom", "auth"]
+
+
+# ---------------------------------------------------------------------------
+# CLI wiring
+# ---------------------------------------------------------------------------
+
+
+def test_config_command_delegates(monkeypatch) -> None:
+    called: dict = {}
+
+    def fake_execute(self, **kwargs):
+        called.update(kwargs)
+        return 0
+
+    monkeypatch.setattr(main_mod.ConfigCommand, "execute", fake_execute)
+    result = CliRunner().invoke(main_mod.app, ["config", "--no-open", "-c", "x.json", "-p", "9"])
+    assert result.exit_code == 0
+    assert called == {"config": "x.json", "port": 9, "open_browser": False}
+
+
+def test_config_command_runs_until_interrupted(monkeypatch, tmp_path: Path) -> None:
+    from agentflow_cli.cli.commands import config as config_cmd
+
+    opened: list[str] = []
+
+    def interrupt(self) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(config_cmd.ConfigEditorServer, "serve_forever", interrupt)
+    monkeypatch.setattr(config_cmd.webbrowser, "open_new_tab", opened.append)
+
+    command = config_cmd.ConfigCommand()
+    assert command.execute(config=str(tmp_path / "agentflow.json"), open_browser=True) == 0
+    assert len(opened) == 1
+    assert "#token=" in opened[0]

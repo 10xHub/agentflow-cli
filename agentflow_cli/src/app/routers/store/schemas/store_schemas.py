@@ -15,6 +15,13 @@ from agentflow.storage.store.store_schema import (
 from pydantic import BaseModel, Field
 
 
+# Upper bounds so one request cannot make the store (and the embedding / vector backend)
+# return or rank an unbounded number of rows.
+MAX_SEARCH_LIMIT = 100
+MAX_LIST_LIMIT = 1000
+MAX_SEARCH_TOKENS = 16_000
+
+
 class BaseConfigSchema(BaseModel):
     """Base schema containing configuration overrides and store options."""
 
@@ -55,7 +62,12 @@ class SearchMemorySchema(BaseConfigSchema):
         default=None,
         description="Optional category filter.",
     )
-    limit: int = Field(default=10, gt=0, description="Maximum number of results to return.")
+    limit: int = Field(
+        default=10,
+        gt=0,
+        le=MAX_SEARCH_LIMIT,
+        description="Maximum number of results to return.",
+    )
     score_threshold: float | None = Field(
         default=None,
         description="Minimum similarity score required for results.",
@@ -75,6 +87,7 @@ class SearchMemorySchema(BaseConfigSchema):
     max_tokens: int = Field(
         default=4000,
         gt=0,
+        le=MAX_SEARCH_TOKENS,
         description="Maximum tokens used for truncation in similarity search.",
     )
 
@@ -100,7 +113,12 @@ class GetMemorySchema(BaseConfigSchema):
 class ListMemoriesSchema(BaseConfigSchema):
     """Schema for listing memories."""
 
-    limit: int = Field(default=100, gt=0, description="Maximum number of memories to return.")
+    limit: int = Field(
+        default=100,
+        gt=0,
+        le=MAX_LIST_LIMIT,
+        description="Maximum number of memories to return.",
+    )
 
 
 class ForgetMemorySchema(BaseConfigSchema):

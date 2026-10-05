@@ -3,6 +3,11 @@ from fastapi import Depends
 from agentflow_cli.src.app.core import Settings, get_settings, logger
 
 
+# Only server faults are Sentry events. A 403 is authorization doing its job; reporting
+# every one lets any client flood the project and bury real errors.
+SENTRY_FAILED_STATUS_CODES = frozenset(range(500, 600))
+
+
 def init_sentry(settings: Settings = Depends(get_settings)) -> None:
     """Initialize Sentry for error tracking and performance monitoring.
 
@@ -22,7 +27,7 @@ def init_sentry(settings: Settings = Depends(get_settings)) -> None:
     if environment not in allowed_environments:
         logger.warning(
             f"Sentry is not configured for this environment: {environment}. "
-            "Allowed environments are: {allowed_environments}"
+            f"Allowed environments are: {allowed_environments}"
         )
         return
 
@@ -38,15 +43,15 @@ def init_sentry(settings: Settings = Depends(get_settings)) -> None:
             integrations=[
                 FastApiIntegration(
                     transaction_style="endpoint",
-                    failed_request_status_codes=[403, range(500, 599)],
+                    failed_request_status_codes=SENTRY_FAILED_STATUS_CODES,
                 ),
                 StarletteIntegration(
                     transaction_style="endpoint",
-                    failed_request_status_codes=[403, range(500, 599)],
+                    failed_request_status_codes=SENTRY_FAILED_STATUS_CODES,
                 ),
             ],
-            traces_sample_rate=1.0,
-            profiles_sample_rate=1.0,
+            traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+            profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
         )
         logger.debug("Sentry initialized")
     except ImportError:

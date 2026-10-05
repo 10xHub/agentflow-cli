@@ -39,6 +39,19 @@ JWT_PATTERN = re.compile(r"^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]
 # Regex pattern to detect bearer tokens
 BEARER_PATTERN = re.compile(r"^Bearer\s+[A-Za-z0-9\-_.~+/]+=*$", re.IGNORECASE)
 
+# Tokens embedded anywhere in a message (f-string logs carry no args to sanitize).
+_INLINE_SECRET_PATTERNS = (
+    (re.compile(r"Bearer\s+[A-Za-z0-9\-_.~+/]+=*", re.IGNORECASE), "Bearer ***REDACTED***"),
+    (re.compile(r"\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*"), "***JWT_TOKEN***"),
+)
+
+
+def redact_text(text: str) -> str:
+    """Redact bearer tokens and JWTs that appear anywhere inside ``text``."""
+    for pattern, replacement in _INLINE_SECRET_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
 
 def sanitize_for_logging(data: Any, max_depth: int = 10, _current_depth: int = 0) -> Any:
     """
@@ -193,8 +206,11 @@ class SanitizingFormatter(logging.Formatter):
             Formatted and sanitized log string
         """
         # Sanitize the message arguments
-        if record.args:
+        if isinstance(record.args, tuple) and record.args:
             record.args = tuple(sanitize_for_logging(arg) for arg in record.args)
+        elif isinstance(record.args, dict):
+            record.args = sanitize_for_logging(record.args)
 
-        # Format using the base formatter
-        return self.base_formatter.format(record)
+        # Format using the base formatter, then catch tokens already baked into the text
+        # (f-string messages, exception text, tracebacks).
+        return redact_text(self.base_formatter.format(record))

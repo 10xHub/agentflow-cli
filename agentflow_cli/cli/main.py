@@ -1,7 +1,6 @@
 """Agentflow CLI entry point and lightweight command registry."""
 
 import importlib
-import json
 import os
 import sys
 from pathlib import Path
@@ -18,9 +17,8 @@ from agentflow_cli.cli.constants import (
 )
 from agentflow_cli.cli.context import CLIContext
 from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow_cli.cli.exceptions import AgentflowCLIError, ConfigurationError, DependencyError
+from agentflow_cli.cli.exceptions import AgentflowCLIError, DependencyError
 from agentflow_cli.cli.logger import setup_cli_logging
-from agentflow_cli.cli.user_config import UserConfigStore, parse_config_value
 
 
 def _lazy_command(module_name: str, class_name: str) -> type:
@@ -59,6 +57,7 @@ def _lazy_command(module_name: str, class_name: str) -> type:
 APICommand = _lazy_command("agentflow_cli.cli.commands.api", "APICommand")
 AuditCommand = _lazy_command("agentflow_cli.cli.commands.audit", "AuditCommand")
 BuildCommand = _lazy_command("agentflow_cli.cli.commands.build", "BuildCommand")
+ConfigCommand = _lazy_command("agentflow_cli.cli.commands.config", "ConfigCommand")
 DemoCommand = _lazy_command("agentflow_cli.cli.commands.demo", "DemoCommand")
 EvalCommand = _lazy_command("agentflow_cli.cli.commands.eval", "EvalCommand")
 InitCommand = _lazy_command("agentflow_cli.cli.commands.init", "InitCommand")
@@ -82,12 +81,6 @@ app = typer.Typer(
     rich_markup_mode="rich",
     pretty_exceptions_enable=False,
 )
-config_app = typer.Typer(
-    name="config",
-    help="Inspect and manage user-level Agentflow CLI preferences.",
-    no_args_is_help=True,
-)
-app.add_typer(config_app, name="config", rich_help_panel="Manage")
 
 # Initialize global output formatter
 output = OutputFormatter()
@@ -198,38 +191,21 @@ def root(  # noqa: PLR0913
     if cwd is not None:
         os.chdir(cwd)
 
-    preferences = UserConfigStore()
-    try:
-        if json_output and output_format not in {None, OutputFormat.JSON}:
-            raise typer.BadParameter("--json cannot be combined with a different --format.")
-        if no_color and color not in {None, ColorMode.NEVER}:
-            raise typer.BadParameter("--no-color cannot be combined with a different --color.")
-        if animation is not None and progress is not None:
-            expected = ProgressMode.TTY if animation else ProgressMode.PLAIN
-            if progress != expected:
-                raise typer.BadParameter(
-                    "--animation/--no-animation conflicts with the selected --progress mode."
-                )
-        resolved_format = output_format or OutputFormat(
-            preferences.get("output.format", OutputFormat.HUMAN)
-        )
-        resolved_color = color or ColorMode(preferences.get("output.color", ColorMode.AUTO))
-        resolved_progress = progress or ProgressMode(
-            preferences.get("output.progress", ProgressMode.AUTO)
-        )
-        if json_output:
-            resolved_format = OutputFormat.JSON
-        if no_color:
-            resolved_color = ColorMode.NEVER
-        if animation is not None:
-            resolved_progress = ProgressMode.TTY if animation else ProgressMode.PLAIN
-    except (ConfigurationError, ValueError) as exc:
-        if ctx.invoked_subcommand != "config":
+    if json_output and output_format not in {None, OutputFormat.JSON}:
+        raise typer.BadParameter("--json cannot be combined with a different --format.")
+    if no_color and color not in {None, ColorMode.NEVER}:
+        raise typer.BadParameter("--no-color cannot be combined with a different --color.")
+    if animation is not None and progress is not None:
+        expected = ProgressMode.TTY if animation else ProgressMode.PLAIN
+        if progress != expected:
             raise typer.BadParameter(
-                f"Invalid user output configuration: {exc}. Run `agentflow config validate`."
-            ) from exc
-        resolved_format = output_format or OutputFormat.HUMAN
-        resolved_color = color or ColorMode.AUTO
+                "--animation/--no-animation conflicts with the selected --progress mode."
+            )
+    resolved_format = OutputFormat.JSON if json_output else output_format or OutputFormat.HUMAN
+    resolved_color = ColorMode.NEVER if no_color else color or ColorMode.AUTO
+    if animation is not None:
+        resolved_progress = ProgressMode.TTY if animation else ProgressMode.PLAIN
+    else:
         resolved_progress = progress or ProgressMode.AUTO
 
     output.configure(
@@ -261,109 +237,6 @@ def root(  # noqa: PLR0913
     if version_flag:
         typer.echo(CLI_VERSION)
         raise typer.Exit()
-
-
-@config_app.command("path")
-def config_path() -> None:
-    """Print the user configuration file path."""
-    typer.echo(UserConfigStore().path)
-
-
-@config_app.command("list")
-def config_list() -> None:
-    """List all user-level CLI preferences."""
-    store = UserConfigStore()
-    try:
-        values = store.load()
-    except ConfigurationError as exc:
-        raise typer.Exit(handle_exception(exc)) from exc
-    output.print_key_value_pairs(_flatten_mapping(values), title="User configuration")
-
-
-@config_app.command("get")
-def config_get(key: str = typer.Argument(..., help="Dot-separated preference key.")) -> None:
-    """Read one user-level CLI preference."""
-    store = UserConfigStore()
-    try:
-        value = store.get(key)
-    except ConfigurationError as exc:
-        raise typer.Exit(handle_exception(exc)) from exc
-    if value is None:
-        raise typer.Exit(
-            handle_exception(
-                ConfigurationError(
-                    f"Configuration key '{key}' is not set.",
-                    config_path=str(store.path),
-                )
-            )
-        )
-    if isinstance(value, dict | list):
-        typer.echo(json.dumps(value, indent=2, ensure_ascii=False))
-    else:
-        typer.echo(value)
-
-
-@config_app.command("set")
-def config_set(
-    key: str = typer.Argument(..., help="Dot-separated preference key."),
-    value: str = typer.Argument(..., help="JSON value or plain string."),
-) -> None:
-    """Set one user-level CLI preference."""
-    store = UserConfigStore()
-    try:
-        store.set(key, parse_config_value(value))
-    except ConfigurationError as exc:
-        raise typer.Exit(handle_exception(exc)) from exc
-    output.success(f"Set {key} in {store.path}")
-
-
-@config_app.command("unset")
-def config_unset(key: str = typer.Argument(..., help="Dot-separated preference key.")) -> None:
-    """Remove one user-level CLI preference."""
-    store = UserConfigStore()
-    try:
-        removed = store.unset(key)
-    except ConfigurationError as exc:
-        raise typer.Exit(handle_exception(exc)) from exc
-    if not removed:
-        raise typer.Exit(
-            handle_exception(
-                ConfigurationError(
-                    f"Configuration key '{key}' is not set.",
-                    config_path=str(store.path),
-                )
-            )
-        )
-    output.success(f"Removed {key} from {store.path}")
-
-
-@config_app.command("validate")
-def config_validate() -> None:
-    """Validate the user configuration and supported output preferences."""
-    store = UserConfigStore()
-    try:
-        store.load()
-        OutputFormat(store.get("output.format", OutputFormat.HUMAN))
-        ColorMode(store.get("output.color", ColorMode.AUTO))
-        ProgressMode(store.get("output.progress", ProgressMode.AUTO))
-    except (ConfigurationError, ValueError) as exc:
-        raise typer.Exit(handle_exception(ConfigurationError(str(exc)))) from exc
-    output.success(f"User configuration is valid: {store.path}")
-
-
-def _flatten_mapping(
-    values: dict[str, Any],
-    *,
-    prefix: str = "",
-) -> dict[str, Any]:
-    flattened: dict[str, Any] = {}
-    for key, value in values.items():
-        dotted = f"{prefix}.{key}" if prefix else key
-        if isinstance(value, dict):
-            flattened.update(_flatten_mapping(value, prefix=dotted))
-        else:
-            flattened[dotted] = value
-    return flattened
 
 
 def _configure_command(*, verbose: bool, quiet: bool) -> None:
@@ -567,11 +440,18 @@ def dev(
     epilog=(
         "Examples:\n"
         "  agentflow audit\n"
+        "  agentflow audit --config custom.json\n"
         "  agentflow --format json audit\n"
         "  agentflow --no-animation audit"
     ),
 )
 def audit(
+    config: str = typer.Option(
+        DEFAULT_CONFIG_FILE,
+        "--config",
+        "-c",
+        help="Project configuration file to validate (default: agentflow.json).",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging."),
     quiet: bool = typer.Option(
         False,
@@ -584,8 +464,8 @@ def audit(
 
     Runs six read-only checks and prints them as a table: the Python
     interpreter, the installed CLI and core packages, whether the core exposes
-    the evaluation API this CLI expects, whether `agentflow.json` is present
-    and declares a valid `agent` key, and whether the default port is free.
+    the evaluation API this CLI expects, whether `agentflow.json` declares a
+    valid `agent` key and remote-tool schemas, and whether the default port is free.
 
     Nothing is written or changed, so it is safe to run anywhere. Exits 1 if
     any check fails and 0 otherwise, which makes it usable as a CI gate;
@@ -594,7 +474,7 @@ def audit(
     """
     _configure_command(verbose=verbose, quiet=quiet)
     try:
-        sys.exit(AuditCommand(output).execute())
+        sys.exit(AuditCommand(output).execute(config=config))
     except Exception as e:
         sys.exit(handle_exception(e))
 
@@ -636,6 +516,35 @@ def version(
     try:
         command = VersionCommand(output)
         exit_code = command.execute()
+        sys.exit(exit_code)
+    except Exception as e:
+        sys.exit(handle_exception(e))
+
+
+@app.command(rich_help_panel="Manage")
+def config(
+    config_file: str = typer.Option(
+        DEFAULT_CONFIG_FILE,
+        "--config",
+        "-c",
+        help="Config file to edit. It is created on first save if missing.",
+    ),
+    port: int = typer.Option(
+        0,
+        "--port",
+        "-p",
+        help="Port for the local editor (default: any free port).",
+    ),
+    open_browser: bool = typer.Option(
+        True,
+        "--open/--no-open",
+        help="Open the editor in your default browser.",
+    ),
+) -> None:
+    """Edit, validate, and save agentflow.json in a browser UI."""
+    try:
+        command = ConfigCommand(output)
+        exit_code = command.execute(config=config_file, port=port, open_browser=open_browser)
         sys.exit(exit_code)
     except Exception as e:
         sys.exit(handle_exception(e))
@@ -837,6 +746,14 @@ def skills(
         "-l",
         help="List supported agents and exit",
     ),
+    validate: list[str] | None = typer.Option(
+        None,
+        "--validate",
+        help=(
+            "Validate a skill directory, or a folder of skill directories, against the "
+            "Agent Skills specification and exit. Repeatable."
+        ),
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -850,7 +767,7 @@ def skills(
         help="Suppress all output except errors",
     ),
 ) -> None:
-    """Install bundled Agentflow skills for Codex, Claude, or GitHub."""
+    """Install bundled Agentflow skills for Codex, Claude, or GitHub, or validate skills."""
     _configure_command(verbose=verbose, quiet=quiet)
 
     try:
@@ -861,6 +778,7 @@ def skills(
             force=force,
             all_agents=all_agents,
             list_agents=list_agents,
+            validate_paths=validate,
         )
         sys.exit(exit_code)
     except Exception as e:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from fastapi import Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 
 from agentflow_cli.src.app.core.auth.permissions import RequirePermission
 from agentflow_cli.src.app.core.auth.route_guard import (
@@ -73,3 +73,43 @@ def test_real_app_has_no_unprotected_routes():
     import agentflow_cli.src.app.main as main_module
 
     assert find_unprotected_routes(main_module.app) == []
+
+
+def _open_router() -> APIRouter:
+    router = APIRouter(prefix="/v1/admin")
+
+    @router.get("/dump")  # <-- forgot RequirePermission
+    async def _dump():
+        return {}
+
+    return router
+
+
+def test_leaky_route_in_an_included_router_is_detected():
+    # FastAPI 0.139+ keeps included routers lazy, so app.routes holds no APIRoute for them.
+    app = FastAPI()
+    app.include_router(_open_router())
+    assert find_unprotected_routes(app) == ["GET /v1/admin/dump"]
+
+
+def test_nested_include_prefixes_are_combined():
+    outer = APIRouter(prefix="/v2")
+    outer.include_router(_open_router())
+    app = FastAPI()
+    app.include_router(outer, prefix="/api")
+    assert find_unprotected_routes(app) == ["GET /api/v2/v1/admin/dump"]
+
+
+def test_guard_given_at_include_time_protects_the_router():
+    app = FastAPI()
+    app.include_router(_open_router(), dependencies=[Depends(RequirePermission("graph", "read"))])
+    assert find_unprotected_routes(app) == []
+
+
+def test_real_app_routes_are_actually_checked():
+    import agentflow_cli.src.app.main as main_module
+    from agentflow_cli.src.app.core.auth.route_guard import _iter_routes
+
+    paths = {path for path, _route, _guarded in _iter_routes(main_module.app.routes)}
+    assert "/v1/graph/invoke" in paths
+    assert "/v1/threads/{thread_id}/state" in paths

@@ -18,7 +18,7 @@ from agentflow_cli.cli.templates.defaults import (
 class BuildCommand(BaseCommand):
     """Command to generate Dockerfile and docker-compose.yml for the application."""
 
-    def execute(
+    def execute(  # noqa: PLR0915
         self,
         output_file: str = "Dockerfile",
         force: bool = False,
@@ -83,11 +83,16 @@ class BuildCommand(BaseCommand):
 
                 with timeline.step("sources") as step:
                     requirements_files, requirements_file = self._discover_requirements(Path.cwd())
-                    step.detail(
-                        f"requirements: {requirements_files[0]}"
-                        if requirements_files
-                        else "no requirements.txt — installing agentflow-cli from PyPI"
-                    )
+                    has_pyproject = (Path.cwd() / "pyproject.toml").is_file()
+                    if requirements_files:
+                        step.detail(f"requirements: {requirements_files[0]}")
+                    elif has_pyproject:
+                        step.detail("dependencies: pyproject.toml")
+                    else:
+                        step.detail(
+                            "no requirements.txt or pyproject.toml; installing "
+                            "10xscale-agentflow-cli from PyPI"
+                        )
 
                 with timeline.step("dockerfile") as step:
                     dockerfile_content = generate_dockerfile_content(
@@ -96,6 +101,7 @@ class BuildCommand(BaseCommand):
                         requirements_file=requirements_file,
                         has_requirements=bool(requirements_files),
                         omit_cmd=docker_compose,
+                        has_pyproject=has_pyproject,
                     )
                     self._write_dockerfile(output_path, dockerfile_content)
                     step.detail(str(output_path))

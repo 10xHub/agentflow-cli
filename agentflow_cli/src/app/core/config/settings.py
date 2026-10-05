@@ -2,7 +2,7 @@ import logging
 import os
 from functools import lru_cache
 
-from pydantic import ConfigDict, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -100,6 +100,10 @@ class Settings(BaseSettings):
     ###### sentry Config ############
     #################################
     SENTRY_DSN: str | None = None
+    # Share of requests traced / profiled. 1.0 sends every request, which is costly and
+    # rarely wanted in production.
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.1, ge=0.0, le=1.0)
+    SENTRY_PROFILES_SAMPLE_RATE: float = Field(default=0.0, ge=0.0, le=1.0)
 
     #################################
     ###### Auth ############
@@ -116,6 +120,10 @@ class Settings(BaseSettings):
     #################################
     JWT_SECRET_KEY: str | None = None
     JWT_ALGORITHM: str = "HS256"
+    # When set, tokens must carry a matching ``iss`` / ``aud`` claim, so a token minted for
+    # another service that shares the signing key is not accepted here.
+    JWT_ISSUER: str | None = None
+    JWT_AUDIENCE: str | None = None
 
     #################################
     ###### OTEL Config ##############
@@ -148,6 +156,12 @@ class Settings(BaseSettings):
     def check_production_security(self):
         """Check for insecure configurations in production mode."""
         if self.MODE == "production":
+            # Docs (and the OpenAPI schema behind them) are off in production unless a path
+            # was set explicitly.
+            for field in ("DOCS_PATH", "REDOCS_PATH"):
+                if field not in self.model_fields_set:
+                    setattr(self, field, "")
+
             warnings = []
 
             if self.IS_DEBUG:

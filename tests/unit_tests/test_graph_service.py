@@ -45,6 +45,7 @@ class TestGraphServiceMethods:
     def mock_checkpointer(self):
         checkpointer = MagicMock(spec=BaseCheckpointer)
         checkpointer.aput_thread = AsyncMock(return_value=True)
+        checkpointer.aget_thread_owner = AsyncMock(return_value=None)
         return checkpointer
 
     @pytest.fixture
@@ -238,7 +239,13 @@ class TestGraphServiceMethods:
         assert data1["data"]["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_stream_graph_exception_handling(self, service, mock_graph):
+    async def test_stream_graph_exception_handling(self, service, mock_graph, monkeypatch):
+        from agentflow_cli.src.app.core.config import settings as settings_module
+
+        # The reason is only generic in production; do not depend on which test cached
+        # the settings first.
+        production = settings_module.Settings(MODE="production", _env_file=None)
+        monkeypatch.setattr(settings_module, "get_settings", lambda: production)
         gi = GraphInputSchema(
             messages=[{"role": "user", "content": [{"type": "text", "text": "hi"}]}],
             config={"thread_id": "t1"},
@@ -303,39 +310,6 @@ class TestGraphServiceMethods:
         with pytest.raises(HTTPException) as exc:
             await service.get_state_schema()
         assert exc.value.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_setup(self, service, mock_graph):
-        from agentflow_cli.src.app.core.config.settings import get_settings
-
-        settings = get_settings()
-        old_mode = settings.MODE
-        settings.MODE = "development"
-        try:
-            # Mock GraphSetupSchema data
-            class MockTool:
-                node_name = "n1"
-                name = "t1"
-                description = "desc"
-                parameters = {}
-
-            class MockSetupData:
-                tools = [MockTool()]
-
-            mock_graph.attach_remote_tools = MagicMock()
-            res = await service.setup(MockSetupData())
-            assert res["status"] == "success"
-            mock_graph.attach_remote_tools.assert_called_once_with(
-                [
-                    {
-                        "type": "function",
-                        "function": {"name": "t1", "description": "desc", "parameters": {}},
-                    }
-                ],
-                "n1",
-            )
-        finally:
-            settings.MODE = old_mode
 
     def test_extract_context_info(self, service):
         # Case 1: Result has values

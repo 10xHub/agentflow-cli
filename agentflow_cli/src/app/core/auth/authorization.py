@@ -12,6 +12,18 @@ from typing import Any
 
 logger = logging.getLogger("agentflow-cli.authorization")
 
+# The /v1/store routes require these. Core releases up to 0.9.1 named them "memory:*", so a
+# "*" role would never reach the memory routes; they are added here until core is bumped.
+STORE_SCOPES = frozenset({"store:read", "store:write", "store:delete"})
+LEGACY_MEMORY_SCOPES = frozenset({"memory:read", "memory:write", "memory:delete"})
+
+
+def all_scopes() -> frozenset[str]:
+    """Every scope the API can require, which is what a ``"*"`` role is granted."""
+    from agentflow.core.authz import ALL_SCOPES
+
+    return (frozenset(ALL_SCOPES) - LEGACY_MEMORY_SCOPES) | STORE_SCOPES
+
 
 class AuthorizationBackend(ABC):
     """
@@ -312,7 +324,7 @@ class RoleBasedAuthorizationBackend(OwnershipAuthorizationBackend):
     - **Scopes** (what actions are allowed) -- ``scopes_for`` maps ``user["roles"]`` (or
       ``user["role"]``) to a set of scopes via the ``role_scopes`` table. ``RequirePermission``
       then enforces the required ``"<resource>:<action>"`` scope. A role granting ``"*"``
-      gets every scope in :data:`agentflow.core.authz.ALL_SCOPES`.
+      gets every scope in :func:`all_scopes`.
     - **Isolation** (which rows are visible) -- inherited from
       :class:`OwnershipAuthorizationBackend` (owner-only threads), configurable via
       ``isolation``.
@@ -359,11 +371,9 @@ class RoleBasedAuthorizationBackend(OwnershipAuthorizationBackend):
         return [str(r) for r in roles]
 
     def scopes_for(self, user: dict[str, Any]) -> list[str]:
-        from agentflow.core.authz import ALL_SCOPES
-
         granted: set[str] = set(self._default_scopes)
         for role in self._roles_of(user):
             granted.update(self._role_scopes.get(role, []))
         if "*" in granted:
-            return sorted(ALL_SCOPES)
+            return sorted(all_scopes())
         return sorted(granted)
