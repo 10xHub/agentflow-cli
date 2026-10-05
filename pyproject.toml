@@ -359,4 +359,6 @@ dev = [
     "redis>=5.0.7",
     "PyJWT",
     "textxtract[pdf,docx,html,xml,md]>=0.2.0",
+    # The ag-ui extra, so the AG-UI router tests run in CI instead of failing.
+    "ag-ui-protocol>=1.0,<2",
 ]

@@ -299,7 +299,10 @@ def _load_custom_auth(path: str | None) -> BaseAuth:
     if not file_path.exists():
         raise ValueError(f"Custom auth path does not exist: {module_or_path}")
 
-    return load_auth(path)
+    auth = load_auth(path)
+    if auth is None:  # load_auth only returns None for an empty path, checked above
+        raise ValueError("Custom auth requires a 'path' in auth_config.")
+    return auth
 
 
 # Built-in authorization backends selectable by name in ``agentflow.json``.

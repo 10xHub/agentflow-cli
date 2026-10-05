@@ -205,8 +205,11 @@ class SkillsCommand(BaseCommand):
     def _validate(self, paths: list[str]) -> int:
         """Validate each skill found under *paths*. Returns 1 if any is invalid."""
         try:
-            from agentflow.core.skills import validate_skill
-            from agentflow.core.skills.loader import iter_skill_dirs
+            # Not in any released core yet (<= 0.9.2); the ImportError branch covers that.
+            from agentflow.core.skills import validate_skill  # type: ignore[attr-defined]
+            from agentflow.core.skills.loader import (  # type: ignore[attr-defined]
+                iter_skill_dirs,
+            )
         except ImportError as exc:
             raise ValidationError(
                 "Skill validation needs a 10xscale-agentflow release that ships "

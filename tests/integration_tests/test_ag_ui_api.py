@@ -16,6 +16,8 @@ import pytest
 
 
 pytest.importorskip("ag_ui")
+# The graph below pauses on interrupt(), which no released agentflow core ships yet.
+pytest.importorskip("agentflow.utils.interrupt", reason="needs an agentflow core with interrupt()")
 
 from ag_ui.core import EventType
 from ag_ui.core.events import Event
