@@ -20,7 +20,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [0.6.0] - 2026-10-07
+
+**Final release of `10xscale-agentflow-cli`.** Agentflow is now 10xGraph
+([10xgraph.com](https://10xgraph.com), [github.com/10xGraph](https://github.com/10xGraph)).
+No further versions will be published under this name; the API server and CLI continue
+under the 10xGraph name. Installed copies keep working, and `10xscale-agentflow-cli==0.6.0`
+can be pinned.
 
 ### Added
 
@@ -39,8 +45,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`RunAgentInput.tools`, e.g. CopilotKit `useFrontendTool`) are offered to the model for that
   run with no `agentflow.json` entry. `RunAgentInput.context`, `tools` and `forwardedProps`
   are available to nodes as `config["ag_ui"]`. `agentflow init` writes
-  `"ag_ui": {"enabled": false}`, and `agentflow config` shows the new section. Requires the
-  `10xscale-agentflow` release that adds `interrupt()` and per-run `remote_tools`.
+  `"ag_ui": {"enabled": false}`, and `agentflow config` shows the new section. Requires
+  `10xscale-agentflow>=0.10.0` (`interrupt()` and per-run `remote_tools`).
 - **`resume` on `/v1/graph/invoke` and `/v1/graph/stream`.** Resumes a thread paused by
   `interrupt()`; `messages` may be empty when `resume` is sent.
 - **`remote_tools` is a server-owned run-config key.** Client config can no longer set it on
@@ -48,18 +54,69 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `GraphService.stream_chunks()` yields the graph stream as `StreamChunk` objects, with an
   optional `server_config` for server-owned run config; `stream_graph()` (NDJSON) is now a
   thin wrapper over it.
-
 - **`agentflow skills --validate PATH`** checks a skill directory, or a folder of
   skill directories, against the Agent Skills specification (agentskills.io).
   It reports errors and warnings per skill and exits `1` when any skill is
-  invalid. The option is repeatable, and it requires a `10xscale-agentflow`
-  release that ships `agentflow.core.skills.validate_skill`.
+  invalid. The option is repeatable, and it requires `10xscale-agentflow>=0.10.0`
+  (`agentflow.core.skills.validate_skill`).
 - **The bundled Agentflow skill conforms to the Agent Skills specification.** Its
   `description` was invalid YAML (an unquoted `TRIGGER when:`), so strict parsers,
   including Agentflow's own loader, rejected it. Codex, Claude and GitHub now all
   receive one identical `SKILL.md` that references `references/...` relative to
   the skill directory, instead of three copies hard-wired to one install path
   each.
+- **`agentflow config` opens a browser editor for `agentflow.json`.** Optional sections
+  (auth, authorization, rate limiting, observability, ...) can be switched on or off and
+  filled in, validated without saving, and saved. Saving is blocked while there are errors,
+  writes are atomic, key order is preserved, and the previous file is kept as
+  `agentflow.json.bak`. Options: `-c/--config`, `--port`, `--no-open`.
+- **`remote_tools` in `agentflow.json`.** Trusted schemas for tools executed by clients,
+  attached to the graph at startup.
+- **`websocket.max_connections_per_user`** caps how many concurrent WebSocket connections one
+  verified user may hold.
+- **`rate_limit.trusted_proxies`.** When set, `X-Forwarded-For` is honoured only for requests
+  whose peer address is in one of the listed IPs or CIDR ranges.
+
+### Changed
+
+- **Requires `10xscale-agentflow>=0.10.0`**, the final release of the core under the old
+  name. It is the first core release with `interrupt()`, per-run `remote_tools` and
+  `validate_skill`. Do not install `10xgraph` in the same environment: both provide the
+  `agentflow` module.
+- WebSocket connection limits now default to finite values (`max_connections` 1000,
+  `max_connections_per_user` 10) instead of unlimited when the key is missing. Set a key to
+  `0` or `null` for unlimited. Graph runs started over `/v1/graph/ws` count against the
+  global `rate_limit` bucket.
+- Project URLs point at [10xgraph.com](https://10xgraph.com) and the 10xGraph organisation.
+
+### Security
+
+- **Server-owned config keys are stripped from client requests.** `authz`, `user`,
+  `user_id`, `remote_tools` and `_`-prefixed internal keys in a request's `config` are
+  dropped on every route that forwards it to the graph, checkpointer or store. The thread a
+  request runs on is the one the permission check approved, normalised on both sides.
+- **Client messages can no longer carry tool calls.** Only the model may request a tool; a
+  client may send a tool result only as the answer to a remote tool call still waiting for
+  one.
+- **Document extraction is bounded.** ZIP-based documents are inspected before parsing
+  (entry count, total uncompressed size, compression ratio), extraction has a timeout, and
+  extracted text is capped.
+
+### Breaking
+
+- **`POST /v1/graph/setup` is removed.** Declare client-executed tools under `remote_tools`
+  in `agentflow.json` instead; they are attached at startup.
+- **`agentflow config list|get|set|unset|path|validate` are removed**, and stored
+  `output.*` preferences are no longer read at startup. Pass `--format`, `--color` and
+  `--progress` on the command line instead. `agentflow config` is now the
+  `agentflow.json` editor above.
+
+---
+
+## [0.5.1] - 2026-09-24
+
+### Added
+
 - **Persistent full-screen application surface.** On an interactive terminal a
   command now runs on its own screen with branded chrome pinned in place: a
   header (gradient rule, identity, version, subtitle) at the top, a footer
@@ -221,5 +278,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Initial entry in this changelog. Releases before `0.5.0` were not tracked here; see the
 GitHub release history for their notes.
 
-[Unreleased]: https://github.com/10xHub/agentflow-cli/compare/v0.5.0...HEAD
+[0.6.0]: https://github.com/10xHub/agentflow-cli/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/10xHub/agentflow-cli/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/10xHub/agentflow-cli/releases/tag/v0.5.0

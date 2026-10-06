@@ -5,15 +5,15 @@ core framework see `agentflow/CLAUDE.md`; for the TS client, docs, or playground
 for the monorepo overview see the workspace-root `CLAUDE.md`.
 
 - Package name (PyPI): `10xscale-agentflow-cli`
-- Version: `0.5.0` (`pyproject.toml`). `CLI_VERSION` and `agentflow_cli.__version__` are
-  single-sourced from the installed distribution metadata (falling back to `pyproject.toml` only
-  for a non-installed source checkout), so `agentflow version` reports `0.5.0` consistently.
+- Version: `0.6.0` (`pyproject.toml`), the **final release under this name**. The project
+  continues as 10xGraph; no further `10xscale-agentflow-cli` releases. `CLI_VERSION` and
+  `agentflow_cli.__version__` are single-sourced from the installed distribution metadata
+  (falling back to `pyproject.toml` only for a non-installed source checkout).
 - Requires: Python >= 3.12 · Status: `4 - Beta`
 - Console entry point: `agentflow = agentflow_cli.cli.main:main`
-- Depends on the core framework: `10xscale-agentflow>=0.7.0`.
-
-- Depends on the core framework: `10xscale-agentflow>=0.9.0` (0.9.0 is the first release that
-  ships `agentflow.core.authz`, which the RBAC/scope code imports).
+- Depends on the core framework: `10xscale-agentflow>=0.10.0` (first release with
+  `interrupt()`, per-run `remote_tools` and `validate_skill`; 0.10.x is the final core release
+  under the old name). Must not be installed alongside `10xgraph`: both provide `agentflow`.
 
 ## What this package is
 
@@ -183,8 +183,8 @@ ruff check . && ruff format .
   package — every one of those links is broken.
 - **a2a / a2ui routers no longer exist.** Don't document a2a HTTP endpoints as live; restore the
   files from git history if that surface is actually built.
-- **`pyproject.toml` URLs** point at `github.com/10xHub/agentflow-cli` with docs at
-  `10xhub.github.io/Agentflow/`. The git remote is still `Iamsdt/pyagenity-api.git` and needs to be
+- **`pyproject.toml` URLs**: Homepage/Documentation point at `10xgraph.com`; Repository,
+  Issues and Changelog still point at `github.com/10xHub/agentflow-cli`. The git remote is still `Iamsdt/pyagenity-api.git` and needs to be
   repointed before release (checklist 1.5).
 - The workspace-root `CLAUDE.md` lists only `init/api/play/build` and an older `agentflow.json`
   shape; the real CLI has `eval/test/skills/version` too and the config supports `rate_limit`,

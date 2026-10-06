@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.5.1"
-description = "CLI and API for 10xscale AgentFlow"
+version = "0.6.0"
+description = "Final release under this name: the project continues as 10xGraph (https://10xgraph.com). CLI and API server for 10xScale Agentflow: serve a compiled agent graph over REST, WebSocket and AG-UI with auth, rate limiting, threads and memory."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
@@ -21,7 +21,8 @@ keywords = [
     "api",
     "fastapi",
     "cli",
-    "agentflow"
+    "agentflow",
+    "10xgraph"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,8 +36,10 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
-    # 0.9.0 is the first core release shipping `agentflow.core.authz`.
-    "10xscale-agentflow>=0.9.0,<2.0",
+    # 0.10.0 is the first core release shipping `interrupt()`, per-run
+    # `remote_tools` and `validate_skill`, which AG-UI, `resume` and
+    # `agentflow skills --validate` use. 0.10.x is the final core line.
+    "10xscale-agentflow>=0.10.0,<2.0",
     # Pre-1.0 and major-version-risky deps are capped; floors are the versions
     # the suite is verified against.
     "fastapi>=0.116,<1.0",
@@ -54,11 +57,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/10xHub/agentflow-cli"
+Homepage = "https://10xgraph.com"
 Repository = "https://github.com/10xHub/agentflow-cli"
 Issues = "https://github.com/10xHub/agentflow-cli/issues"
-Documentation = "https://10xhub.github.io/Agentflow/"
+Documentation = "https://10xgraph.com"
 Changelog = "https://github.com/10xHub/agentflow-cli/blob/main/CHANGELOG.md"
+"10xGraph (successor)" = "https://10xgraph.com"
+"10xGraph on GitHub" = "https://github.com/10xGraph"
 
 [project.optional-dependencies]
 sentry = [
@@ -339,7 +344,7 @@ ENVIRONMENT = "pytest"
 
 [dependency-groups]
 dev = [
-    "10xscale-agentflow>=0.9.0",
+    "10xscale-agentflow>=0.10.0",
     "snowflakekit",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",

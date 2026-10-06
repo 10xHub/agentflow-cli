@@ -1,97 +1,60 @@
-# Release Notes
+# 10xscale-agentflow-cli 0.6.0
 
-Human-facing notes for the current release. For the full history see
-[CHANGELOG.md](CHANGELOG.md).
+## This is the final release of `10xscale-agentflow-cli`
 
----
+Agentflow is now **10xGraph**. The project continues under a new name because
+"Agentflow" is shared by several unrelated projects, which made it hard to find.
+Nothing about the server, the CLI, the license or the maintainers changes.
 
-## Unreleased
+No further versions of `10xscale-agentflow-cli` will be published to PyPI. Existing
+installs keep working; pin `10xscale-agentflow-cli==0.6.0` if you need to stay on it.
 
-This release is a production-readiness pass. There are no new features; it fixes
-packaging, dependency, and tooling defects that made the previous releases unsafe to
-depend on.
+| | Before | After |
+|---|---|---|
+| Core framework | `10xscale-agentflow` | `10xgraph` (import `tenxgraph`) |
+| API server + CLI | `10xscale-agentflow-cli` | announced in the 10xGraph repositories |
+| Website | agentflow.10xscale.ai | [10xgraph.com](https://10xgraph.com) |
+| GitHub | github.com/10xHub | [github.com/10xGraph](https://github.com/10xGraph) |
 
-### The one that matters: `agentflow init` was broken on PyPI installs
+This release depends on `10xscale-agentflow>=0.10.0`, the final release of the core under
+the old name. Do not install `10xgraph` in the same environment: both provide the
+`agentflow` module and must not be installed side by side. Your `agentflow.json` and graph
+code carry over; switch the server package once its 10xGraph release is published.
 
-If you installed `10xscale-agentflow-cli` from PyPI and ran `agentflow init`, scaffolding
-failed. The wheel's `package-data` configuration only matched files by extension
-(`*.json`, `*.yaml`, `*.yml`, `*.md`, `*.txt`), so four template files were silently
-dropped from the built artifact:
+## Highlights
 
-```
-agentflow_cli/cli/templates/dev/.env.example
-agentflow_cli/cli/templates/prod/.env.example
-agentflow_cli/cli/templates/prod/.python-version
-agentflow_cli/cli/templates/prod/pyproject.toml
-```
+- **AG-UI endpoint (`POST /v1/ag-ui`).** Serve the graph to AG-UI clients such as
+  CopilotKit. Off by default: set `"ag_ui": {"enabled": true}` and install the `ag-ui`
+  extra. Streams text, reasoning, tool calls, node steps, state snapshots and `interrupt()`
+  pauses; browser tools sent by the client are offered to the model for that run.
+- **Resume interrupted runs.** `/v1/graph/invoke` and `/v1/graph/stream` accept `resume` to
+  continue a thread paused by `interrupt()`.
+- **`agentflow config` is a browser editor for `agentflow.json`**, with validation before
+  save and a `.bak` of the previous file.
+- **`remote_tools` in `agentflow.json`** declares client-executed tools, attached at startup.
+- **`agentflow skills --validate PATH`** checks skills against the Agent Skills
+  specification (agentskills.io). The bundled skill now conforms to it.
+- **Hardening.** Server-owned config keys (`authz`, `user`, `user_id`, `remote_tools`,
+  `_*`) are stripped from client requests; client messages can no longer carry tool calls;
+  document extraction is bounded; WebSocket connections have finite default limits,
+  including a per-user cap; `rate_limit.trusted_proxies` controls when `X-Forwarded-For` is
+  trusted.
 
-`init` reads `.env.example` directly, so the failure was unavoidable rather than
-cosmetic. Installing from a source checkout hid the problem, which is why it survived
-several releases.
+## Breaking changes
 
-Packaging now ships the package tree wholesale, and `CONTRIBUTING.md` documents how to
-verify the built artifact rather than trusting the config.
+- **`POST /v1/graph/setup` is removed.** Declare client-executed tools under `remote_tools`
+  in `agentflow.json`.
+- **`agentflow config list|get|set|unset|path|validate` are removed**, and stored `output.*`
+  preferences are no longer read. Pass `--format`, `--color` and `--progress` instead.
+- **WebSocket limits default to 1000 connections per process and 10 per user** when not
+  configured (previously unlimited). Set `websocket.max_connections` or
+  `websocket.max_connections_per_user` to `0` or `null` for unlimited.
+- **Requires `10xscale-agentflow>=0.10.0`.**
 
-Additionally, the `prod` template shipped a misspelled `.pre-commot-config.yaml`, so
-`pre-commit install` in a freshly scaffolded project found no configuration. Renamed.
-
-### Dependencies are now bounded
-
-Every runtime dependency was previously unpinned - `fastapi`, `pydantic`, `uvicorn`,
-`typer` and the rest had no floor and no ceiling. A major release of any of them could
-break a fresh install with no warning and no way to pin your way out.
-
-All runtime dependencies now carry a verified lower bound, and pre-1.0 or
-major-version-risky ones carry an upper cap:
-
-```
-10xscale-agentflow>=0.9.0,<2.0
-fastapi>=0.116,<1.0
-pydantic>=2.13,<3
-pydantic-settings>=2.3,<3
-uvicorn>=0.30,<1.0
-typer>=0.17,<1.0
-...
-```
-
-**Upgrade note:** if you were resolving an older `fastapi` or `pydantic` alongside this
-package, your environment may now resolve differently. The floors are the versions the
-test suite is verified against.
-
-### `agentflow version` reported the wrong thing
-
-It read the version out of `pyproject.toml` at a path that does not exist inside an
-installed wheel, so it printed `unknown`. It now resolves from installed distribution
-metadata and reports the core `10xscale-agentflow` version alongside the CLI version.
-
-### Type information now ships
-
-The package had no `py.typed` marker, so type checkers in downstream projects treated
-every import from `agentflow_cli` as `Any`. The marker is now included (PEP 561).
-
-### Removed
-
-`agentflow_cli/src/app/routers/a2a.py` and `a2ui.py` are gone. Both were entirely
-commented out and never mounted by `setup_router.init_routes`; they shipped in the wheel
-as dead code. Nothing imported them, so nothing breaks. They remain in git history for
-whenever the A2A surface is actually built.
-
-### Project and CI hygiene
-
-- CI now runs on pushes to `main`, not only on pull requests, and covers both Python 3.12
-  and 3.13 rather than 3.13 alone.
-- The release workflow depends on a passing test job. It previously built and attached
-  artifacts without running a single test.
-- mypy is configured and enforced; CodeQL scanning and Dependabot are enabled.
-- Tests requiring real Redis/Postgres are gated behind `pytest --integration`.
-- `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, issue forms, and
-  a pull request template were added.
-
-### Upgrading
+## Upgrading
 
 ```bash
-pip install --upgrade 10xscale-agentflow-cli
+pip install --upgrade "10xscale-agentflow-cli==0.6.0"
 ```
 
-No code changes are required. If you previously worked around the missing templates by
-installing from source, you can switch back to the PyPI package.
+See `CHANGELOG.md` for the full list.

@@ -1,6 +1,11 @@
 
 # 10xScale Agentflow CLI
 
+> **Agentflow is now 10xGraph.** `0.6.0` is the final release of `10xscale-agentflow-cli` on PyPI.
+> The API server and CLI continue under the 10xGraph name; the new package is announced at
+> [10xgraph.com](https://10xgraph.com) and [github.com/10xGraph](https://github.com/10xGraph).
+> Existing installs keep working. See [Moving to 10xGraph](#-moving-to-10xgraph) below.
+
 [![CI](https://github.com/10xHub/agentflow-cli/actions/workflows/ci.yaml/badge.svg)](https://github.com/10xHub/agentflow-cli/actions/workflows/ci.yaml)
 [![Release](https://github.com/10xHub/agentflow-cli/actions/workflows/release.yml/badge.svg)](https://github.com/10xHub/agentflow-cli/actions/workflows/release.yml)
 
@@ -26,6 +31,33 @@
 > - **This package (API + CLI):** [`10xscale-agentflow-cli`](https://pypi.org/project/10xscale-agentflow-cli/)
 > - **TypeScript client:** [`@10xscale/agentflow-client`](https://www.npmjs.com/package/@10xscale/agentflow-client)
 > - **Docs:** [agentflow.10xscale.ai](https://agentflow.10xscale.ai/)
+
+---
+
+## 🔀 Moving to 10xGraph
+
+The project is renamed to **10xGraph** (by 10xScale) because "Agentflow" is shared by several
+unrelated projects and was hard to find. The server, CLI, license and maintainers stay the same.
+
+**What changes**
+
+| | Before | After |
+|---|---|---|
+| Core framework | `10xscale-agentflow` | `10xgraph` (import `tenxgraph`) |
+| API server + CLI | `10xscale-agentflow-cli` | announced in the 10xGraph repositories |
+| Website | [agentflow.10xscale.ai](https://agentflow.10xscale.ai) | [10xgraph.com](https://10xgraph.com) |
+| GitHub | [github.com/10xHub](https://github.com/10xHub) | [github.com/10xGraph](https://github.com/10xGraph) |
+
+**What happens to this package**
+
+- `0.6.0` is the last version of `10xscale-agentflow-cli`. No further releases, fixes or
+  security patches will be published under this name.
+- Installed copies keep working. Pin `10xscale-agentflow-cli==0.6.0` if you cannot migrate yet.
+- This release depends on `10xscale-agentflow` (`>=0.10.0`), the final release of the old core.
+  Do not install `10xgraph` in the same environment: both provide the `agentflow` module and
+  must not be installed side by side.
+- Your `agentflow.json` and graph code carry over. Switch the server package once its
+  10xGraph release is published.
 
 ---
 
@@ -502,7 +534,8 @@ Agentflow is [MIT licensed](https://github.com/10xHub/agentflow-cli/blob/main/LI
 - **[Documentation](https://agentflow.10xscale.ai/)** - Full framework docs
 - **[Core framework (`10xscale-agentflow`)](https://github.com/10xHub/agentflow)** - The orchestration engine this CLI serves
 - **[This repository](https://github.com/10xHub/agentflow-cli)** - Source code and issues
-- **[PyPI Project](https://pypi.org/project/10xscale-agentflow-cli/)** - Package releases
+- **[PyPI Project](https://pypi.org/project/10xscale-agentflow-cli/)** - Package releases (final release: `0.6.0`)
+- **[10xGraph](https://10xgraph.com)** and **[github.com/10xGraph](https://github.com/10xGraph)** - Where development continues
 - **[Local docs](./docs/)** - CLI, configuration, deployment, auth, rate limiting, IDs, thread names
 
 ---
@@ -523,6 +556,7 @@ guidelines.
 
 ---
 
-Developed by [10xScale](https://10xscale.ai) and maintained by the community.
+Developed by [10xScale](https://10xscale.ai) and maintained by the community. New projects should
+start on [10xGraph](https://github.com/10xGraph).
 
 **Made with ❤️ for the AI agent development community**
