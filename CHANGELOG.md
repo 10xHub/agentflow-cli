@@ -25,7 +25,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 **Final release of `10xscale-agentflow-cli`.** Agentflow is now 10xGraph
 ([10xgraph.com](https://10xgraph.com), [github.com/10xGraph](https://github.com/10xGraph)).
 No further versions will be published under this name; the API server and CLI continue
-under the 10xGraph name. Installed copies keep working, and `10xscale-agentflow-cli==0.6.0`
+as `10xgraph-api`. Installed copies keep working, and `10xscale-agentflow-cli==0.6.0`
 can be pinned.
 
 ### Added

@@ -12,14 +12,19 @@ installs keep working; pin `10xscale-agentflow-cli==0.6.0` if you need to stay o
 | | Before | After |
 |---|---|---|
 | Core framework | `10xscale-agentflow` | `10xgraph` (import `tenxgraph`) |
-| API server + CLI | `10xscale-agentflow-cli` | announced in the 10xGraph repositories |
+| API server + CLI | `10xscale-agentflow-cli` | `10xgraph-api` |
 | Website | agentflow.10xscale.ai | [10xgraph.com](https://10xgraph.com) |
 | GitHub | github.com/10xHub | [github.com/10xGraph](https://github.com/10xGraph) |
 
 This release depends on `10xscale-agentflow>=0.10.0`, the final release of the core under
 the old name. Do not install `10xgraph` in the same environment: both provide the
 `agentflow` module and must not be installed side by side. Your `agentflow.json` and graph
-code carry over; switch the server package once its 10xGraph release is published.
+code carry over. To migrate:
+
+```bash
+pip uninstall 10xscale-agentflow-cli 10xscale-agentflow
+pip install 10xgraph-api
+```
 
 ## Highlights
 

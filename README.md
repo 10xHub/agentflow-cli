@@ -2,7 +2,7 @@
 # 10xScale Agentflow CLI
 
 > **Agentflow is now 10xGraph.** `0.6.0` is the final release of `10xscale-agentflow-cli` on PyPI.
-> The API server and CLI continue under the 10xGraph name; the new package is announced at
+> The API server and CLI continue as **`10xgraph-api`** (`pip install 10xgraph-api`). See
 > [10xgraph.com](https://10xgraph.com) and [github.com/10xGraph](https://github.com/10xGraph).
 > Existing installs keep working. See [Moving to 10xGraph](#-moving-to-10xgraph) below.
 
@@ -44,7 +44,7 @@ unrelated projects and was hard to find. The server, CLI, license and maintainer
 | | Before | After |
 |---|---|---|
 | Core framework | `10xscale-agentflow` | `10xgraph` (import `tenxgraph`) |
-| API server + CLI | `10xscale-agentflow-cli` | announced in the 10xGraph repositories |
+| API server + CLI | `10xscale-agentflow-cli` | `10xgraph-api` |
 | Website | [agentflow.10xscale.ai](https://agentflow.10xscale.ai) | [10xgraph.com](https://10xgraph.com) |
 | GitHub | [github.com/10xHub](https://github.com/10xHub) | [github.com/10xGraph](https://github.com/10xGraph) |
 
@@ -56,8 +56,14 @@ unrelated projects and was hard to find. The server, CLI, license and maintainer
 - This release depends on `10xscale-agentflow` (`>=0.10.0`), the final release of the old core.
   Do not install `10xgraph` in the same environment: both provide the `agentflow` module and
   must not be installed side by side.
-- Your `agentflow.json` and graph code carry over. Switch the server package once its
-  10xGraph release is published.
+- Your `agentflow.json` and graph code carry over.
+
+**How to migrate**
+
+```bash
+pip uninstall 10xscale-agentflow-cli 10xscale-agentflow
+pip install 10xgraph-api
+```
 
 ---
 
