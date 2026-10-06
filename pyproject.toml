@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "10xscale-agentflow-cli"
-version = "0.6.0"
+version = "0.6.1"
 description = "Final release under this name: the project continues as 10xGraph (https://10xgraph.com). CLI and API server for 10xScale Agentflow: serve a compiled agent graph over REST, WebSocket and AG-UI with auth, rate limiting, threads and memory."
 readme = "README.md"
 license = {text = "MIT"}
