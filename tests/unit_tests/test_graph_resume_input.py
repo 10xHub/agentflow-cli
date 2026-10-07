@@ -5,8 +5,8 @@
 import pytest
 from pydantic import ValidationError
 
-from agentflow_cli.src.app.core.auth.request_config import client_config
-from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import GraphInputSchema
+from tenxgraph_api.src.app.core.auth.request_config import client_config
+from tenxgraph_api.src.app.routers.graph.schemas.graph_schemas import GraphInputSchema
 
 
 def test_messages_are_required_without_resume():

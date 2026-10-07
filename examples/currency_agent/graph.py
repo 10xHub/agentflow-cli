@@ -1,19 +1,19 @@
 # """
-# Currency agent graph — built with agentflow.
+# Currency agent graph — built with 10xGraph.
 
 # Uses the Frankfurter API (free, no key needed) for live exchange rates.
-# The compiled graph is exposed as ``app`` — referenced in agentflow.json as
+# The compiled graph is exposed as ``app`` — referenced in 10xgraph.json as
 # ``"agent": "graph:app"``.
 # """
 
 # from __future__ import annotations
 
 # import httpx
-# from agentflow.core.graph import StateGraph, ToolNode
-# from agentflow.core.state import AgentState
-# from agentflow.runtime.adapters.llm.model_response_converter import ModelResponseConverter
-# from agentflow.utils.constants import END
-# from agentflow.utils.converter import convert_messages
+# from tenxgraph.core.graph import StateGraph, ToolNode
+# from tenxgraph.core.state import AgentState
+# from tenxgraph.runtime.adapters.llm.model_response_converter import ModelResponseConverter
+# from tenxgraph.utils.constants import END
+# from tenxgraph.utils.converter import convert_messages
 # from dotenv import load_dotenv
 # from litellm import acompletion
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agentflow_cli import ThreadNameGenerator
+from tenxgraph_api import ThreadNameGenerator
 
 
 class MyNameGenerator(ThreadNameGenerator):

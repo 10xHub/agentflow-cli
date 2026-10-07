@@ -10,9 +10,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from agentflow_cli.src.app.core.config import setup_logs
-from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
-from agentflow_cli.src.app.core.utils.log_sanitizer import SanitizingFormatter, redact_text
+from tenxgraph_api.src.app.core.config import setup_logs
+from tenxgraph_api.src.app.core.exceptions.handle_errors import init_errors_handler
+from tenxgraph_api.src.app.core.utils.log_sanitizer import SanitizingFormatter, redact_text
 
 
 JWT = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.c2lnbmF0dXJlLXZhbHVl"
@@ -33,7 +33,7 @@ def test_formatter_redacts_f_string_messages():
 def test_app_loggers_go_through_the_sanitizing_handler():
     setup_logs.init_logger(logging.INFO)
     setup_logs.init_logger(logging.INFO)  # idempotent: one handler, not two
-    for name in ("agentflow-cli", "agentflow_api", "agentflow_cli"):
+    for name in ("10xgraph-api", "tenxgraph_api", "tenxgraph_api"):
         logger = logging.getLogger(name)
         sanitizing = [h for h in logger.handlers if isinstance(h.formatter, SanitizingFormatter)]
         assert len(sanitizing) == 1
@@ -48,7 +48,7 @@ class _Body(BaseModel):
 def captured():
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
-    logger = logging.getLogger("agentflow-cli")
+    logger = logging.getLogger("10xgraph-api")
     logger.addHandler(handler)
     yield stream
     logger.removeHandler(handler)

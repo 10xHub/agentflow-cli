@@ -33,7 +33,7 @@ class TestUploadFileLogic:
     @pytest.mark.asyncio
     async def test_upload_file_validates_filename(self, mock_request, mock_service, mock_user):
         """Test that upload_file validates filename."""
-        from agentflow_cli.src.app.routers.media.router import upload_file
+        from tenxgraph_api.src.app.routers.media.router import upload_file
 
         mock_file = MagicMock(spec=UploadFile)
         mock_file.filename = None
@@ -52,7 +52,7 @@ class TestUploadFileLogic:
     @pytest.mark.asyncio
     async def test_upload_file_validates_empty_file(self, mock_request, mock_service, mock_user):
         """Test that upload_file validates empty file."""
-        from agentflow_cli.src.app.routers.media.router import upload_file
+        from tenxgraph_api.src.app.routers.media.router import upload_file
 
         mock_file = MagicMock(spec=UploadFile)
         mock_file.filename = "test.txt"
@@ -69,12 +69,12 @@ class TestUploadFileLogic:
         assert "empty" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.media.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.media.router.success_response")
     async def test_upload_file_calls_service(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that upload_file calls service."""
-        from agentflow_cli.src.app.routers.media.router import upload_file
+        from tenxgraph_api.src.app.routers.media.router import upload_file
 
         mock_success_response.return_value = {"data": {}}
         mock_service.upload_file.return_value = {
@@ -104,7 +104,7 @@ class TestUploadFileLogic:
     @pytest.mark.asyncio
     async def test_upload_file_handles_service_error(self, mock_request, mock_service, mock_user):
         """Test that upload_file handles service errors."""
-        from agentflow_cli.src.app.routers.media.router import upload_file
+        from tenxgraph_api.src.app.routers.media.router import upload_file
 
         mock_service.upload_file.side_effect = ValueError("File too large")
 
@@ -130,7 +130,7 @@ class TestGetFileLogic:
     @pytest.mark.asyncio
     async def test_get_file_returns_response(self, mock_service, mock_user):
         """Test that get_file returns file response."""
-        from agentflow_cli.src.app.routers.media.router import get_file
+        from tenxgraph_api.src.app.routers.media.router import get_file
 
         mock_service.get_file.return_value = (b"file content", "text/plain")
 
@@ -147,7 +147,7 @@ class TestGetFileLogic:
     @pytest.mark.asyncio
     async def test_get_file_handles_not_found(self, mock_service, mock_user):
         """Test that get_file handles file not found."""
-        from agentflow_cli.src.app.routers.media.router import get_file
+        from tenxgraph_api.src.app.routers.media.router import get_file
 
         mock_service.get_file.side_effect = KeyError()
 
@@ -164,12 +164,12 @@ class TestGetFileInfoLogic:
     """Test GET /v1/files/{file_id}/info endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.media.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.media.router.success_response")
     async def test_get_file_info_calls_service(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that get_file_info calls service."""
-        from agentflow_cli.src.app.routers.media.router import get_file_info
+        from tenxgraph_api.src.app.routers.media.router import get_file_info
 
         mock_success_response.return_value = {"data": {}}
         mock_service.get_file_info.return_value = {
@@ -192,7 +192,7 @@ class TestGetFileInfoLogic:
     @pytest.mark.asyncio
     async def test_get_file_info_handles_not_found(self, mock_request, mock_service, mock_user):
         """Test that get_file_info handles file not found."""
-        from agentflow_cli.src.app.routers.media.router import get_file_info
+        from tenxgraph_api.src.app.routers.media.router import get_file_info
 
         mock_service.get_file_info.side_effect = KeyError()
 
@@ -210,12 +210,12 @@ class TestGetFileAccessUrlLogic:
     """Test GET /v1/files/{file_id}/url endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.media.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.media.router.success_response")
     async def test_get_file_access_url_with_direct_url(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test get_file_access_url with direct URL."""
-        from agentflow_cli.src.app.routers.media.router import get_file_access_url
+        from tenxgraph_api.src.app.routers.media.router import get_file_access_url
 
         mock_success_response.return_value = {"data": {}}
         mock_service.get_file_info.return_value = {
@@ -237,12 +237,12 @@ class TestGetFileAccessUrlLogic:
         mock_service.get_file_info.assert_called_once_with("file-1")
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.media.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.media.router.success_response")
     async def test_get_file_access_url_fallback_url(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test get_file_access_url falls back to default URL."""
-        from agentflow_cli.src.app.routers.media.router import get_file_access_url
+        from tenxgraph_api.src.app.routers.media.router import get_file_access_url
 
         mock_success_response.return_value = {"data": {}}
         mock_service.get_file_info.return_value = {
@@ -267,7 +267,7 @@ class TestGetFileAccessUrlLogic:
         self, mock_request, mock_service, mock_user
     ):
         """Test get_file_access_url handles file not found."""
-        from agentflow_cli.src.app.routers.media.router import get_file_access_url
+        from tenxgraph_api.src.app.routers.media.router import get_file_access_url
 
         mock_service.get_file_info.side_effect = KeyError()
 
@@ -285,13 +285,13 @@ class TestGetMultimodalConfigLogic:
     """Test GET /v1/config/multimodal endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.media.router.get_media_settings")
-    @patch("agentflow_cli.src.app.routers.media.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.media.router.get_media_settings")
+    @patch("tenxgraph_api.src.app.routers.media.router.success_response")
     async def test_get_multimodal_config(
         self, mock_success_response, mock_get_settings, mock_request, mock_user
     ):
         """Test get_multimodal_config returns config."""
-        from agentflow_cli.src.app.routers.media.router import get_multimodal_config
+        from tenxgraph_api.src.app.routers.media.router import get_multimodal_config
 
         mock_settings = MagicMock()
         mock_settings.MEDIA_STORAGE_TYPE.value = "LOCAL"

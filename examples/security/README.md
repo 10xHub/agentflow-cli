@@ -1,6 +1,6 @@
 # Security Examples
 
-This directory contains comprehensive examples for implementing security features in AgentFlow CLI applications.
+This directory contains comprehensive examples for implementing security features in 10xGraph CLI applications.
 
 ## Examples Overview
 
@@ -16,7 +16,7 @@ This directory contains comprehensive examples for implementing security feature
 
 ### Configuration Examples
 7. **[production_config/](./production_config/)** - Secure production configuration templates
-   - agentflow.json - Production configuration
+   - 10xgraph.json - Production configuration
    - .env.production - Environment variables
    - docker-compose.yml - Docker deployment
    - nginx.conf - Nginx reverse proxy with security headers
@@ -25,7 +25,7 @@ This directory contains comprehensive examples for implementing security feature
 
 ### 1. JWT Authentication
 
-**Step 1:** Configure agentflow.json
+**Step 1:** Configure 10xgraph.json
 ```json
 {
   "auth": "jwt",
@@ -42,14 +42,14 @@ export JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 **Step 3:** Start the application
 ```bash
-agentflow api
+10xgraph api
 ```
 
 ### 2. Custom Authentication
 
 **Step 1:** Create auth backend (see [api_key_auth.py](./api_key_auth.py))
 
-**Step 2:** Configure agentflow.json
+**Step 2:** Configure 10xgraph.json
 ```json
 {
   "auth": {
@@ -63,7 +63,7 @@ agentflow api
 
 **Step 1:** Create authorization backend (see [rbac_authorization.py](./rbac_authorization.py))
 
-**Step 2:** Configure agentflow.json
+**Step 2:** Configure 10xgraph.json
 ```json
 {
   "auth": "jwt",

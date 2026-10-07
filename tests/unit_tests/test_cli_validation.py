@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from agentflow_cli.cli.core.validation import Validator, validate_cli_options
-from agentflow_cli.cli.exceptions import ValidationError
+from tenxgraph_api.cli.core.validation import Validator, validate_cli_options
+from tenxgraph_api.cli.exceptions import ValidationError
 
 
 class TestValidatorPort:

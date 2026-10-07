@@ -1,7 +1,7 @@
 from fastapi import Request
 from starlette.requests import Request as StarletteRequest
 
-from agentflow_cli.src.app.utils.response_helper import error_response, success_response
+from tenxgraph_api.src.app.utils.response_helper import error_response, success_response
 
 
 HTTP_OK = 200

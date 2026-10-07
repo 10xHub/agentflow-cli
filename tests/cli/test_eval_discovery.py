@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agentflow_cli.cli.commands.eval import EvalCommand
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands.eval import EvalCommand
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 # ── Silent test output ────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ class TestLoadConfeval:
         assert result is None
 
     def test_get_eval_config_called_when_present(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         expected = EvalConfig()
         fake_mod = types.SimpleNamespace(get_eval_config=lambda: expected)
@@ -113,7 +113,7 @@ class TestLoadConfeval:
         assert result is expected
 
     def test_eval_config_constant_used_as_fallback(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         expected = EvalConfig()
         fake_mod = types.SimpleNamespace(EVAL_CONFIG=expected)
@@ -126,7 +126,7 @@ class TestLoadConfeval:
     def test_get_eval_config_takes_priority_over_constant(
         self, tmp_path: Path, cmd: EvalCommand
     ) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         via_fn = EvalConfig()
         via_const = EvalConfig()
@@ -188,7 +188,7 @@ class TestConfevalDiscovery:
     def test_resolve_confeval_finds_for_single_file_target(
         self, tmp_path: Path, cmd: EvalCommand
     ) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         evals_dir = tmp_path / "evals"
         evals_dir.mkdir()
@@ -238,7 +238,7 @@ class TestCollectFromFile:
     def test_file_config_takes_priority_over_global_config(
         self, tmp_path: Path, cmd: EvalCommand
     ) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         global_cfg = EvalConfig()
         file_cfg = EvalConfig()
@@ -263,7 +263,7 @@ class TestCollectFromFile:
         assert result == fake_pending
 
     def test_file_config_used_when_no_global(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         file_cfg = EvalConfig()
         fake_es = self._fake_eval_set()
@@ -285,7 +285,7 @@ class TestCollectFromFile:
         assert used_source == "per-file"
 
     def test_default_config_used_when_no_configs(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         fake_es = self._fake_eval_set()
         fake_pending = [MagicMock()]
@@ -318,7 +318,7 @@ class TestCollectFromFile:
         assert any("skip" in w.lower() for w in cmd.output.warnings)  # type: ignore[attr-defined]
 
     def test_pytest_style_discovery_fallback(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         fake_es = self._fake_eval_set()
         fake_pending = [MagicMock()]
@@ -356,7 +356,7 @@ class TestMergeReports:
 
         fake_merged = MagicMock()
         with patch(
-            "agentflow_cli.cli.commands.eval.ER.create", return_value=fake_merged
+            "tenxgraph_api.cli.commands.eval.ER.create", return_value=fake_merged
         ) as mock_create:
             result = cmd._merge_reports([r1, r2])
 

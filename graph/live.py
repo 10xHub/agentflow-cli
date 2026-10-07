@@ -1,5 +1,5 @@
 """
-Real *live* (realtime audio-to-audio) AgentFlow graph — Gemini Live.
+Real *live* (realtime audio-to-audio) 10xGraph graph — Gemini Live.
 
 This is a genuine realtime agent: ``LiveAgent`` with no ``realtime_client_factory``
 override, so it uses the framework's real ``GeminiLiveClient``. That client reads the
@@ -21,22 +21,22 @@ to auto-detect turn boundaries from a continuously open mic.
 Constructing/compiling this graph touches no network and needs no key; only opening a
 session does. A live graph is realtime-only: turn-based endpoints (invoke/stream/ws)
 reject it by design, so the playground's Chat page won't work while this is the active
-agent. Point ``agent`` back at ``graph.react:app`` in agentflow.json for turn-based.
+agent. Point ``agent`` back at ``graph.react:app`` in 10xgraph.json for turn-based.
 
 (A keyless, network-free stand-in for local UI testing lives in
 ``graph.fake_realtime_client``; pass ``realtime_client_factory=FakeRealtimeClient`` to
 the ``LiveAgent`` below to use it instead of the real provider.)
 
-Exposed as ``app`` and referenced in agentflow.json as ``"agent": "graph.live:app"``.
+Exposed as ``app`` and referenced in 10xgraph.json as ``"agent": "graph.live:app"``.
 """
 
 from __future__ import annotations
 
 import os
 
-from agentflow.core.graph import StateGraph
-from agentflow.core.realtime.base import RealtimeConfig, VADConfig
-from agentflow.core.realtime.live_agent import LiveAgent
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.core.realtime.base import RealtimeConfig, VADConfig
+from tenxgraph.core.realtime.live_agent import LiveAgent
 
 
 # Gemini Live model. Live model availability is key/region specific: list yours with
@@ -51,7 +51,7 @@ LIVE_MODEL = os.getenv("LIVE_MODEL", "gemini-2.5-flash-native-audio-latest")
 LIVE_VOICE = os.getenv("LIVE_VOICE", "Puck")
 
 SYSTEM_PROMPT = (
-    "You are a friendly, concise voice assistant running inside the AgentFlow "
+    "You are a friendly, concise voice assistant running inside the 10xGraph "
     "playground. Keep spoken replies short and natural, and ask a brief clarifying "
     "question when a request is ambiguous."
 )

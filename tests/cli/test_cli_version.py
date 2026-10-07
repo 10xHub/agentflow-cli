@@ -1,7 +1,7 @@
 import re
 
-from agentflow_cli.cli.commands.version import VersionCommand
-from agentflow_cli.cli.constants import CLI_VERSION
+from tenxgraph_api.cli.commands.version import VersionCommand
+from tenxgraph_api.cli.constants import CLI_VERSION
 
 
 SEMVER_RE = re.compile(r"\d+\.\d+\.\d+")

@@ -1,4 +1,4 @@
-"""Agentflow stream chunks become valid AG-UI events, and AG-UI input becomes graph input."""
+"""10xGraph stream chunks become valid AG-UI events, and AG-UI input becomes graph input."""
 
 # ruff: noqa: S101
 
@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip("ag_ui")
 
 from ag_ui.core import EventType, RunAgentInput
-from agentflow.core.state import (
+from tenxgraph.core.state import (
     AgentState,
     Message,
     ReasoningBlock,
@@ -20,14 +20,14 @@ from agentflow.core.state import (
     ToolCallBlock,
     ToolResultBlock,
 )
-from agentflow.core.state.message_block import RemoteToolCallBlock
+from tenxgraph.core.state.message_block import RemoteToolCallBlock
 
-from agentflow_cli.src.app.routers.ag_ui.converter import (
+from tenxgraph_api.src.app.routers.ag_ui.converter import (
     parse_run_input,
     select_new_messages,
-    to_agentflow_messages,
+    to_tenxgraph_messages,
 )
-from agentflow_cli.src.app.routers.ag_ui.event_mapper import AgUiEventMapper
+from tenxgraph_api.src.app.routers.ag_ui.event_mapper import AgUiEventMapper
 
 
 def _types(events) -> list[str]:
@@ -335,7 +335,7 @@ class TestConverter:
 
     def test_user_text_keeps_its_id(self):
         run_input = _input([{"id": "u1", "role": "user", "content": "hi"}])
-        [message] = to_agentflow_messages(run_input.messages)
+        [message] = to_tenxgraph_messages(run_input.messages)
         assert message.message_id == "u1"
         assert message.role == "user"
         assert message.text() == "hi"
@@ -356,7 +356,7 @@ class TestConverter:
                 }
             ]
         )
-        [message] = to_agentflow_messages(run_input.messages)
+        [message] = to_tenxgraph_messages(run_input.messages)
         assert [b.type for b in message.content] == ["text", "image"]
         assert message.content[1].media.url == "https://x/y.png"
 
@@ -370,7 +370,7 @@ class TestConverter:
                 }
             ]
         )
-        [message] = to_agentflow_messages(run_input.messages)
+        [message] = to_tenxgraph_messages(run_input.messages)
         [block] = message.content
         assert block.type == "image"
         assert block.media.kind == "data"
@@ -384,7 +384,7 @@ class TestConverter:
                 {"id": "y", "role": "tool", "toolCallId": "c2", "content": "", "error": "denied"},
             ]
         )
-        ok, failed = to_agentflow_messages(run_input.messages)
+        ok, failed = to_tenxgraph_messages(run_input.messages)
         assert ok.role == "tool"
         assert ok.content[0].call_id == "c1"
         assert ok.content[0].output == "blue"

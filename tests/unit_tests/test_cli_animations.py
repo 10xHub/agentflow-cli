@@ -8,8 +8,8 @@ import re
 import pytest
 from rich.console import Console
 
-from agentflow_cli.cli.core import animations as anim
-from agentflow_cli.cli.core.theme import ASCII_GLYPHS, UNICODE_GLYPHS
+from tenxgraph_api.cli.core import animations as anim
+from tenxgraph_api.cli.core.theme import ASCII_GLYPHS, UNICODE_GLYPHS
 
 
 ALT_SCREEN_ON = "\x1b[?1049h"
@@ -101,7 +101,7 @@ def test_session_header_reports_the_command_and_version() -> None:
     )
 
     rendered = ANSI.sub("", stream.getvalue())
-    assert "agentflow" in rendered
+    assert "10xgraph" in rendered
     assert "eval" in rendered
     assert "Score the agent" in rendered
     assert "9.9.9" in rendered
@@ -131,7 +131,7 @@ def test_wordmark_reveal_advances_with_progress() -> None:
 def test_wordmark_uses_the_compact_form_without_block_glyphs() -> None:
     lines = anim._block_wordmark(1.0, 0.0, ASCII_GLYPHS)
     assert len(lines) == 1
-    assert lines[0].plain.replace(" ", "") == "AGENTFLOW"
+    assert lines[0].plain.replace(" ", "") == "10XGRAPH"
 
 
 def test_signature_pipeline_fills_in_step_with_progress() -> None:

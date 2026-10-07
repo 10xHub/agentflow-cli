@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for the report. Please do **not** file security vulnerabilities here -
-        see [SECURITY.md](https://github.com/10xHub/agentflow-cli/blob/main/SECURITY.md)
+        see [SECURITY.md](https://github.com/10xGraph/10xgraph-api/blob/main/SECURITY.md)
         for the private disclosure channel.
 
   - type: checkboxes
@@ -16,7 +16,7 @@ body:
       options:
         - label: I searched existing issues and this is not a duplicate.
           required: true
-        - label: This is about `10xscale-agentflow-cli` (API/CLI), not the core `10xscale-agentflow` package.
+        - label: This is about `10xgraph-api` (API/CLI), not the core `10xgraph` package.
           required: true
         - label: This is not a security vulnerability.
           required: true
@@ -35,8 +35,8 @@ body:
       label: Steps to reproduce
       description: A minimal sequence someone else can run. Include the exact commands.
       placeholder: |
-        1. agentflow init
-        2. agentflow api
+        1. 10xgraph init
+        2. 10xgraph api
         3. curl -X POST localhost:8000/v1/graph/invoke ...
     validations:
       required: true
@@ -45,7 +45,7 @@ body:
     id: versions
     attributes:
       label: Version information
-      description: Output of `agentflow version`, plus your Python version and OS.
+      description: Output of `10xgraph version`, plus your Python version and OS.
       render: text
     validations:
       required: true
@@ -53,7 +53,7 @@ body:
   - type: textarea
     id: config
     attributes:
-      label: agentflow.json
+      label: 10xgraph.json
       description: Your config, with secrets redacted.
       render: json
     validations:
@@ -75,7 +75,7 @@ body:
       options:
         - PyPI (pip / uv)
         - Source checkout (editable install)
-        - Docker image built with `agentflow build`
+        - Docker image built with `10xgraph build`
         - Other
     validations:
       required: true

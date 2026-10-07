@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from agentflow_cli.src.app.core.config.setup_middleware import (
+from tenxgraph_api.src.app.core.config.setup_middleware import (
     InsecureCorsConfigError,
     _resolve_cors_policy,
 )

@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-import agentflow_cli.cli.commands.api as api_mod
-from agentflow_cli.cli.commands.api import APICommand
-from agentflow_cli.cli.core import validation as validation_module
-from agentflow_cli.cli.core.output import OutputFormatter
+import tenxgraph_api.cli.commands.api as api_mod
+from tenxgraph_api.cli.commands.api import APICommand
+from tenxgraph_api.cli.core import validation as validation_module
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def silent_output():
 
 def test_api_command_with_env_file(monkeypatch, tmp_path, silent_output):
     # Prepare a fake config file and .env
-    cfg = tmp_path / "agentflow.json"
+    cfg = tmp_path / "10xgraph.json"
     # Provide minimal valid configuration expected by current validation (top-level 'agent')
     cfg.write_text('{"agent": "graph/react.py"}', encoding="utf-8")
     env_file = tmp_path / ".env.dev"

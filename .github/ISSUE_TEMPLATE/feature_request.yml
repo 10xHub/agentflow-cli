@@ -9,7 +9,7 @@ body:
       options:
         - label: I searched existing issues and discussions for this idea.
           required: true
-        - label: This belongs in the API/CLI layer, not in the core `10xscale-agentflow` framework.
+        - label: This belongs in the API/CLI layer, not in the core `10xgraph` framework.
           required: true
 
   - type: textarea
@@ -24,7 +24,7 @@ body:
     id: proposal
     attributes:
       label: Proposed solution
-      description: What should it look like? Include the CLI flag, HTTP route, or `agentflow.json` key you have in mind.
+      description: What should it look like? Include the CLI flag, HTTP route, or `10xgraph.json` key you have in mind.
     validations:
       required: true
 

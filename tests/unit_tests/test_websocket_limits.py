@@ -16,11 +16,11 @@ from injectq import InjectQ
 from injectq.integrations import setup_fastapi
 from starlette.websockets import WebSocketDisconnect
 
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig, WebSocketConfig
-from agentflow_cli.src.app.core.middleware.rate_limit import keying
-from agentflow_cli.src.app.core.middleware.rate_limit.base import RateLimitDecision
-from agentflow_cli.src.app.routers.graph import realtime_guard
-from agentflow_cli.src.app.routers.graph.realtime_guard import (
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig, WebSocketConfig
+from tenxgraph_api.src.app.core.middleware.rate_limit import keying
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import RateLimitDecision
+from tenxgraph_api.src.app.routers.graph import realtime_guard
+from tenxgraph_api.src.app.routers.graph.realtime_guard import (
     realtime_connection_guard,
     ws_identity_still_valid,
     ws_run_allowed,
@@ -134,7 +134,7 @@ def test_negative_per_user_limit_rejected():
 
 
 def test_missing_websocket_section_uses_defaults(tmp_path):
-    path = tmp_path / "agentflow.json"
+    path = tmp_path / "10xgraph.json"
     path.write_text('{"agent": "graph.react:app"}')
     ws = GraphConfig(str(path)).websocket
     assert (ws.max_connections, ws.max_connections_per_user) == (1000, 10)

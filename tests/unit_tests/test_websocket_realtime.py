@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import WebSocketDisconnect
 
-from agentflow_cli.src.app.routers.graph.router import realtime_graph_ws
+from tenxgraph_api.src.app.routers.graph.router import realtime_graph_ws
 
 
 def _audio_event(data: bytes):
@@ -87,7 +87,7 @@ class TestRealtimeWebSocket:
 
     @pytest.mark.asyncio
     async def test_oversized_binary_frame_dropped(self):
-        from agentflow_cli.src.app.routers.graph.router import REALTIME_MAX_FRAME_BYTES
+        from tenxgraph_api.src.app.routers.graph.router import REALTIME_MAX_FRAME_BYTES
 
         big = b"\x00" * (REALTIME_MAX_FRAME_BYTES + 1)
         ws = _make_websocket(
@@ -255,7 +255,7 @@ class TestIsLiveAgent:
     """GraphService.is_live_agent resolves live detection across core versions."""
 
     def _service(self, graph):
-        from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+        from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
         return GraphService(graph=graph, checkpointer=AsyncMock(), config=MagicMock())
 
@@ -285,7 +285,7 @@ def _checkpointer():
 
 
 def _config():
-    from agentflow_cli.src.app.core.config.graph_config import WebSocketConfig
+    from tenxgraph_api.src.app.core.config.graph_config import WebSocketConfig
 
     config = MagicMock()
     config.websocket = WebSocketConfig.from_dict({"realtime_models": ["gemini-x"]})
@@ -295,7 +295,7 @@ def _config():
 class TestRealtimeGraphService:
     @pytest.mark.asyncio
     async def test_init_session_params_mapped_into_realtime_config(self):
-        from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+        from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
         captured = {}
 
@@ -331,7 +331,7 @@ class TestRealtimeGraphService:
 
     @pytest.mark.asyncio
     async def test_string_modalities_coerced_to_list(self):
-        from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+        from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
         captured = {}
 

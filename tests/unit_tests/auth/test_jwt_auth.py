@@ -21,9 +21,9 @@ import pytest
 from fastapi import Response
 from fastapi.security import HTTPAuthorizationCredentials
 
-from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
-from agentflow_cli.src.app.core.config.settings import get_settings
-from agentflow_cli.src.app.core.exceptions.user_exception import UserAccountError
+from tenxgraph_api.src.app.core.auth.jwt_auth import JwtAuth
+from tenxgraph_api.src.app.core.config.settings import get_settings
+from tenxgraph_api.src.app.core.exceptions.user_exception import UserAccountError
 
 
 # Test constants
@@ -605,7 +605,7 @@ class TestJwtAuth:
         jwt_env_vars,
     ):
         """A rejected token is logged once, without a traceback or the token itself."""
-        with patch("agentflow_cli.src.app.core.auth.jwt_auth.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.jwt_auth.logger") as mock_logger:
             credentials = self.create_credentials("invalid-token")
 
             with pytest.raises(UserAccountError):

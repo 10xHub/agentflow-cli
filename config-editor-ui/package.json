@@ -1,14 +1,14 @@
 {
-  "name": "agentflow-config-editor-ui",
+  "name": "10xgraph-config-editor-ui",
   "private": true,
-  "description": "Source for the agentflow config browser editor. Builds into agentflow_cli/cli/config_editor/static.",
+  "description": "Source for the 10xgraph config browser editor. Builds into tenxgraph_api/cli/config_editor/static.",
   "type": "module",
   "scripts": {
-    "build:css": "tailwindcss -i src/app.css -o ../agentflow_cli/cli/config_editor/static/app.css --minify",
-    "build:js": "esbuild src/main.jsx --bundle --minify --format=esm --target=es2022 --jsx=automatic --jsx-import-source=preact --outfile=../agentflow_cli/cli/config_editor/static/app.js",
+    "build:css": "tailwindcss -i src/app.css -o ../tenxgraph_api/cli/config_editor/static/app.css --minify",
+    "build:js": "esbuild src/main.jsx --bundle --minify --format=esm --target=es2022 --jsx=automatic --jsx-import-source=preact --outfile=../tenxgraph_api/cli/config_editor/static/app.js",
     "build": "npm run build:css && npm run build:js",
-    "watch:css": "tailwindcss -i src/app.css -o ../agentflow_cli/cli/config_editor/static/app.css --watch",
-    "watch:js": "esbuild src/main.jsx --bundle --format=esm --target=es2022 --jsx=automatic --jsx-import-source=preact --outfile=../agentflow_cli/cli/config_editor/static/app.js --watch"
+    "watch:css": "tailwindcss -i src/app.css -o ../tenxgraph_api/cli/config_editor/static/app.css --watch",
+    "watch:js": "esbuild src/main.jsx --bundle --format=esm --target=es2022 --jsx=automatic --jsx-import-source=preact --outfile=../tenxgraph_api/cli/config_editor/static/app.js --watch"
   },
   "dependencies": {
     "preact": "10.29.8"

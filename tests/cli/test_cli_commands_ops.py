@@ -2,10 +2,10 @@ import os
 
 import pytest
 
-from agentflow_cli.cli.commands.api import APICommand
-from agentflow_cli.cli.commands.build import BuildCommand
-from agentflow_cli.cli.commands.init import InitCommand
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands.api import APICommand
+from tenxgraph_api.cli.commands.build import BuildCommand
+from tenxgraph_api.cli.commands.init import InitCommand
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 TEST_PORT = 1234
@@ -52,8 +52,8 @@ def test_api_command_minimal_success(monkeypatch, tmp_path, silent_output):
             return None
 
     monkeypatch.setitem(os.environ, "PYTHONDONTWRITEBYTECODE", "1")
-    monkeypatch.setattr("agentflow_cli.cli.commands.api.validate_cli_options", fake_validate)
-    monkeypatch.setattr("agentflow_cli.cli.commands.api.ConfigManager", lambda: FakeConfigManager())
+    monkeypatch.setattr("tenxgraph_api.cli.commands.api.validate_cli_options", fake_validate)
+    monkeypatch.setattr("tenxgraph_api.cli.commands.api.ConfigManager", lambda: FakeConfigManager())
 
     called = {}
 
@@ -68,7 +68,7 @@ def test_api_command_minimal_success(monkeypatch, tmp_path, silent_output):
             }
         )
 
-    monkeypatch.setattr("agentflow_cli.cli.commands.api.uvicorn.run", fake_run)
+    monkeypatch.setattr("tenxgraph_api.cli.commands.api.uvicorn.run", fake_run)
 
     cmd = APICommand(output=silent_output)
     code = cmd.execute(config="test_config.json", host="127.0.0.1", port=TEST_PORT, reload=False)
@@ -82,7 +82,7 @@ def test_api_command_error_path(monkeypatch, silent_output):
     def bad_validate(host, port, config):
         raise ValueError("bad input")
 
-    monkeypatch.setattr("agentflow_cli.cli.commands.api.validate_cli_options", bad_validate)
+    monkeypatch.setattr("tenxgraph_api.cli.commands.api.validate_cli_options", bad_validate)
     cmd = APICommand(output=silent_output)
     code = cmd.execute(config="missing.json")
     assert code == 1
@@ -126,9 +126,9 @@ def test_api_command_schedules_playground_launch(monkeypatch, tmp_path, silent_o
             }
         )
 
-    monkeypatch.setattr("agentflow_cli.cli.commands.api.validate_cli_options", fake_validate)
-    monkeypatch.setattr("agentflow_cli.cli.commands.api.ConfigManager", lambda: FakeConfigManager())
-    monkeypatch.setattr("agentflow_cli.cli.commands.api.uvicorn.run", lambda *args, **kwargs: None)
+    monkeypatch.setattr("tenxgraph_api.cli.commands.api.validate_cli_options", fake_validate)
+    monkeypatch.setattr("tenxgraph_api.cli.commands.api.ConfigManager", lambda: FakeConfigManager())
+    monkeypatch.setattr("tenxgraph_api.cli.commands.api.uvicorn.run", lambda *args, **kwargs: None)
     monkeypatch.setattr(APICommand, "_schedule_playground_launch", fake_schedule)
 
     cmd = APICommand(output=silent_output)
@@ -171,7 +171,7 @@ def test_init_command_basic(monkeypatch, tmp_path, silent_output):
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False)
     assert code == 0
-    assert (tmp_path / "agentflow.json").exists()
+    assert (tmp_path / "10xgraph.json").exists()
     assert (tmp_path / "graph" / "agent.py").exists()
     assert (tmp_path / "graph" / "__init__.py").exists()
 
@@ -189,7 +189,7 @@ def test_init_command_prod(monkeypatch, tmp_path, silent_output):
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False)
     assert code == 0
-    assert (tmp_path / "agentflow.json").exists()
+    assert (tmp_path / "10xgraph.json").exists()
     assert (tmp_path / "pyproject.toml").exists()
     assert any(
         (tmp_path / f).exists() for f in (".pre-commit-config.yaml", ".pre-commot-config.yaml")
@@ -205,7 +205,7 @@ def test_init_command_existing_without_force(monkeypatch, tmp_path, silent_outpu
         "rate_limit": "none",
     }
     monkeypatch.setattr(InitCommand, "_prompt_user", lambda self: ctx)
-    cfg = tmp_path / "agentflow.json"
+    cfg = tmp_path / "10xgraph.json"
     cfg.write_text("{}", encoding="utf-8")
     cmd = InitCommand(output=silent_output)
     code = cmd.execute(path=str(tmp_path), force=False)
@@ -264,7 +264,7 @@ def test_build_command_compose_existing_without_force(tmp_path, monkeypatch, sil
 
 def test_init_command_force_overwrite(monkeypatch, tmp_path, silent_output):
     # Create initial files
-    cfg = tmp_path / "agentflow.json"
+    cfg = tmp_path / "10xgraph.json"
     agent_dir = tmp_path / "graph"
     agent_dir.mkdir()
     agent_file = agent_dir / "agent.py"

@@ -1,69 +1,83 @@
-# agentflow-api (API server + CLI) — Engineering Guide
+# 10xgraph-api (API server + CLI) — Engineering Guide
 
-This file documents the **API server and CLI package** only (`10xscale-agentflow-cli`). For the
+This file documents the **API server and CLI package** only (`10xgraph-api`). For the
 core framework see `agentflow/CLAUDE.md`; for the TS client, docs, or playground see their folders;
 for the monorepo overview see the workspace-root `CLAUDE.md`.
 
-- Package name (PyPI): `10xscale-agentflow-cli`
-- Version: `0.6.0` (`pyproject.toml`), the **final release under this name**. The project
-  continues as 10xGraph; no further `10xscale-agentflow-cli` releases. `CLI_VERSION` and
-  `agentflow_cli.__version__` are single-sourced from the installed distribution metadata
+- Package name (PyPI): `10xgraph-api` (formerly `10xscale-agentflow-cli`, last release 0.6.x)
+- Version: `0.7.0` (`pyproject.toml`), the first release under the 10xGraph name. `CLI_VERSION`
+  and `tenxgraph_api.__version__` are single-sourced from the installed distribution metadata
   (falling back to `pyproject.toml` only for a non-installed source checkout).
 - Requires: Python >= 3.12 · Status: `4 - Beta`
-- Console entry point: `agentflow = agentflow_cli.cli.main:main`
-- Depends on the core framework: `10xscale-agentflow>=0.10.0` (first release with
-  `interrupt()`, per-run `remote_tools` and `validate_skill`; 0.10.x is the final core release
-  under the old name). Must not be installed alongside `10xgraph`: both provide `agentflow`.
+- Console entry points: `10xgraph = tenxgraph_api.cli.main:main`, plus the deprecated alias
+  `agentflow = tenxgraph_api.cli.main:legacy_main` (prints a notice to stderr; removed in 2.0)
+- Depends on the core framework: `10xgraph>=0.10.1,<2.0` (import `tenxgraph`). Must not be
+  installed alongside the old `10xscale-agentflow`: both provide an `agentflow` module.
+
+## Rename compatibility (kept until 2.0)
+
+| Old name | New name | How the old one keeps working |
+|---|---|---|
+| import `agentflow_cli` | `tenxgraph_api` | `agentflow_cli/__init__.py` is a meta-path alias (same module objects, one `DeprecationWarning`) |
+| command `agentflow` | `10xgraph` | second console script, `legacy_main` |
+| `agentflow.json` | `10xgraph.json` | `cli/core/config.py` (`config_names`, `resolve_default_config`) and `graph_config.default_config_path()` try `10xgraph.json` first in each directory |
+| `AGENTFLOW_NO_FULLSCREEN` / `_NO_SPINNER` / `_ASCII` | `TENXGRAPH_*` | `capabilities.cli_env_name()` |
+| WS subprotocol `agentflow-bearer` | `10xgraph-bearer` | both accepted in `core/auth/permissions.py` |
+| media URL `agentflow://media/` | `graph://media/` | core `tenxgraph.utils.media_scheme` helpers; both are ownership-checked |
+
+Deliberately unchanged: error code `AGENTFLOW_VALIDATION_ERROR`, the `agentflow.cli/v1` JSON
+output schema id, `AF-*` CLI error codes.
 
 ## What this package is
 
-It turns an Agentflow `CompiledGraph` into a production FastAPI service, plus a Typer CLI to
-scaffold, run, build, test, and evaluate that service. You write a graph, point `agentflow.json`
-at it, and `agentflow api` serves it over REST + WebSocket with auth, rate limiting, media
+It turns a 10xGraph `CompiledGraph` into a production FastAPI service, plus a Typer CLI to
+scaffold, run, build, test, and evaluate that service. You write a graph, point `10xgraph.json`
+at it, and `10xgraph api` serves it over REST + WebSocket with auth, rate limiting, media
 handling, checkpointer/thread management, and a memory store API.
 
 ## Package layout
 
-Importable package: `agentflow_cli/`. Two halves:
+Importable package: `tenxgraph_api/`. Two halves:
 
 | Path | What lives there |
 |---|---|
-| `agentflow_cli/cli/` | The Typer CLI. `main.py` (command definitions), `commands/` (one class per command: api, build, eval, init, skills, test, version), `core/` (config, output, validation), `constants.py`, `templates/` (project scaffolds: `dev/` minimal, `prod/` full) |
-| `agentflow_cli/src/app/` | The FastAPI app. `main.py` + `loader.py` (build app from `agentflow.json`), `routers/` (graph, checkpointer, store, media, ping, ag_ui), `core/auth/`, `core/config/`, `core/middleware/` (rate_limit, security_headers, request_limits), `tasks/`, `utils/`, `worker.py` |
+| `tenxgraph_api/cli/` | The Typer CLI. `main.py` (command definitions), `commands/` (one class per command: api, build, eval, init, skills, test, version), `core/` (config, output, validation), `constants.py`, `templates/` (project scaffolds: `dev/` minimal, `prod/` full) |
+| `tenxgraph_api/src/app/` | The FastAPI app. `main.py` + `loader.py` (build app from `10xgraph.json`), `routers/` (graph, checkpointer, store, media, ping, ag_ui), `core/auth/`, `core/config/`, `core/middleware/` (rate_limit, security_headers, request_limits), `tasks/`, `utils/`, `worker.py` |
 
-Public exports from the package root (`from agentflow_cli import ...`): `BaseAuth`,
+Public exports from the package root (`from tenxgraph_api import ...`): `BaseAuth`,
 `SnowFlakeIdGenerator`, `ThreadNameGenerator`.
 
 ## CLI commands (verified against `cli/main.py`)
 
 | Command | Purpose | Notable options |
 |---|---|---|
-| `agentflow api` | Start the API server | `--config/-c` (default `agentflow.json`), `--host/-H`, `--port/-p` (8000), `--reload/--no-reload`, `-v/-q` |
-| `agentflow play` | Start the server and open the hosted playground | same as `api` |
-| `agentflow dev` | Goal-oriented local dev server: same runner as `api`, opens the playground by default. `api`/`play` stay for compatibility | same as `api`, plus `--open/--no-open` |
-| `agentflow init` | Interactively scaffold a project (guided prompts pick dev vs production, auth, rate limit) | `--path/-p`, `--force/-f`, `--name`, `--template` (quick-start\|production), `--auth` (none\|jwt\|custom), `--rate-limit` (none\|memory\|redis), `--yes/-y`, `--non-interactive`, `--dry-run`. There is **no `--prod` flag** |
-| `agentflow build` | Generate a `Dockerfile` (and optionally `docker-compose.yml` / `k8s.yaml`) | `--output/-o`, `--force/-f`, `--python-version` (3.13), `--port`, `--docker-compose/--no-docker-compose`, `--k8s/--no-k8s`, `--service-name` |
-| `agentflow eval` | Run agent evaluations; discovers `*_eval.py`/`eval_*.py`, runs cases (optionally `--parallel`), writes HTML+JSON to `eval_reports/` | `--output/-o`, `--no-report`, `--threshold/-t`, `--open`, `--parallel/-p`, `--max-concurrency/-c` |
-| `agentflow test` | Run project tests via pytest (args after `--` forwarded verbatim) | `--coverage/-C`, `--html`, `-k`, path arg |
-| `agentflow skills` | Install the bundled Agentflow skill (Agent Skills spec) for Codex/Claude/GitHub, or validate skills | `--agent/-a`, `--path/-p`, `--force/-f`, `--all`, `--list/-l`, `--validate PATH` |
-| `agentflow version` | Show CLI + core framework version | both resolve from installed distribution metadata |
-| `agentflow audit` | Read-only audit of the interpreter, installed CLI/core packages, evaluation-API compatibility, `agentflow.json`, and the default port. Exits `1` on failure, `0` on warnings only, so it works as a CI gate | `-v/--verbose`, `-q/--quiet` |
-| `agentflow demo` | Preview the animation/timeline/progress themes with no side effects (`Diagnostics` help panel) | `--style` (all\|typing\|network\|init\|build\|eval; `play`/`api` alias to typing/network) |
-| `agentflow config` | Browser editor for `agentflow.json` (`Manage` panel). Loopback-only stdlib HTTP server in `cli/config_editor/` (`schema.py` lists every key, `validation.py` reuses the `graph_config` parsers, `store.py` does conflict-checked atomic writes with a `.bak`). The page is a Preact + Tailwind app whose source lives in `config-editor-ui/`; `npm run build` there writes the committed `static/app.js` and `static/app.css`, so rebuild after editing `config-editor-ui/src` | `--config/-c`, `--port/-p` (0 = any free port), `--open/--no-open` |
+| `10xgraph api` | Start the API server | `--config/-c` (default `10xgraph.json`), `--host/-H`, `--port/-p` (8000), `--reload/--no-reload`, `-v/-q` |
+| `10xgraph play` | Start the server and open the hosted playground | same as `api` |
+| `10xgraph dev` | Goal-oriented local dev server: same runner as `api`, opens the playground by default. `api`/`play` stay for compatibility | same as `api`, plus `--open/--no-open` |
+| `10xgraph init` | Interactively scaffold a project (guided prompts pick dev vs production, auth, rate limit) | `--path/-p`, `--force/-f`, `--name`, `--template` (quick-start\|production), `--auth` (none\|jwt\|custom), `--rate-limit` (none\|memory\|redis), `--yes/-y`, `--non-interactive`, `--dry-run`. There is **no `--prod` flag** |
+| `10xgraph build` | Generate a `Dockerfile` (and optionally `docker-compose.yml` / `k8s.yaml`) | `--output/-o`, `--force/-f`, `--python-version` (3.13), `--port`, `--docker-compose/--no-docker-compose`, `--k8s/--no-k8s`, `--service-name` |
+| `10xgraph eval` | Run agent evaluations; discovers `*_eval.py`/`eval_*.py`, runs cases (optionally `--parallel`), writes HTML+JSON to `eval_reports/` | `--output/-o`, `--no-report`, `--threshold/-t`, `--open`, `--parallel/-p`, `--max-concurrency/-c` |
+| `10xgraph test` | Run project tests via pytest (args after `--` forwarded verbatim) | `--coverage/-C`, `--html`, `-k`, path arg |
+| `10xgraph skills` | Install the bundled 10xGraph skill (Agent Skills spec) for Codex/Claude/GitHub, or validate skills | `--agent/-a`, `--path/-p`, `--force/-f`, `--all`, `--list/-l`, `--validate PATH` |
+| `10xgraph version` | Show CLI + core framework version | both resolve from installed distribution metadata |
+| `10xgraph audit` | Read-only audit of the interpreter, installed CLI/core packages, evaluation-API compatibility, `10xgraph.json`, and the default port. Exits `1` on failure, `0` on warnings only, so it works as a CI gate | `-v/--verbose`, `-q/--quiet` |
+| `10xgraph demo` | Preview the animation/timeline/progress themes with no side effects (`Diagnostics` help panel) | `--style` (all\|typing\|network\|init\|build\|eval; `play`/`api` alias to typing/network) |
+| `10xgraph config` | Browser editor for `10xgraph.json` (`Manage` panel). Loopback-only stdlib HTTP server in `cli/config_editor/` (`schema.py` lists every key, `validation.py` reuses the `graph_config` parsers, `store.py` does conflict-checked atomic writes with a `.bak`). The page is a Preact + Tailwind app whose source lives in `config-editor-ui/`; `npm run build` there writes the committed `static/app.js` and `static/app.css`, so rebuild after editing `config-editor-ui/src` | `--config/-c`, `--port/-p` (0 = any free port), `--open/--no-open` |
 
 Defaults (from `cli/constants.py`): `DEFAULT_HOST="127.0.0.1"`, `DEFAULT_PORT=8000`,
-`DEFAULT_CONFIG_FILE="agentflow.json"`.
+`DEFAULT_CONFIG_FILE="10xgraph.json"`.
 
 Root options apply to every command and are resolved in `main.root`:
 `--format` (human\|plain\|json\|jsonl), `--json`, `--color` (auto\|always\|never),
 `--no-color`, `--progress` (auto\|tty\|plain\|json\|quiet),
 `--animation/--no-animation`, `--fullscreen/--no-fullscreen`, `--cwd`, `-v/--verbose`
 (counted), `-q/--quiet`, `--debug`, `-y/--yes`, `--non-interactive`, `-V/--version`.
-`AGENTFLOW_NO_FULLSCREEN=1` opts out of the alternate-screen surface.
+`TENXGRAPH_NO_FULLSCREEN=1` (legacy `AGENTFLOW_NO_FULLSCREEN`) opts out of the
+alternate-screen surface.
 
-## `agentflow.json` (the config contract)
+## `10xgraph.json` (the config contract)
 
-Parsed by `agentflow_cli/src/app/core/config/graph_config.py`. Supported keys:
+Parsed by `tenxgraph_api/src/app/core/config/graph_config.py`. Supported keys:
 
 | Key | Meaning |
 |---|---|
@@ -90,7 +104,7 @@ and for redis backend a `redis` sub-object `{ "url", "prefix" }` (or shorthand U
 - `"auth": "jwt"` requires `JWT_SECRET_KEY` and `JWT_ALGORITHM` in the environment (raises at
   load if missing). JWT logic lives in `core/auth/jwt_auth.py`.
 - `"auth": {"method": "custom", "path": "module:attr"}` loads your `BaseAuth` subclass
-  (`from agentflow_cli import BaseAuth`).
+  (`from tenxgraph_api import BaseAuth`).
 - Authorization (RBAC / object-level) is separate: `core/auth/authorization.py`
   (`AuthorizationBackend` / `DefaultAuthorizationBackend` / `OwnershipAuthorizationBackend`),
   wired via the `authorization` key. That key accepts `"module:attr"` (custom), a built-in
@@ -156,12 +170,12 @@ In production: set `MODE=production`, `IS_DEBUG=false`, a non-`*` `ORIGINS`, and
 ## Development workflow
 
 ```bash
-# from this folder (agentflow-api/); a .venv is present
+# from this folder (10xgraph-api/); a .venv is present
 .venv/bin/python -m pytest                 # tests in tests/
-agentflow init                             # scaffold (interactive)
-agentflow api --reload                     # dev server on 127.0.0.1:8000
-agentflow play                             # server + hosted playground
-agentflow build --docker-compose           # Dockerfile + compose
+10xgraph init                             # scaffold (interactive)
+10xgraph api --reload                     # dev server on 127.0.0.1:8000
+10xgraph play                             # server + hosted playground
+10xgraph build --docker-compose           # Dockerfile + compose
 ruff check . && ruff format .
 ```
 
@@ -172,20 +186,20 @@ ruff check . && ruff format .
 
 ## Known doc drift (do not trust without checking)
 
-- **Version is now single-sourced.** `CLI_VERSION` (and `agentflow_cli.__version__`, which aliases
-  it) resolve from installed distribution metadata. `agentflow version` prints the CLI version and
-  the installed core `10xscale-agentflow` version; the old `pyproject.toml` path read - which
+- **Version is now single-sourced.** `CLI_VERSION` (and `tenxgraph_api.__version__`, which aliases
+  it) resolve from installed distribution metadata. `10xgraph version` prints the CLI version and
+  the installed core `10xgraph` version; the old `pyproject.toml` path read - which
   printed `unknown` from a wheel - is gone.
-- **There is no `agentflow doctor`.** The environment check shipped as `agentflow audit`; earlier
+- **There is no `agentflow doctor`.** The environment check shipped as `10xgraph audit`; earlier
   README/CHANGELOG copy called it `doctor`. Anything still saying `doctor` is stale.
 - **README links to `./docs/`** (`configuration.md`, `authentication.md`, `deployment.md`,
   `id-generation.md`, `thread-name-generator.md`) but there is no `docs/` directory in this
   package — every one of those links is broken.
 - **a2a / a2ui routers no longer exist.** Don't document a2a HTTP endpoints as live; restore the
   files from git history if that surface is actually built.
-- **`pyproject.toml` URLs**: Homepage/Documentation point at `10xgraph.com`; Repository,
-  Issues and Changelog still point at `github.com/10xHub/agentflow-cli`. The git remote is still `Iamsdt/pyagenity-api.git` and needs to be
-  repointed before release (checklist 1.5).
-- The workspace-root `CLAUDE.md` lists only `init/api/play/build` and an older `agentflow.json`
+- **`pyproject.toml` URLs** point at `10xgraph.com` and `github.com/10xGraph/10xgraph-api`,
+  but the git remote is still `Iamsdt/pyagenity-api.git` and needs to be repointed before
+  release (checklist 1.5).
+- The workspace-root `CLAUDE.md` lists only `init/api/play/build` and an older `10xgraph.json`
   shape; the real CLI has `eval/test/skills/version` too and the config supports `rate_limit`,
   `thread_name_generator`, and `authorization`.

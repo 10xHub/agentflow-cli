@@ -15,20 +15,20 @@ import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from agentflow_cli.src.app.core.auth.permissions import RequirePermission
-from agentflow_cli.src.app.core.auth.request_config import (
+from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
+from tenxgraph_api.src.app.core.auth.request_config import (
     client_config,
     normalize_thread_id,
 )
-from agentflow_cli.src.app.routers.checkpointer.services.checkpointer_service import (
+from tenxgraph_api.src.app.routers.checkpointer.services.checkpointer_service import (
     CheckpointerService,
 )
-from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
+from tenxgraph_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     WsGraphInputSchema,
 )
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
-from agentflow_cli.src.app.routers.store.services.store_service import StoreService
+from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
+from tenxgraph_api.src.app.routers.store.services.store_service import StoreService
 
 
 FORGED = {
@@ -198,8 +198,8 @@ async def test_graph_stop_strips_forged_keys(graph_service):
 
 @pytest.mark.asyncio
 async def test_checkpointer_routes_pin_path_thread_id(monkeypatch):
-    from agentflow_cli.src.app.routers.checkpointer import router as ck
-    from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+    from tenxgraph_api.src.app.routers.checkpointer import router as ck
+    from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
         ConfigSchema,
         PutMessagesSchema,
         StateSchema,
@@ -270,7 +270,7 @@ def _ws_input(thread_id):
 
 @pytest.mark.parametrize(("raw", "expected"), [(" t1 ", "t1"), ("new", None), ("  ", None)])
 def test_ws_thread_id_is_normalized_before_the_check(raw, expected):
-    from agentflow_cli.src.app.routers.graph.router import _ws_run_thread_id
+    from tenxgraph_api.src.app.routers.graph.router import _ws_run_thread_id
 
     ws_input = _ws_input(raw)
     assert _ws_run_thread_id(ws_input) == expected

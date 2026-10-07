@@ -1,7 +1,7 @@
 """
 FakeRealtimeClient — a keyless, network-free stand-in for a realtime provider.
 
-Implements the ``agentflow.core.realtime.base.RealtimeClient`` protocol so a
+Implements the ``tenxgraph.core.realtime.base.RealtimeClient`` protocol so a
 ``LiveAgent`` can run a full ``/v1/graph/live`` session with NO Gemini key and NO
 network. It scripts a tiny conversation: a greeting on connect, and a canned reply
 (input-transcript echo + output-transcript + a short audio tone + turn_complete)
@@ -20,13 +20,13 @@ import math
 from itertools import cycle
 from typing import Any
 
-from agentflow.core.realtime.base import (
+from tenxgraph.core.realtime.base import (
     AudioDeltaEvent,
     OutputTranscriptEvent,
     RealtimeConfig,
     TurnCompleteEvent,
 )
-from agentflow.core.realtime.base import (
+from tenxgraph.core.realtime.base import (
     InputTranscriptEvent as _InputTranscript,
 )
 

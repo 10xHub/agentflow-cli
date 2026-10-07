@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import io
 
-from agentflow_cli.cli.capabilities import (
+from tenxgraph_api.cli.capabilities import (
     ColorMode,
     OutputFormat,
     ProgressMode,
     TerminalCapabilities,
+    cli_env_name,
 )
 
 
@@ -60,3 +61,15 @@ def test_structured_output_never_animates() -> None:
     )
     assert capabilities.color is False
     assert capabilities.animation is False
+
+
+def test_cli_env_name_prefers_tenxgraph_prefix(monkeypatch) -> None:
+    monkeypatch.delenv("TENXGRAPH_NO_SPINNER", raising=False)
+    monkeypatch.delenv("AGENTFLOW_NO_SPINNER", raising=False)
+    assert cli_env_name("NO_SPINNER") == "TENXGRAPH_NO_SPINNER"
+
+    monkeypatch.setenv("AGENTFLOW_NO_SPINNER", "1")
+    assert cli_env_name("NO_SPINNER") == "AGENTFLOW_NO_SPINNER"
+
+    monkeypatch.setenv("TENXGRAPH_NO_SPINNER", "0")
+    assert cli_env_name("NO_SPINNER") == "TENXGRAPH_NO_SPINNER"

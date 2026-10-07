@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
 
 
 def test_graph_config_reads_agent(tmp_path: Path):
@@ -87,3 +87,18 @@ def test_graph_config_rejects_duplicate_remote_tools(tmp_path: Path):
 
     with pytest.raises(ValueError, match="Duplicate remote tool name 'write_report'"):
         _ = GraphConfig(str(cfg_path)).remote_tools
+
+
+def test_default_config_path_prefers_10xgraph_json(tmp_path: Path, monkeypatch):
+    from tenxgraph_api.src.app.core.config.graph_config import default_config_path
+
+    monkeypatch.chdir(tmp_path)
+    assert default_config_path() == "10xgraph.json"
+
+    (tmp_path / "agentflow.json").write_text(json.dumps({"agent": "old:app"}))
+    assert default_config_path() == "agentflow.json"
+    assert GraphConfig().graph_path == "old:app"
+
+    (tmp_path / "10xgraph.json").write_text(json.dumps({"agent": "new:app"}))
+    assert default_config_path() == "10xgraph.json"
+    assert GraphConfig().graph_path == "new:app"

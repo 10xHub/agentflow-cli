@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from agentflow_cli.src.app.routers.media import MediaService
+from tenxgraph_api.src.app.routers.media import MediaService
 
 
 def _service(metadata: dict, require_owner: bool = False) -> MediaService:

@@ -7,14 +7,14 @@ import questionary
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 
-import agentflow_cli.cli.core.prompts as prompts_module
-from agentflow_cli.cli.core.prompts import (
+import tenxgraph_api.cli.core.prompts as prompts_module
+from tenxgraph_api.cli.core.prompts import (
     MULTI_SELECT_HINT,
     PROMPT_STYLE,
     Choice,
     PromptService,
 )
-from agentflow_cli.cli.exceptions import ValidationError
+from tenxgraph_api.cli.exceptions import ValidationError
 
 
 class _StubQuestion:
@@ -34,11 +34,11 @@ class _StubQuestion:
 
 
 def test_choice_keeps_description_visually_secondary() -> None:
-    rendered = Choice("codex", "Codex", ".agents/skills/agentflow").to_questionary()
+    rendered = Choice("codex", "Codex", ".agents/skills/10xgraph").to_questionary()
     assert rendered.value == "codex"
     assert rendered.title == [
         ("class:text", "Codex"),
-        ("class:instruction", "  .agents/skills/agentflow"),
+        ("class:instruction", "  .agents/skills/10xgraph"),
     ]
 
 
@@ -197,9 +197,9 @@ def test_select_tolerates_a_default_that_is_not_offered(monkeypatch) -> None:
 def test_checkbox_choices_toggle_with_the_space_bar() -> None:
     """The interaction the CLI advertises: space toggles, enter confirms."""
     choices = [
-        Choice("Codex", "Codex", ".agents/skills/agentflow"),
-        Choice("Claude", "Claude", ".claude/skills/agentflow", checked=True),
-        Choice("GitHub", "GitHub", ".github/skills/agentflow"),
+        Choice("Codex", "Codex", ".agents/skills/10xgraph"),
+        Choice("Claude", "Claude", ".claude/skills/10xgraph", checked=True),
+        Choice("GitHub", "GitHub", ".github/skills/10xgraph"),
     ]
     with create_pipe_input() as pipe:
         # space (toggle Codex on) · down · down · space (toggle GitHub on) · enter

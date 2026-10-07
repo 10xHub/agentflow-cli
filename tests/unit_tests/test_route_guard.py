@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from fastapi import APIRouter, Depends, FastAPI
 
-from agentflow_cli.src.app.core.auth.permissions import RequirePermission
-from agentflow_cli.src.app.core.auth.route_guard import (
+from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
+from tenxgraph_api.src.app.core.auth.route_guard import (
     assert_all_routes_protected,
     find_unprotected_routes,
 )
@@ -70,7 +70,7 @@ def test_public_allowlist_exempts_path():
 
 
 def test_real_app_has_no_unprotected_routes():
-    import agentflow_cli.src.app.main as main_module
+    import tenxgraph_api.src.app.main as main_module
 
     assert find_unprotected_routes(main_module.app) == []
 
@@ -107,8 +107,8 @@ def test_guard_given_at_include_time_protects_the_router():
 
 
 def test_real_app_routes_are_actually_checked():
-    import agentflow_cli.src.app.main as main_module
-    from agentflow_cli.src.app.core.auth.route_guard import _iter_routes
+    import tenxgraph_api.src.app.main as main_module
+    from tenxgraph_api.src.app.core.auth.route_guard import _iter_routes
 
     paths = {path for path, _route, _guarded in _iter_routes(main_module.app.routes)}
     assert "/v1/graph/invoke" in paths

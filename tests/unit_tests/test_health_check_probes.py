@@ -5,11 +5,11 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from agentflow_cli.src.app.core.config.graph_config import RateLimitConfig
-from agentflow_cli.src.app.core.config.setup_middleware import (
+from tenxgraph_api.src.app.core.config.graph_config import RateLimitConfig
+from tenxgraph_api.src.app.core.config.setup_middleware import (
     HealthCheckAwareTrustedHostMiddleware,
 )
-from agentflow_cli.src.app.core.middleware.rate_limit import (
+from tenxgraph_api.src.app.core.middleware.rate_limit import (
     RateLimitDecision,
     RateLimitMiddleware,
 )

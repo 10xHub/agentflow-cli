@@ -5,7 +5,7 @@ import {
 // ------------------------------------------------------------------ network
 
 async function api(method, url, body) {
-  const headers = { "X-Agentflow-Token": TOKEN };
+  const headers = { "X-10xGraph-Token": TOKEN };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   let data = {};
@@ -25,14 +25,14 @@ function openIssues() {
 }
 
 export async function load() {
-  if (!TOKEN) return fatal("Open the link printed by agentflow config", "This page needs the session token included in that link.");
+  if (!TOKEN) return fatal("Open the link printed by 10xgraph config", "This page needs the session token included in that link.");
   let res;
   try {
     res = await api("GET", "/api/state");
   } catch {
-    return fatal("Cannot reach the config server", "Check that agentflow config is still running in your terminal, then reload.");
+    return fatal("Cannot reach the config server", "Check that 10xgraph config is still running in your terminal, then reload.");
   }
-  if (!res.ok) return fatal("This link has expired", res.data.error || "Restart agentflow config and open the new link it prints.");
+  if (!res.ok) return fatal("This link has expired", res.data.error || "Restart 10xgraph config and open the new link it prints.");
 
   const data = res.data;
   commit((s) => {
@@ -190,7 +190,7 @@ export const closeInspector = () => commit((s) => { s.inspectorOpen = false; });
 export async function copyJson() {
   try {
     await navigator.clipboard.writeText(JSON.stringify(store.config, null, 2) + "\n");
-    toast("success", "Copied agentflow.json to the clipboard.");
+    toast("success", "Copied 10xgraph.json to the clipboard.");
   } catch {
     toast("error", "The clipboard is not available here.");
   }

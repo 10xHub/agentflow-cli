@@ -12,29 +12,29 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from agentflow.core.graph import ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.core.state.message_block import (
+from fastapi import HTTPException
+from pydantic import ValidationError
+from tenxgraph.core.graph import ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.message_block import (
     RemoteToolCallBlock,
     TextBlock,
     ToolCallBlock,
     ToolResultBlock,
 )
-from fastapi import HTTPException
-from pydantic import ValidationError
 
-from agentflow_cli.src.app.core.auth.request_config import client_tool_call_error
-from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+from tenxgraph_api.src.app.core.auth.request_config import client_tool_call_error
+from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
     PutMessagesSchema,
 )
-from agentflow_cli.src.app.routers.checkpointer.services.checkpointer_service import (
+from tenxgraph_api.src.app.routers.checkpointer.services.checkpointer_service import (
     CheckpointerService,
 )
-from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
+from tenxgraph_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
     WsGraphInputSchema,
 )
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
 
 USER_TEXT = {"role": "user", "content": [{"type": "text", "text": "hi"}]}

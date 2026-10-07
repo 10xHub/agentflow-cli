@@ -1,12 +1,12 @@
-"""Tests for `agentflow init` production setup."""
+"""Tests for `10xgraph init` production setup."""
 
 from __future__ import annotations
 
 import io
 from pathlib import Path
 
-from agentflow_cli.cli.commands.init import InitCommand
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands.init import InitCommand
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 def SilentOutput() -> OutputFormatter:
@@ -26,7 +26,7 @@ def _skip_binary(original):
 
 
 def test_init_prod_creates_extra_files(monkeypatch, tmp_path: Path) -> None:
-    """Ensure prod init creates agentflow.json, graph files, and prod configs."""
+    """Ensure prod init creates 10xgraph.json, graph files, and prod configs."""
     ctx = {
         "agent_name": "MyAgent",
         "agent_name_slug": "my-agent",
@@ -43,7 +43,7 @@ def test_init_prod_creates_extra_files(monkeypatch, tmp_path: Path) -> None:
     assert code == 0, "InitCommand.execute() returned non-zero"
 
     # Core files
-    assert (tmp_path / "agentflow.json").exists()
+    assert (tmp_path / "10xgraph.json").exists()
     assert (tmp_path / "graph" / "agent.py").exists()
     assert (tmp_path / "graph" / "__init__.py").exists()
 
@@ -56,22 +56,22 @@ def test_init_prod_creates_extra_files(monkeypatch, tmp_path: Path) -> None:
     # Basic sanity check on pyproject content
     content = (tmp_path / "pyproject.toml").read_text(encoding="utf-8")
     assert "[project]" in content
-    assert "agentflow-cli" in content
+    assert "10xgraph-api" in content
 
 
 def test_init_prod_skips_binary_template_artifacts() -> None:
     cmd = InitCommand(output=SilentOutput())
     assert cmd._should_skip(
-        Path("agentflow_cli/cli/templates/prod/.ruff_cache/0.5.2/17065574497421059950"),
-        Path("agentflow_cli/cli/templates/prod"),
+        Path("tenxgraph_api/cli/templates/prod/.ruff_cache/0.5.2/17065574497421059950"),
+        Path("tenxgraph_api/cli/templates/prod"),
         {},
         True,
     )
     assert cmd._should_skip(
         Path(
-            "agentflow_cli/cli/templates/prod/tests/__pycache__/test_graph_nodes.cpython-313-pytest-9.0.3.pyc"
+            "tenxgraph_api/cli/templates/prod/tests/__pycache__/test_graph_nodes.cpython-313-pytest-9.0.3.pyc"
         ),
-        Path("agentflow_cli/cli/templates/prod"),
+        Path("tenxgraph_api/cli/templates/prod"),
         {},
         True,
     )

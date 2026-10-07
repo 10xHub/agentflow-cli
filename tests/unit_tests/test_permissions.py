@@ -6,10 +6,10 @@ import pytest
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
-from agentflow_cli.src.app.core.auth.auth_backend import BaseAuth
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
-from agentflow_cli.src.app.core.auth.permissions import RequirePermission
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from tenxgraph_api.src.app.core.auth.auth_backend import BaseAuth
+from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
+from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
 
 
 class TestRequirePermission:

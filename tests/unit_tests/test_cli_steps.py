@@ -7,7 +7,7 @@ import io
 import pytest
 from rich.console import Console
 
-from agentflow_cli.cli.core.steps import (
+from tenxgraph_api.cli.core.steps import (
     LiveProgressRun,
     LiveTimeline,
     QuietTimeline,
@@ -18,7 +18,7 @@ from agentflow_cli.cli.core.steps import (
     StructuredTimeline,
     format_elapsed,
 )
-from agentflow_cli.cli.core.theme import UNICODE_GLYPHS
+from tenxgraph_api.cli.core.theme import UNICODE_GLYPHS
 
 
 STEPS = (("one", "First stage"), ("two", "Second stage"))

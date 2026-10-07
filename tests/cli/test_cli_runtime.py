@@ -6,8 +6,8 @@ import json
 
 from typer.testing import CliRunner
 
-import agentflow_cli.cli.main as main_mod
-from agentflow_cli.cli.commands.audit import AuditCommand
+import tenxgraph_api.cli.main as main_mod
+from tenxgraph_api.cli.commands.audit import AuditCommand
 
 
 runner = CliRunner()
@@ -18,7 +18,7 @@ def test_root_help_does_not_import_command_implementations(monkeypatch) -> None:
     original = main_mod.importlib.import_module
 
     def recording_import(name: str, *args, **kwargs):
-        if name.startswith("agentflow_cli.cli.commands."):
+        if name.startswith("tenxgraph_api.cli.commands."):
             imported.append(name)
         return original(name, *args, **kwargs)
 
@@ -51,7 +51,7 @@ def test_no_animation_alias_selects_static_output() -> None:
 
 def test_audit_validates_remote_tool_schema(monkeypatch, tmp_path) -> None:
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "agentflow.json").write_text(
+    (tmp_path / "10xgraph.json").write_text(
         json.dumps(
             {
                 "agent": "graph.agent:app",
@@ -74,7 +74,7 @@ def test_audit_validates_remote_tool_schema(monkeypatch, tmp_path) -> None:
 
 def test_audit_fails_for_misspelled_remote_tool_key(monkeypatch, tmp_path) -> None:
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "agentflow.json").write_text(
+    (tmp_path / "10xgraph.json").write_text(
         json.dumps(
             {
                 "agent": "graph.agent:app",
@@ -122,7 +122,7 @@ def test_lazy_dependency_error_has_recovery_code(monkeypatch) -> None:
     original = main_mod.importlib.import_module
 
     def fail_eval(name: str, *args, **kwargs):
-        if name == "agentflow_cli.cli.commands.eval":
+        if name == "tenxgraph_api.cli.commands.eval":
             raise ImportError("missing evaluation symbol")
         return original(name, *args, **kwargs)
 
@@ -130,4 +130,4 @@ def test_lazy_dependency_error_has_recovery_code(monkeypatch) -> None:
     result = runner.invoke(main_mod.app, ["eval"])
     assert result.exit_code == 4
     assert "AF-DEPS-001" in result.output
-    assert "agentflow audit" in result.output
+    assert "10xgraph audit" in result.output

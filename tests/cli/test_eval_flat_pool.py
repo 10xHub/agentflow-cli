@@ -15,8 +15,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agentflow_cli.cli.commands.eval import EvalCommand
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands.eval import EvalCommand
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ class TestMergeReportsTokenAggregation:
         fake_merged = MagicMock()
 
         with patch(
-            "agentflow_cli.cli.commands.eval.ER.create", return_value=fake_merged
+            "tenxgraph_api.cli.commands.eval.ER.create", return_value=fake_merged
         ) as mock_create:
             merged = cmd._merge_reports([r1, r2])
 
@@ -85,7 +85,7 @@ class TestMergeReportsTokenAggregation:
         fake_merged = MagicMock()
 
         with patch(
-            "agentflow_cli.cli.commands.eval.ER.create", return_value=fake_merged
+            "tenxgraph_api.cli.commands.eval.ER.create", return_value=fake_merged
         ) as mock_create:
             cmd._merge_reports([r1, r2])
 
@@ -108,7 +108,7 @@ class TestConfEvalPriorityChain:
         return p
 
     def test_per_file_config_beats_confeval_config(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         global_cfg = EvalConfig()
         per_file_cfg = EvalConfig()
@@ -132,7 +132,7 @@ class TestConfEvalPriorityChain:
         assert used_source == "per-file"
 
     def test_per_file_config_used_when_no_confeval(self, tmp_path: Path, cmd: EvalCommand) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         per_file_cfg = EvalConfig()
         fake_es = MagicMock()
@@ -156,7 +156,7 @@ class TestConfEvalPriorityChain:
     def test_default_config_used_when_no_config_anywhere(
         self, tmp_path: Path, cmd: EvalCommand
     ) -> None:
-        from agentflow.qa.evaluation import EvalConfig
+        from tenxgraph.qa.evaluation import EvalConfig
 
         default_cfg = EvalConfig()
         fake_es = MagicMock()

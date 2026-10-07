@@ -1,1 +1,1 @@
-"""Tests package for agentflow_cli CLI."""
+"""Tests package for tenxgraph_api CLI."""

@@ -1,8 +1,8 @@
 """Every internal media reference in client input must pass the file ownership check (H9).
 
-Uploads are referenced as ``agentflow://media/<key>`` once inside the graph. The ownership
-check used to run only for ``kind: "file_id"`` blocks, so a client could send the internal
-URL form directly and have the graph read another user's file.
+Uploads are referenced as ``graph://media/<key>`` (legacy: ``agentflow://media/<key>``) once
+inside the graph. The ownership check used to run only for ``kind: "file_id"`` blocks, so a
+client could send the internal URL form directly and have the graph read another user's file.
 """
 
 # ruff: noqa: S101
@@ -10,8 +10,8 @@ URL form directly and have the graph read another user's file.
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from agentflow.core.state import Message
-from agentflow.core.state.message_block import (
+from tenxgraph.core.state import Message
+from tenxgraph.core.state.message_block import (
     DocumentBlock,
     ImageBlock,
     MediaRef,
@@ -19,7 +19,7 @@ from agentflow.core.state.message_block import (
     ToolResultBlock,
 )
 
-from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+from tenxgraph_api.src.app.routers.graph.services.multimodal_preprocessor import (
     preprocess_multimodal_messages,
 )
 
@@ -48,6 +48,16 @@ async def test_internal_url_of_another_users_file_is_rejected():
     service = _service({"victim-file": "victim"})
     with pytest.raises(ValueError, match="not found"):
         await preprocess_multimodal_messages(
+            [_image("graph://media/victim-file")], service, "attacker"
+        )
+    service.ensure_can_access.assert_awaited_once_with("victim-file", "attacker")
+
+
+@pytest.mark.asyncio
+async def test_legacy_internal_url_of_another_users_file_is_rejected():
+    service = _service({"victim-file": "victim"})
+    with pytest.raises(ValueError, match="not found"):
+        await preprocess_multimodal_messages(
             [_image("agentflow://media/victim-file")], service, "attacker"
         )
     service.ensure_can_access.assert_awaited_once_with("victim-file", "attacker")
@@ -56,10 +66,8 @@ async def test_internal_url_of_another_users_file_is_rejected():
 @pytest.mark.asyncio
 async def test_internal_url_of_own_file_is_allowed():
     service = _service({"mine": "alice"})
-    result = await preprocess_multimodal_messages(
-        [_image("agentflow://media/mine")], service, "alice"
-    )
-    assert result[0].content[0].media.url == "agentflow://media/mine"
+    result = await preprocess_multimodal_messages([_image("graph://media/mine")], service, "alice")
+    assert result[0].content[0].media.url == "graph://media/mine"
 
 
 @pytest.mark.asyncio
@@ -67,9 +75,7 @@ async def test_internal_url_nested_in_a_tool_result_is_checked():
     service = _service({"victim-file": "victim"})
     nested = ToolResultBlock(
         call_id="1",
-        output=[
-            {"type": "image", "media": {"kind": "url", "url": "agentflow://media/victim-file"}}
-        ],
+        output=[{"type": "image", "media": {"kind": "url", "url": "graph://media/victim-file"}}],
     )
     with pytest.raises(ValueError, match="not found"):
         await preprocess_multimodal_messages(
@@ -91,16 +97,14 @@ async def test_file_id_of_another_user_gives_the_same_not_found_error():
 async def test_unknown_file_gives_the_same_not_found_error():
     service = _service({})
     with pytest.raises(ValueError, match="not found"):
-        await preprocess_multimodal_messages(
-            [_image("agentflow://media/nope")], service, "attacker"
-        )
+        await preprocess_multimodal_messages([_image("graph://media/nope")], service, "attacker")
 
 
 @pytest.mark.asyncio
 async def test_internal_url_rejected_when_the_api_cannot_check_ownership():
     # No media service in the API, but the graph may still have a media store.
     with pytest.raises(ValueError, match="cannot be verified"):
-        await preprocess_multimodal_messages([_image("agentflow://media/x")], None, "attacker")
+        await preprocess_multimodal_messages([_image("graph://media/x")], None, "attacker")
 
 
 @pytest.mark.asyncio
@@ -108,7 +112,7 @@ async def test_external_urls_and_text_are_not_checked():
     service = _service({})
     msgs = [
         _image("https://example.com/cat.png"),
-        Message(role="user", content=[TextBlock(text="see agentflow://media/abc")]),
+        Message(role="user", content=[TextBlock(text="see graph://media/abc")]),
     ]
     result = await preprocess_multimodal_messages(msgs, service, "alice")
     assert len(result) == 2
@@ -119,7 +123,7 @@ async def test_external_urls_and_text_are_not_checked():
 async def test_no_checks_without_an_authenticated_user():
     # Auth disabled: there is no identity to check ownership against.
     service = _service({"victim-file": "victim"})
-    await preprocess_multimodal_messages([_image("agentflow://media/victim-file")], service, None)
+    await preprocess_multimodal_messages([_image("graph://media/victim-file")], service, None)
     service.ensure_can_access.assert_not_awaited()
 
 
@@ -130,9 +134,9 @@ async def test_no_checks_without_an_authenticated_user():
 
 @pytest.fixture
 def checkpointer_service(monkeypatch):
-    from agentflow.core.state import AgentState
+    from tenxgraph.core.state import AgentState
 
-    from agentflow_cli.src.app.routers.checkpointer.services.checkpointer_service import (
+    from tenxgraph_api.src.app.routers.checkpointer.services.checkpointer_service import (
         CheckpointerService,
     )
 
@@ -152,7 +156,7 @@ def checkpointer_service(monkeypatch):
 async def test_put_messages_rejects_another_users_file(checkpointer_service):
     with pytest.raises(ValueError, match="not found"):
         await checkpointer_service.put_messages(
-            {"thread_id": "t1"}, {"user_id": "attacker"}, [_image("agentflow://media/victim-file")]
+            {"thread_id": "t1"}, {"user_id": "attacker"}, [_image("graph://media/victim-file")]
         )
     checkpointer_service.checkpointer.aput_messages.assert_not_awaited()
 
@@ -163,7 +167,7 @@ async def test_put_state_rejects_another_users_file(checkpointer_service):
         {
             "role": "user",
             "content": [
-                {"type": "image", "media": {"kind": "url", "url": "agentflow://media/victim-file"}}
+                {"type": "image", "media": {"kind": "url", "url": "graph://media/victim-file"}}
             ],
         }
     ]

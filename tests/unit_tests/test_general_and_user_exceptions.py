@@ -1,5 +1,5 @@
-from agentflow_cli.src.app.core.exceptions.general_exception import GeneralException
-from agentflow_cli.src.app.core.exceptions.user_exception import (
+from tenxgraph_api.src.app.core.exceptions.general_exception import GeneralException
+from tenxgraph_api.src.app.core.exceptions.user_exception import (
     UserAccountError,
     UserPermissionError,
 )

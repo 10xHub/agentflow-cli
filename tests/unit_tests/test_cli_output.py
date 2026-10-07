@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import sys
+from types import SimpleNamespace
 
-from agentflow_cli.cli.capabilities import ColorMode, OutputFormat, ProgressMode
-from agentflow_cli.cli.core.output import (
+from tenxgraph_api.cli.capabilities import ColorMode, OutputFormat, ProgressMode
+from tenxgraph_api.cli.core.output import (
     OutputFormatter,
     emphasize,
     error,
@@ -17,6 +19,7 @@ from agentflow_cli.cli.core.output import (
     success,
     warning,
 )
+from tenxgraph_api.cli.core.theme import TENXGRAPH_THEME
 
 
 def formatter(**kwargs) -> tuple[OutputFormatter, io.StringIO]:
@@ -120,6 +123,20 @@ def test_no_color_produces_no_ansi_sequences() -> None:
     assert "\x1b[" not in stream.getvalue()
 
 
+def test_human_messages_use_styles_defined_in_the_theme(monkeypatch) -> None:
+    # Rich renders an unknown style name as plain text without raising, so check the name.
+    rendered = tty_formatter()
+    printed: list[str] = []
+    monkeypatch.setattr(
+        rendered, "_console", lambda error=False: SimpleNamespace(print=printed.append)
+    )
+    rendered.success("done")
+    rendered.error("boom")
+    styles = {re.match(r"\[([^\]]+)\]", markup).group(1) for markup in printed}
+    assert styles == {"tenxgraph.success", "tenxgraph.error"}
+    assert styles <= set(TENXGRAPH_THEME.styles)
+
+
 def test_plain_status_degrades_to_a_checkpoint() -> None:
     rendered, stream = formatter(
         output_format=OutputFormat.PLAIN,
@@ -147,7 +164,7 @@ def test_forced_tty_header_uses_animation_renderer(monkeypatch) -> None:
 
     calls: list[tuple[str, str | None, bool, bool]] = []
     monkeypatch.setattr(
-        "agentflow_cli.cli.core.output.render_command_intro",
+        "tenxgraph_api.cli.core.output.render_command_intro",
         lambda _console, *, command, subtitle, unicode, persistent_screen: calls.append(
             (command, subtitle, unicode, persistent_screen)
         ),
@@ -282,7 +299,7 @@ def test_command_header_claims_the_screen_when_fullscreen_was_requested(monkeypa
     console = FakeConsole()
     monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
     monkeypatch.setattr(
-        "agentflow_cli.cli.core.output.render_command_intro",
+        "tenxgraph_api.cli.core.output.render_command_intro",
         lambda *_args, **_kwargs: None,
     )
 
@@ -297,7 +314,7 @@ def test_command_header_stays_in_the_normal_buffer_without_fullscreen(monkeypatc
     console = FakeConsole()
     monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
     monkeypatch.setattr(
-        "agentflow_cli.cli.core.output.render_command_intro",
+        "tenxgraph_api.cli.core.output.render_command_intro",
         lambda *_args, **_kwargs: None,
     )
 
@@ -313,7 +330,7 @@ def test_command_header_pins_chrome_inside_a_fullscreen_session(monkeypatch) -> 
     console = FakeConsole()
     monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
     monkeypatch.setattr(
-        "agentflow_cli.cli.core.output.render_command_intro",
+        "tenxgraph_api.cli.core.output.render_command_intro",
         lambda *_args, **_kwargs: None,
     )
 
@@ -328,7 +345,7 @@ def test_command_header_pins_chrome_inside_a_fullscreen_session(monkeypatch) -> 
 
 
 def test_timeline_and_progress_pick_the_renderer_for_the_output_mode() -> None:
-    from agentflow_cli.cli.core.steps import (
+    from tenxgraph_api.cli.core.steps import (
         LiveProgressRun,
         LiveTimeline,
         QuietProgressRun,
@@ -397,7 +414,7 @@ def test_quiet_timeline_writes_nothing() -> None:
 
 def test_completion_screen_reveals_rows_progressively() -> None:
     rendered, _stream = formatter()
-    rows = [("API", "http://localhost:8000"), ("Config", "agentflow.json")]
+    rows = [("API", "http://localhost:8000"), ("Config", "10xgraph.json")]
     steps = ["Open the docs"]
 
     first = rendered._completion_panel("Ready", "All set", rows, steps, 0)

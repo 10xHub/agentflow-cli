@@ -1,4 +1,4 @@
-"""Tests for the ``agentflow config`` browser editor backend."""
+"""Tests for the ``10xgraph config`` browser editor backend."""
 
 from __future__ import annotations
 
@@ -9,16 +9,16 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-import agentflow_cli.cli.main as main_mod
-from agentflow_cli.cli.config_editor import (
+import tenxgraph_api.cli.main as main_mod
+from tenxgraph_api.cli.config_editor import (
     ConfigConflictError,
     ConfigEditorServer,
     ConfigFileStore,
     build_schema,
     validate_config,
 )
-from agentflow_cli.cli.config_editor.schema import AUTHORIZATION_SCOPES, KNOWN_TOP_LEVEL_KEYS
-from agentflow_cli.cli.config_editor.server import TOKEN_HEADER
+from tenxgraph_api.cli.config_editor.schema import AUTHORIZATION_SCOPES, KNOWN_TOP_LEVEL_KEYS
+from tenxgraph_api.cli.config_editor.server import TOKEN_HEADER
 
 
 def _levels(issues: list[dict], path: str) -> list[str]:
@@ -42,7 +42,7 @@ def test_schema_is_json_and_fields_live_under_their_section() -> None:
 
 
 def test_schema_scopes_match_api_scopes() -> None:
-    from agentflow_cli.src.app.core.auth.authorization import all_scopes
+    from tenxgraph_api.src.app.core.auth.authorization import all_scopes
 
     assert set(AUTHORIZATION_SCOPES) == set(all_scopes())
 
@@ -217,7 +217,7 @@ def test_file_checks_use_base_dir(tmp_path: Path) -> None:
 
 
 def test_store_creates_new_file_without_backup(tmp_path: Path) -> None:
-    store = ConfigFileStore(tmp_path / "agentflow.json")
+    store = ConfigFileStore(tmp_path / "10xgraph.json")
     loaded = store.load()
     assert loaded.config is None and loaded.version is None
 
@@ -228,7 +228,7 @@ def test_store_creates_new_file_without_backup(tmp_path: Path) -> None:
 
 
 def test_store_keeps_key_order_and_backup(tmp_path: Path) -> None:
-    path = tmp_path / "agentflow.json"
+    path = tmp_path / "10xgraph.json"
     path.write_text(json.dumps({"env": ".env", "agent": "a:b", "custom": 1}))
     store = ConfigFileStore(path)
     version = store.load().version
@@ -241,7 +241,7 @@ def test_store_keeps_key_order_and_backup(tmp_path: Path) -> None:
 
 
 def test_store_detects_concurrent_edits(tmp_path: Path) -> None:
-    path = tmp_path / "agentflow.json"
+    path = tmp_path / "10xgraph.json"
     path.write_text('{"agent": "a:b"}')
     store = ConfigFileStore(path)
     version = store.load().version
@@ -254,7 +254,7 @@ def test_store_detects_concurrent_edits(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("content", ["{broken", "[1, 2]"])
 def test_store_reports_unparseable_files(tmp_path: Path, content: str) -> None:
-    path = tmp_path / "agentflow.json"
+    path = tmp_path / "10xgraph.json"
     path.write_text(content)
     loaded = ConfigFileStore(path).load()
     assert loaded.config is None
@@ -269,7 +269,7 @@ def test_store_reports_unparseable_files(tmp_path: Path, content: str) -> None:
 
 @pytest.fixture
 def editor(tmp_path: Path):
-    path = tmp_path / "agentflow.json"
+    path = tmp_path / "10xgraph.json"
     path.write_text(json.dumps({"agent": "graph.react:app", "custom": True}))
     server = ConfigEditorServer(path, token="secret-token")
     server.start_in_background()
@@ -307,13 +307,13 @@ def _request(
 def test_server_serves_page_without_token(editor: ConfigEditorServer) -> None:
     status, body = _request(editor, "GET", "/", token=None)
     assert status == 200
-    assert "Agentflow Config" in body
+    assert "10xGraph Config" in body
     assert editor.url.endswith("#token=secret-token")
 
 
 @pytest.mark.parametrize(
     ("route", "content_type"),
-    [("/app.js", "text/javascript"), ("/app.css", "text/css")],
+    [("/app.js", "text/javascript"), ("/app.css", "text/css"), ("/favicon.svg", "image/svg+xml")],
 )
 def test_server_serves_built_assets(
     editor: ConfigEditorServer, route: str, content_type: str
@@ -345,7 +345,7 @@ def test_server_state(editor: ConfigEditorServer) -> None:
 
 
 def test_server_state_for_missing_file(tmp_path: Path) -> None:
-    server = ConfigEditorServer(tmp_path / "agentflow.json", token="t")
+    server = ConfigEditorServer(tmp_path / "10xgraph.json", token="t")
     server.start_in_background()
     try:
         conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=5)
@@ -406,7 +406,7 @@ def test_config_command_delegates(monkeypatch) -> None:
 
 
 def test_config_command_runs_until_interrupted(monkeypatch, tmp_path: Path) -> None:
-    from agentflow_cli.cli.commands import config as config_cmd
+    from tenxgraph_api.cli.commands import config as config_cmd
 
     opened: list[str] = []
 
@@ -417,6 +417,16 @@ def test_config_command_runs_until_interrupted(monkeypatch, tmp_path: Path) -> N
     monkeypatch.setattr(config_cmd.webbrowser, "open_new_tab", opened.append)
 
     command = config_cmd.ConfigCommand()
-    assert command.execute(config=str(tmp_path / "agentflow.json"), open_browser=True) == 0
+    assert command.execute(config=str(tmp_path / "10xgraph.json"), open_browser=True) == 0
     assert len(opened) == 1
     assert "#token=" in opened[0]
+
+
+def test_favicon_matches_the_docs_site() -> None:
+    from importlib.resources import files
+
+    docs_icon = Path(__file__).resolve().parents[3] / "agentflow-docs" / "public" / "favicon.svg"
+    if not docs_icon.is_file():
+        pytest.skip("agentflow-docs is not checked out next to this package")
+    served = files("tenxgraph_api.cli.config_editor").joinpath("static", "favicon.svg")
+    assert served.read_bytes() == docs_icon.read_bytes()

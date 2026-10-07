@@ -5,10 +5,10 @@
 import pytest
 from pydantic import ValidationError
 
-from agentflow_cli.src.app.core.config.media_settings import MediaSettings
-from agentflow_cli.src.app.routers.media import _BoundedCache
-from agentflow_cli.src.app.routers.media.router import _download_response
-from agentflow_cli.src.app.routers.media.schemas import MultimodalConfigResponse
+from tenxgraph_api.src.app.core.config.media_settings import MediaSettings
+from tenxgraph_api.src.app.routers.media import _BoundedCache
+from tenxgraph_api.src.app.routers.media.router import _download_response
+from tenxgraph_api.src.app.routers.media.schemas import MultimodalConfigResponse
 
 
 # ---------------------------------------------------------------------------

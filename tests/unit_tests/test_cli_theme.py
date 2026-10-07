@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agentflow_cli.cli.core.theme import (
+from tenxgraph_api.cli.core.theme import (
     ASCII_GLYPHS,
     BRAND_RAMP,
     UNICODE_GLYPHS,
@@ -44,17 +44,17 @@ def test_dim_hex_scales_toward_black_and_clamps() -> None:
 
 
 def test_gradient_text_styles_every_character_distinctly() -> None:
-    text = gradient_text("agentflow", bold=True)
-    assert text.plain == "agentflow"
+    text = gradient_text("10xgraph", bold=True)
+    assert text.plain == "10xgraph"
     styles = [span.style for span in text.spans]
-    assert len(styles) == len("agentflow")
+    assert len(styles) == len("10xgraph")
     assert all(style.startswith("bold #") for style in styles)
     assert len(set(styles)) > 1
 
 
 def test_gradient_text_offset_shifts_the_sweep() -> None:
-    base = [span.style for span in gradient_text("agentflow").spans]
-    shifted = [span.style for span in gradient_text("agentflow", offset=0.5).spans]
+    base = [span.style for span in gradient_text("10xgraph").spans]
+    shifted = [span.style for span in gradient_text("10xgraph", offset=0.5).spans]
     assert base != shifted
 
 

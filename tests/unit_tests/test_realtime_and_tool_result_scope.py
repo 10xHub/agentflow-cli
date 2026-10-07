@@ -10,12 +10,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from agentflow.core.graph import ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.core.state.message_block import TextBlock, ToolResultBlock
+from tenxgraph.core.graph import ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.message_block import TextBlock, ToolResultBlock
 
-from agentflow_cli.src.app.core.config.graph_config import WebSocketConfig
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+from tenxgraph_api.src.app.core.config.graph_config import WebSocketConfig
+from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
 
 def _assistant_call(call_id: str, name: str) -> Message:
@@ -145,17 +145,17 @@ def test_realtime_models_must_be_strings():
 def test_realtime_error_text_is_generic_in_production(monkeypatch):
     import importlib
 
-    router = importlib.import_module("agentflow_cli.src.app.routers.graph.router")
+    router = importlib.import_module("tenxgraph_api.src.app.routers.graph.router")
     error = ValueError("connect to postgres://admin:hunter2@10.0.0.5 failed")
 
     monkeypatch.setattr(
-        "agentflow_cli.src.app.core.config.settings.get_settings",
+        "tenxgraph_api.src.app.core.config.settings.get_settings",
         lambda: SimpleNamespace(MODE="production"),
     )
     assert "hunter2" not in router._client_error(error)
 
     monkeypatch.setattr(
-        "agentflow_cli.src.app.core.config.settings.get_settings",
+        "tenxgraph_api.src.app.core.config.settings.get_settings",
         lambda: SimpleNamespace(MODE="development"),
     )
     assert router._client_error(error) == str(error)

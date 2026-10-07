@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Request
 
-from agentflow_cli.src.app.routers.graph.router import (
+from tenxgraph_api.src.app.routers.graph.router import (
     fix_graph,
     graph_details,
     invoke_graph,
@@ -13,7 +13,7 @@ from agentflow_cli.src.app.routers.graph.router import (
     stop_graph,
     stream_graph,
 )
-from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
+from tenxgraph_api.src.app.routers.graph.schemas.graph_schemas import (
     FixGraphRequestSchema,
     GraphInputSchema,
     GraphStopSchema,
@@ -50,7 +50,7 @@ async def test_invoke_graph_endpoint(mock_request, mock_service, mock_user):
     )
     mock_service.invoke_graph.return_value = {"messages": []}
 
-    with patch("agentflow_cli.src.app.routers.graph.router.success_response") as mock_success:
+    with patch("tenxgraph_api.src.app.routers.graph.router.success_response") as mock_success:
         mock_success.return_value = {"status": "success"}
         res = await invoke_graph(
             request=mock_request,
@@ -73,7 +73,7 @@ async def test_stream_graph_endpoint(mock_service, mock_user):
     mock_service.stream_graph.return_value = mock_stream
 
     with patch(
-        "agentflow_cli.src.app.routers.graph.router.StreamingResponse"
+        "tenxgraph_api.src.app.routers.graph.router.StreamingResponse"
     ) as mock_streaming_response:
         mock_streaming_response.return_value = "streaming_response_obj"
         res = await stream_graph(
@@ -90,7 +90,7 @@ async def test_stream_graph_endpoint(mock_service, mock_user):
 async def test_graph_details_endpoint(mock_request, mock_service, mock_user):
     mock_service.graph_details.return_value = {"info": {}}
 
-    with patch("agentflow_cli.src.app.routers.graph.router.success_response") as mock_success:
+    with patch("tenxgraph_api.src.app.routers.graph.router.success_response") as mock_success:
         mock_success.return_value = {"status": "success"}
         res = await graph_details(
             request=mock_request,
@@ -105,7 +105,7 @@ async def test_graph_details_endpoint(mock_request, mock_service, mock_user):
 async def test_state_schema_endpoint(mock_request, mock_service, mock_user):
     mock_service.get_state_schema.return_value = {"schema": {}}
 
-    with patch("agentflow_cli.src.app.routers.graph.router.success_response") as mock_success:
+    with patch("tenxgraph_api.src.app.routers.graph.router.success_response") as mock_success:
         mock_success.return_value = {"status": "success"}
         res = await state_schema(
             request=mock_request,
@@ -121,7 +121,7 @@ async def test_stop_graph_endpoint(mock_request, mock_service, mock_user):
     stop_req = GraphStopSchema(thread_id="thread-abc", config={"force": True})
     mock_service.stop_graph.return_value = {"status": "stopped"}
 
-    with patch("agentflow_cli.src.app.routers.graph.router.success_response") as mock_success:
+    with patch("tenxgraph_api.src.app.routers.graph.router.success_response") as mock_success:
         mock_success.return_value = {"status": "success"}
         res = await stop_graph(
             request=mock_request,
@@ -138,7 +138,7 @@ async def test_fix_graph_endpoint(mock_request, mock_service, mock_user):
     fix_req = FixGraphRequestSchema(thread_id="thread-abc", config={"clean": True})
     mock_service.fix_graph.return_value = {"status": "fixed"}
 
-    with patch("agentflow_cli.src.app.routers.graph.router.success_response") as mock_success:
+    with patch("tenxgraph_api.src.app.routers.graph.router.success_response") as mock_success:
         mock_success.return_value = {"status": "success"}
         res = await fix_graph(
             request=mock_request,

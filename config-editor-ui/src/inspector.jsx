@@ -29,7 +29,7 @@ export function Inspector() {
               {count}
             </span>
           ) : null)}
-          {tab("json", "agentflow.json", null)}
+          {tab("json", "10xgraph.json", null)}
         </div>
         <button type="button" class="icon-btn xl:hidden" aria-label="Close inspector" onClick={closeInspector}>
           <Icon name="x" class="size-5" />
@@ -46,7 +46,7 @@ function Problems() {
   if (!store.schema) return null;
   if (store.validated === null) {
     return (
-      <EmptyPanel icon="checkCircle" tint="text-faint" title="Not checked yet" text="Validate runs the same rules agentflow api applies when it starts.">
+      <EmptyPanel icon="checkCircle" tint="text-faint" title="Not checked yet" text="Validate runs the same rules 10xgraph api applies when it starts.">
         <button type="button" class="btn btn-outline mt-5" disabled={!!store.busy} onClick={validate}>Validate now</button>
       </EmptyPanel>
     );

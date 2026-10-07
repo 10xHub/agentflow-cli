@@ -1,11 +1,11 @@
 """Unit tests for store schemas."""
 
 import pytest
-from agentflow.core.state import Message
-from agentflow.storage.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 from pydantic import ValidationError
+from tenxgraph.core.state import Message
+from tenxgraph.storage.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
-from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
+from tenxgraph_api.src.app.routers.store.schemas.store_schemas import (
     DeleteMemorySchema,
     ForgetMemorySchema,
     SearchMemorySchema,

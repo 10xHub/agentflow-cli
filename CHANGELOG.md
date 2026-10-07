@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `10xscale-agentflow-cli` are documented here.
+All notable changes to `10xgraph-api` (formerly `10xscale-agentflow-cli`) are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -8,15 +8,76 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## Compatibility policy
 
 - **Nothing public is removed without a deprecation cycle.** A public name (anything
-  exported from `agentflow_cli`, a CLI command or flag, an HTTP route, or an
-  `agentflow.json` key) is first marked deprecated in a release, kept working for at
+  exported from `tenxgraph_api`, a CLI command or flag, an HTTP route, or a
+  `10xgraph.json` key) is first marked deprecated in a release, kept working for at
   least one subsequent minor release, and only then removed in a major release.
 - **Moved modules keep a back-compat shim** re-exporting from the new location for at
   least one minor release. Import paths do not break silently.
 - **Breaking changes are documented under a `### Breaking` heading** in the release's
   section, with the migration step spelled out.
-- Anything under `agentflow_cli.cli.templates/` is emitted scaffolding, not API; template
+- Anything under `tenxgraph_api.cli.templates/` is emitted scaffolding, not API; template
   content can change in any release.
+
+---
+
+## [0.7.0] - Unreleased
+
+**First release as `10xgraph-api`.** 10xScale Agentflow is now 10xGraph. This package
+replaces `10xscale-agentflow-cli`; the server, the CLI and the HTTP API are unchanged apart
+from the names below. The old package import, command, config file name and env vars keep
+working until 2.0.
+
+### Changed
+
+- **PyPI package `10xscale-agentflow-cli` is now `10xgraph-api`.** Uninstall the old package
+  and the old core first: `pip uninstall 10xscale-agentflow-cli 10xscale-agentflow`, then
+  `pip install 10xgraph-api`.
+- **Import package `agentflow_cli` is now `tenxgraph_api`** (`from tenxgraph_api import
+  BaseAuth`). `agentflow_cli` stays as a deprecated alias that resolves to the same module
+  objects and emits a `DeprecationWarning` once.
+- **The command is `10xgraph`.** `agentflow` is kept as a deprecated alias that prints a
+  one-line notice to stderr and runs the same CLI.
+- **The config file is `10xgraph.json`.** `agentflow.json` is still read when no
+  `10xgraph.json` sits in the same directory; when both exist, `10xgraph.json` wins. This
+  applies to the CLI (`api`, `play`, `dev`, `audit`, `config`, `eval`, `test`) and to the
+  server started without `GRAPH_PATH` (for example from the generated Dockerfile).
+  `10xgraph api` notes when it loaded the legacy name. `10xgraph init` writes
+  `10xgraph.json`.
+- **Core dependency is `10xgraph>=0.10.1,<2.0`** (import `tenxgraph`), replacing
+  `10xscale-agentflow`. Do not install both: each ships an `agentflow` module.
+- **CLI env vars use the `TENXGRAPH_` prefix:** `TENXGRAPH_NO_FULLSCREEN`,
+  `TENXGRAPH_NO_SPINNER`, `TENXGRAPH_ASCII`. The `AGENTFLOW_` names are read when the new
+  variable is unset.
+- **Uploaded media is referenced as `graph://media/<key>`**, matching the core. Client
+  input using `agentflow://media/<key>` still resolves, and both forms go through the same
+  ownership check.
+- **Default `MEDIA_CLOUD_PREFIX` is `10xgraph-media`.** With the default, the core still
+  reads objects stored under `agentflow-media`; an explicitly set prefix is used as is.
+- **The WebSocket bearer subprotocol is `10xgraph-bearer`.** `agentflow-bearer`, which
+  released clients send, is still accepted and echoed back.
+- **The bundled skill installs as `10xgraph`** (`.claude/skills/10xgraph`,
+  `.agents/skills/10xgraph`, `.github/skills/10xgraph`) and the Copilot instructions file as
+  `10xgraph.instructions.md`. Earlier `agentflow` skill folders are left in place; delete
+  them after installing the new one.
+- **Logger names moved to `tenxgraph_api.*`** (from `agentflow-cli.*`, `agentflow_api.*` and
+  `agentflowcli`). Update any logging config that targets the old names.
+- The default Redis rate-limit key prefix is `10xgraph:rate-limit` (was
+  `agentflow:rate-limit`). Counters restart once on upgrade; a configured `prefix` is kept.
+- The config editor's session header is `X-10xGraph-Token`.
+- **`10xgraph build` Dockerfiles ship only what the server runs.** After installing
+  dependencies, the image deletes the CLI-only `tenxgraph_api/cli/templates` (project
+  scaffolds, bundled skill) and `tenxgraph_api/cli/config_editor` (the local HTML/JS editor).
+  The generated `.dockerignore` also leaves out `tests/`, `evals/`, `.claude/`, `.agents/`
+  and `.github/`. Regenerate the Dockerfile with `10xgraph build --force` to pick this up.
+- Repository, issues and changelog links point at
+  [github.com/10xGraph/10xgraph-api](https://github.com/10xGraph/10xgraph-api); docs at
+  [10xgraph.com](https://10xgraph.com).
+
+### Unchanged on purpose
+
+- Error code `AGENTFLOW_VALIDATION_ERROR` and the `agentflow.cli/v1` schema id in
+  `--format json` output, so clients and scripts that match on them keep working.
+- CLI error codes (`AF-*`).
 
 ---
 
@@ -278,6 +339,7 @@ can be pinned.
 Initial entry in this changelog. Releases before `0.5.0` were not tracked here; see the
 GitHub release history for their notes.
 
+[0.7.0]: https://github.com/10xGraph/10xgraph-api/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/10xHub/agentflow-cli/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/10xHub/agentflow-cli/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/10xHub/agentflow-cli/releases/tag/v0.5.0

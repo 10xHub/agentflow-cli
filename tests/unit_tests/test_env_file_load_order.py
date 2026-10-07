@@ -1,7 +1,7 @@
-"""Settings see the ``env`` file from agentflow.json under plain gunicorn (L10).
+"""Settings see the ``env`` file from 10xgraph.json under plain gunicorn (L10).
 
-``agentflow api`` loads that file before importing the app, but the generated Dockerfile
-runs ``gunicorn agentflow_cli.src.app.main:app`` directly. Settings used to be built (and
+``10xgraph api`` loads that file before importing the app, but the generated Dockerfile
+runs ``gunicorn tenxgraph_api.src.app.main:app`` directly. Settings used to be built (and
 cached) before GraphConfig loaded the file, so its values were silently ignored.
 """
 
@@ -15,12 +15,12 @@ import sys
 
 def test_main_reads_settings_after_the_env_file(tmp_path):
     (tmp_path / "app.env").write_text("APP_NAME=from-env-file\n")
-    config = tmp_path / "agentflow.json"
+    config = tmp_path / "10xgraph.json"
     config.write_text(json.dumps({"agent": "graph.react:app", "env": "app.env"}))
 
     env = {k: v for k, v in os.environ.items() if k != "APP_NAME"}
     env["GRAPH_PATH"] = str(config)
-    code = "import agentflow_cli.src.app.main as m; print(m.settings.APP_NAME)"
+    code = "import tenxgraph_api.src.app.main as m; print(m.settings.APP_NAME)"
     result = subprocess.run(
         [sys.executable, "-c", code],
         cwd=tmp_path,

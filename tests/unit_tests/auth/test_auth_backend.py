@@ -12,9 +12,9 @@ import pytest
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
-from agentflow_cli.src.app.core.auth.auth_backend import verify_current_user
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from tenxgraph_api.src.app.core.auth.auth_backend import verify_current_user
+from tenxgraph_api.src.app.core.auth.base_auth import BaseAuth
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
 
 
 class MockBaseAuth(BaseAuth):
@@ -85,7 +85,7 @@ class TestVerifyCurrentUser:
         mock_graph_config_jwt_auth: MagicMock,
     ):
         """Test that empty dict is returned when auth_backend is None."""
-        with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
                 request=None,
                 response=mock_response,
@@ -151,7 +151,7 @@ class TestVerifyCurrentUser:
         user_without_id = {"email": "test@example.com", "role": "admin"}
         mock_auth_backend = MockBaseAuth(return_value=user_without_id)
 
-        with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
                 request=None,
                 response=mock_response,
@@ -176,7 +176,7 @@ class TestVerifyCurrentUser:
         user_with_id = {"user_id": "123", "email": "test@example.com"}
         mock_auth_backend = MockBaseAuth(return_value=user_with_id)
 
-        with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
                 request=None,
                 response=mock_response,
@@ -197,7 +197,7 @@ class TestVerifyCurrentUser:
         """Test that no error is logged when authenticate returns empty dict."""
         mock_auth_backend = MockBaseAuth(return_value={})
 
-        with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
                 request=None,
                 response=mock_response,
@@ -221,7 +221,7 @@ class TestVerifyCurrentUser:
         user_with_numeric_id = {"user_id": 12345, "email": "test@example.com"}
         mock_auth_backend = MockBaseAuth(return_value=user_with_numeric_id)
 
-        with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
                 request=None,
                 response=mock_response,
@@ -244,7 +244,7 @@ class TestVerifyCurrentUser:
         user_with_empty_id = {"user_id": "", "email": "test@example.com"}
         mock_auth_backend = MockBaseAuth(return_value=user_with_empty_id)
 
-        with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
                 request=None,
                 response=mock_response,
@@ -267,7 +267,7 @@ class TestVerifyCurrentUser:
         user_with_none_id = {"user_id": None, "email": "test@example.com"}
         mock_auth_backend = MockBaseAuth(return_value=user_with_none_id)
 
-        with patch("agentflow_cli.src.app.core.auth.auth_backend.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.auth_backend.logger") as mock_logger:
             result = verify_current_user(
                 request=None,
                 response=mock_response,

@@ -17,17 +17,18 @@ from injectq import InjectQ
 from injectq.integrations import setup_fastapi
 from starlette.websockets import WebSocketDisconnect
 
-from agentflow_cli.src.app.core.auth.auth_backend import BaseAuth
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
-from agentflow_cli.src.app.core.auth.permissions import (
+from tenxgraph_api.src.app.core.auth.auth_backend import BaseAuth
+from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
+from tenxgraph_api.src.app.core.auth.permissions import (
+    LEGACY_WS_BEARER_SUBPROTOCOL,
     WS_BEARER_SUBPROTOCOL,
     RequirePermission,
     ws_bearer_subprotocol,
 )
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig, WebSocketConfig
-from agentflow_cli.src.app.core.middleware.rate_limit.base import RateLimitDecision
-from agentflow_cli.src.app.routers.graph import realtime_guard
-from agentflow_cli.src.app.routers.graph.realtime_guard import realtime_connection_guard
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig, WebSocketConfig
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import RateLimitDecision
+from tenxgraph_api.src.app.routers.graph import realtime_guard
+from tenxgraph_api.src.app.routers.graph.realtime_guard import realtime_connection_guard
 
 
 class _FakeAuth(BaseAuth):
@@ -178,6 +179,16 @@ class TestSubprotocolToken:
             assert msg["user"]["user_id"] == "alice"
             # Server must echo the sentinel subprotocol or browsers fail the handshake.
             assert conn.accepted_subprotocol == WS_BEARER_SUBPROTOCOL
+
+    def test_legacy_subprotocol_still_authenticates_and_is_echoed(self):
+        app = _build_app(_StubConfig(None, None), auth=True)
+        client = TestClient(app)
+        with client.websocket_connect(
+            "/ws", subprotocols=[LEGACY_WS_BEARER_SUBPROTOCOL, "alice"]
+        ) as conn:
+            msg = conn.receive_json()
+            assert msg["user"]["user_id"] == "alice"
+            assert conn.accepted_subprotocol == LEGACY_WS_BEARER_SUBPROTOCOL
 
 
 class TestWebSocketConfig:

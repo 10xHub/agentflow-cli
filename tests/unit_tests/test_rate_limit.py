@@ -5,8 +5,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from injectq import InjectQ
 
-from agentflow_cli.src.app.core.config.graph_config import RateLimitConfig
-from agentflow_cli.src.app.core.middleware.rate_limit import (
+from tenxgraph_api.src.app.core.config.graph_config import RateLimitConfig
+from tenxgraph_api.src.app.core.middleware.rate_limit import (
     BaseRateLimitBackend,
     MemoryRateLimitBackend,
     RateLimitDecision,
@@ -63,7 +63,7 @@ async def test_redis_backend_uses_unique_members_for_same_millisecond(monkeypatc
         return [1, 1, 60]
 
     backend = object.__new__(RedisRateLimitBackend)
-    backend._prefix = "agentflow:test"
+    backend._prefix = "10xgraph:test"
     backend._fail_open = True
     backend._script = fake_script
 
@@ -91,7 +91,7 @@ def test_rate_limit_config_parses_boolean_strings_and_expands_redis_url(monkeypa
             "by": "global",
             "trusted_proxy_headers": "false",
             "fail_open": "no",
-            "redis": {"url": "${RATE_LIMIT_REDIS_URL}", "prefix": "agentflow:test"},
+            "redis": {"url": "${RATE_LIMIT_REDIS_URL}", "prefix": "10xgraph:test"},
         }
     )
 
@@ -203,7 +203,7 @@ def test_redis_backend_reuses_injectq_redis_client():
     backend = build_backend(
         _config(
             backend="redis",
-            redis={"prefix": "agentflow:test"},
+            redis={"prefix": "10xgraph:test"},
         ),
         container=container,
     )
@@ -220,16 +220,16 @@ def test_redis_backend_requires_url_when_no_injected_client():
 
 def test_redis_backend_from_url_requires_optional_extra(monkeypatch):
     monkeypatch.setattr(
-        "agentflow_cli.src.app.core.middleware.rate_limit.redis._REDIS_AVAILABLE",
+        "tenxgraph_api.src.app.core.middleware.rate_limit.redis._REDIS_AVAILABLE",
         False,
     )
     monkeypatch.setattr(
-        "agentflow_cli.src.app.core.middleware.rate_limit.redis.AsyncRedis",
+        "tenxgraph_api.src.app.core.middleware.rate_limit.redis.AsyncRedis",
         None,
     )
 
-    with pytest.raises(ImportError, match=r"10xscale-agentflow-cli\[redis\]"):
+    with pytest.raises(ImportError, match=r"10xgraph-api\[redis\]"):
         RedisRateLimitBackend.from_url(
             redis_url="redis://localhost:6379/0",
-            prefix="agentflow:test",
+            prefix="10xgraph:test",
         )

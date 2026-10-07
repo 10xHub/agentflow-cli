@@ -7,11 +7,11 @@ backend, real service -- and asserts that user B cannot reach user A's data.
 from __future__ import annotations
 
 import pytest
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
-from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer_router
-from agentflow_cli.src.app.routers.media import MediaService
-from agentflow_cli.src.app.routers.media.router import router as media_router
+from tenxgraph_api.src.app.routers.checkpointer.router import router as checkpointer_router
+from tenxgraph_api.src.app.routers.media import MediaService
+from tenxgraph_api.src.app.routers.media.router import router as media_router
 
 from .conftest import OwnershipAuthz, build_app, make_client, user_headers
 
@@ -64,7 +64,7 @@ def test_upload_rejects_disallowed_content_type(monkeypatch, memory_media_settin
     # Restrict the allowlist to images; a text upload must be refused (H1 hardening).
     memory_media_settings.MEDIA_ALLOWED_CONTENT_TYPES = "image/*"
     monkeypatch.setattr(
-        "agentflow_cli.src.app.routers.media.router.get_media_settings",
+        "tenxgraph_api.src.app.routers.media.router.get_media_settings",
         lambda: memory_media_settings,
     )
     service = MediaService(settings=memory_media_settings)
@@ -83,7 +83,7 @@ def test_upload_over_size_cap_is_rejected(monkeypatch, memory_media_settings):
     # Tiny cap so the streaming size-guard trips without allocating anything large.
     memory_media_settings.MEDIA_MAX_SIZE_MB = 0.001  # ~1 KB
     monkeypatch.setattr(
-        "agentflow_cli.src.app.routers.media.router.get_media_settings",
+        "tenxgraph_api.src.app.routers.media.router.get_media_settings",
         lambda: memory_media_settings,
     )
     service = MediaService(settings=memory_media_settings)
@@ -136,7 +136,7 @@ def test_authz_receives_thread_id_from_request_body():
 
     from fastapi import APIRouter, Depends
 
-    from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+    from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
     probe = APIRouter()
 
@@ -187,7 +187,7 @@ class _OwnerRegistryCheckpointer:
 
 
 def test_ownership_backend_enforces_owner_only_reads():
-    from agentflow_cli.src.app.core.auth.authorization import OwnershipAuthorizationBackend
+    from tenxgraph_api.src.app.core.auth.authorization import OwnershipAuthorizationBackend
 
     registry = _OwnerRegistryCheckpointer()
     registry.own("thread-A", "alice")
@@ -216,8 +216,8 @@ def test_ownership_backend_blocks_invoke_and_stream_on_foreign_thread():
 
     from fastapi import APIRouter, Depends
 
-    from agentflow_cli.src.app.core.auth.authorization import OwnershipAuthorizationBackend
-    from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+    from tenxgraph_api.src.app.core.auth.authorization import OwnershipAuthorizationBackend
+    from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
     graph_probe = APIRouter()
 
@@ -273,7 +273,7 @@ def test_ownership_backend_blocks_invoke_and_stream_on_foreign_thread():
 def test_ownership_is_cached_across_requests():
     """End-to-end scalability guarantee: repeated requests for the same thread cost a
     single owner lookup, not one per request."""
-    from agentflow_cli.src.app.core.auth.authorization import OwnershipAuthorizationBackend
+    from tenxgraph_api.src.app.core.auth.authorization import OwnershipAuthorizationBackend
 
     registry = _OwnerRegistryCheckpointer()
     registry.own("thread-A", "alice")

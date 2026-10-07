@@ -1,12 +1,12 @@
 """
-Dummy AgentFlow graph — no LLM, no API key required.
+Dummy 10xGraph graph — no LLM, no API key required.
 
 Purpose: exercise the full API + playground integration (streaming, reasoning
 blocks, tool_call/tool_result blocks, final answer) with deterministic output.
 
 Flow:  MAIN (emit reasoning + tool_call) -> TOOL (dummy weather) -> MAIN (answer)
 
-Exposed as ``app`` and referenced in agentflow.json as ``"agent": "graph.react:app"``.
+Exposed as ``app`` and referenced in 10xgraph.json as ``"agent": "graph.react:app"``.
 Swap ``main_node`` for a real LLM node when a valid provider key is available.
 """
 
@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import json
 
-from agentflow.core.graph import StateGraph, ToolNode
-from agentflow.core.state import (
+from tenxgraph.core.graph import StateGraph, ToolNode
+from tenxgraph.core.state import (
     AgentState,
     Message,
     ReasoningBlock,
@@ -23,7 +23,7 @@ from agentflow.core.state import (
     TokenUsages,
     ToolCallBlock,
 )
-from agentflow.utils.constants import END
+from tenxgraph.utils.constants import END
 
 
 # --------------------------------------------------------------------------- #

@@ -1,10 +1,10 @@
 # Production Configuration Setup Guide
 
-This directory contains production-ready configuration examples for deploying AgentFlow CLI applications securely.
+This directory contains production-ready configuration examples for deploying 10xGraph CLI applications securely.
 
 ## Files Overview
 
-- **agentflow.json** - Production application configuration with JWT auth and RBAC
+- **10xgraph.json** - Production application configuration with JWT auth and RBAC
 - **.env.production.example** - Complete environment variables template
 - **docker-compose.yml** - Production Docker deployment with security hardening
 - **nginx.conf** - Nginx reverse proxy with SSL/TLS and security headers
@@ -16,7 +16,7 @@ This directory contains production-ready configuration examples for deploying Ag
 
 ```bash
 # Copy to your project root
-cp agentflow.json /path/to/your/project/
+cp 10xgraph.json /path/to/your/project/
 cp .env.production.example /path/to/your/project/.env.production
 cp docker-compose.yml /path/to/your/project/
 cp nginx.conf /path/to/your/project/
@@ -396,6 +396,6 @@ docker-compose up -d
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/10xHub/agentflow-cli/issues
+- GitHub Issues: https://github.com/10xGraph/10xgraph-api/issues
 - Email: security@10xhub.com
 - Documentation: https://10xhub.com/docs

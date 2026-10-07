@@ -1,4 +1,4 @@
-"""Tests for the `agentflow skills` command."""
+"""Tests for the `10xgraph skills` command."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from unittest.mock import patch
 
 import pytest
 
-from agentflow_cli.cli.commands.skills import SkillsCommand
-from agentflow_cli.cli.constants import CLI_VERSION
-from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow_cli.cli.core.prompts import Choice, PromptService
+from tenxgraph_api.cli.commands.skills import SkillsCommand
+from tenxgraph_api.cli.constants import CLI_VERSION
+from tenxgraph_api.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.core.prompts import Choice, PromptService
 
 
 class _CapturingOutput(OutputFormatter):
@@ -104,11 +104,11 @@ def test_install_claude_creates_folder_and_manifest(cmd: SkillsCommand, tmp_path
     exit_code = cmd.execute(agent="claude", path=str(tmp_path))
     assert exit_code == 0
 
-    skill_dir = tmp_path / ".claude" / "skills" / "agentflow"
+    skill_dir = tmp_path / ".claude" / "skills" / "10xgraph"
     assert (skill_dir / "SKILL.md").is_file()
     assert (skill_dir / "references").is_dir()
 
-    manifest = json.loads((skill_dir / ".agentflow-skill.json").read_text(encoding="utf-8"))
+    manifest = json.loads((skill_dir / ".10xgraph-skill.json").read_text(encoding="utf-8"))
     assert manifest["agent"] == "Claude"
     assert manifest["cli_version"] == CLI_VERSION
     assert "installed_at" in manifest
@@ -117,7 +117,7 @@ def test_install_claude_creates_folder_and_manifest(cmd: SkillsCommand, tmp_path
 def test_install_codex_uses_agents_dotdir(cmd: SkillsCommand, tmp_path: Path) -> None:
     exit_code = cmd.execute(agent="codex", path=str(tmp_path))
     assert exit_code == 0
-    assert (tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md").is_file()
+    assert (tmp_path / ".agents" / "skills" / "10xgraph" / "SKILL.md").is_file()
     # Earlier wrong paths must NOT be created
     assert not (tmp_path / ".agent").exists()
     assert not (tmp_path / ".codex").exists()
@@ -129,17 +129,17 @@ def test_install_github_writes_copilot_instructions_and_skill(
     exit_code = cmd.execute(agent="github", path=str(tmp_path))
     assert exit_code == 0
 
-    instructions = tmp_path / ".github" / "instructions" / "agentflow.instructions.md"
+    instructions = tmp_path / ".github" / "instructions" / "10xgraph.instructions.md"
     assert instructions.is_file()
     content = instructions.read_text(encoding="utf-8")
     # Copilot frontmatter required for the file to be picked up
     assert content.startswith("---\napplyTo:")
 
-    skill_dir = tmp_path / ".github" / "skills" / "agentflow"
+    skill_dir = tmp_path / ".github" / "skills" / "10xgraph"
     assert (skill_dir / "SKILL.md").is_file()
     assert (skill_dir / "references").is_dir()
 
-    manifest = json.loads((skill_dir / ".agentflow-skill.json").read_text(encoding="utf-8"))
+    manifest = json.loads((skill_dir / ".10xgraph-skill.json").read_text(encoding="utf-8"))
     assert manifest["agent"] == "GitHub"
     assert manifest["cli_version"] == CLI_VERSION
     assert "installed_at" in manifest
@@ -156,7 +156,7 @@ def test_install_existing_dir_without_force_fails(
 
 
 def test_install_force_overwrites_existing(cmd: SkillsCommand, tmp_path: Path) -> None:
-    skill_dir = tmp_path / ".claude" / "skills" / "agentflow"
+    skill_dir = tmp_path / ".claude" / "skills" / "10xgraph"
     cmd.execute(agent="claude", path=str(tmp_path))
     # mutate the install so we can detect overwrite
     sentinel = skill_dir / "SENTINEL.txt"
@@ -169,10 +169,10 @@ def test_install_force_overwrites_existing(cmd: SkillsCommand, tmp_path: Path) -
 
 
 def test_force_overwrites_copilot_file(cmd: SkillsCommand, tmp_path: Path) -> None:
-    instructions = tmp_path / ".github" / "instructions" / "agentflow.instructions.md"
+    instructions = tmp_path / ".github" / "instructions" / "10xgraph.instructions.md"
     cmd.execute(agent="github", path=str(tmp_path))
     instructions.write_text("user-edited", encoding="utf-8")
-    sentinel = tmp_path / ".github" / "skills" / "agentflow" / "SENTINEL.txt"
+    sentinel = tmp_path / ".github" / "skills" / "10xgraph" / "SENTINEL.txt"
     sentinel.write_text("user-local content", encoding="utf-8")
 
     exit_code = cmd.execute(agent="github", path=str(tmp_path), force=True)
@@ -188,10 +188,10 @@ def test_all_installs_every_agent(cmd: SkillsCommand, tmp_path: Path) -> None:
     exit_code = cmd.execute(all_agents=True, path=str(tmp_path))
     assert exit_code == 0
 
-    assert (tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md").is_file()
-    assert (tmp_path / ".claude" / "skills" / "agentflow" / "SKILL.md").is_file()
-    assert (tmp_path / ".github" / "instructions" / "agentflow.instructions.md").is_file()
-    assert (tmp_path / ".github" / "skills" / "agentflow" / "SKILL.md").is_file()
+    assert (tmp_path / ".agents" / "skills" / "10xgraph" / "SKILL.md").is_file()
+    assert (tmp_path / ".claude" / "skills" / "10xgraph" / "SKILL.md").is_file()
+    assert (tmp_path / ".github" / "instructions" / "10xgraph.instructions.md").is_file()
+    assert (tmp_path / ".github" / "skills" / "10xgraph" / "SKILL.md").is_file()
 
 
 def test_all_skips_existing_without_force(
@@ -213,7 +213,7 @@ def test_all_skips_existing_without_force(
 
 def test_all_with_force_reinstalls_everything(cmd: SkillsCommand, tmp_path: Path) -> None:
     cmd.execute(all_agents=True, path=str(tmp_path))
-    sentinel = tmp_path / ".claude" / "skills" / "agentflow" / "SENTINEL.txt"
+    sentinel = tmp_path / ".claude" / "skills" / "10xgraph" / "SENTINEL.txt"
     sentinel.write_text("x", encoding="utf-8")
 
     exit_code = cmd.execute(all_agents=True, path=str(tmp_path), force=True)
@@ -271,8 +271,8 @@ def test_multi_select_installs_every_chosen_agent(
     _answer_checkbox(monkeypatch, ["Codex", "GitHub"])
 
     assert cmd.execute(path=str(tmp_path)) == 0
-    assert (tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md").is_file()
-    assert (tmp_path / ".github" / "skills" / "agentflow" / "SKILL.md").is_file()
+    assert (tmp_path / ".agents" / "skills" / "10xgraph" / "SKILL.md").is_file()
+    assert (tmp_path / ".github" / "skills" / "10xgraph" / "SKILL.md").is_file()
     assert not (tmp_path / ".claude").exists()
 
 
@@ -306,7 +306,7 @@ def test_declining_the_overwrite_prompt_skips_that_agent(
     cmd: SkillsCommand, out: _CapturingOutput, monkeypatch, tmp_path: Path
 ) -> None:
     cmd.execute(agent="claude", path=str(tmp_path))
-    sentinel = tmp_path / ".claude" / "skills" / "agentflow" / "SENTINEL.txt"
+    sentinel = tmp_path / ".claude" / "skills" / "10xgraph" / "SENTINEL.txt"
     sentinel.write_text("mine", encoding="utf-8")
 
     _answer_checkbox(monkeypatch, ["Claude"])
@@ -323,7 +323,7 @@ def test_accepting_the_overwrite_prompt_reinstalls(
     cmd: SkillsCommand, monkeypatch, tmp_path: Path
 ) -> None:
     cmd.execute(agent="claude", path=str(tmp_path))
-    sentinel = tmp_path / ".claude" / "skills" / "agentflow" / "SENTINEL.txt"
+    sentinel = tmp_path / ".claude" / "skills" / "10xgraph" / "SENTINEL.txt"
     sentinel.write_text("mine", encoding="utf-8")
 
     _answer_checkbox(monkeypatch, ["Claude"])
@@ -338,18 +338,18 @@ def test_accepting_the_overwrite_prompt_reinstalls(
 
 _TEMPLATE_SKILL = (
     Path(__file__).resolve().parents[2]
-    / "agentflow_cli"
+    / "tenxgraph_api"
     / "cli"
     / "templates"
     / "skills"
-    / "agentflow"
+    / "10xgraph"
 )
 
 
 def test_bundled_skill_conforms_to_spec() -> None:
-    skills = pytest.importorskip("agentflow.core.skills")
+    skills = pytest.importorskip("tenxgraph.core.skills")
     if not hasattr(skills, "validate_skill"):
-        pytest.skip("installed 10xscale-agentflow predates validate_skill")
+        pytest.skip("installed 10xgraph predates validate_skill")
     # No errors and no warnings: this also checks every references/... path in
     # the SKILL.md body exists in the bundle.
     assert skills.validate_skill(_TEMPLATE_SKILL) == []
@@ -358,9 +358,9 @@ def test_bundled_skill_conforms_to_spec() -> None:
 def test_every_agent_gets_the_same_relative_path_skill(cmd: SkillsCommand, tmp_path: Path) -> None:
     assert cmd.execute(all_agents=True, path=str(tmp_path)) == 0
     installed = [
-        tmp_path / ".agents" / "skills" / "agentflow" / "SKILL.md",
-        tmp_path / ".claude" / "skills" / "agentflow" / "SKILL.md",
-        tmp_path / ".github" / "skills" / "agentflow" / "SKILL.md",
+        tmp_path / ".agents" / "skills" / "10xgraph" / "SKILL.md",
+        tmp_path / ".claude" / "skills" / "10xgraph" / "SKILL.md",
+        tmp_path / ".github" / "skills" / "10xgraph" / "SKILL.md",
     ]
     contents = {path.read_text(encoding="utf-8") for path in installed}
     assert len(contents) == 1
@@ -384,9 +384,9 @@ def _write_skill(root: Path, name: str, frontmatter: str) -> Path:
 
 @pytest.fixture
 def _needs_validator() -> None:
-    skills = pytest.importorskip("agentflow.core.skills")
+    skills = pytest.importorskip("tenxgraph.core.skills")
     if not hasattr(skills, "validate_skill"):
-        pytest.skip("installed 10xscale-agentflow predates validate_skill")
+        pytest.skip("installed 10xgraph predates validate_skill")
 
 
 @pytest.mark.usefixtures("_needs_validator")

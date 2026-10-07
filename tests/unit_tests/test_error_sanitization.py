@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.exceptions import HTTPException
 
-from agentflow_cli.src.app.core.exceptions.handle_errors import (
+from tenxgraph_api.src.app.core.exceptions.handle_errors import (
     _sanitize_error_message,
     init_errors_handler,
 )
@@ -56,7 +56,7 @@ def app_with_error_handlers():
     app = FastAPI()
 
     # Add request ID middleware
-    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
+    from tenxgraph_api.src.app.core.config.setup_middleware import RequestIDMiddleware
 
     app.add_middleware(RequestIDMiddleware)
 
@@ -81,15 +81,15 @@ def test_http_exception_sanitized_in_production():
     os.environ["MODE"] = "production"
 
     # Clear settings cache to pick up new environment
-    from agentflow_cli.src.app.core.config.settings import get_settings
+    from tenxgraph_api.src.app.core.config.settings import get_settings
 
     get_settings.cache_clear()
 
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
-    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
+    from tenxgraph_api.src.app.core.config.setup_middleware import RequestIDMiddleware
+    from tenxgraph_api.src.app.core.exceptions.handle_errors import init_errors_handler
 
     app = FastAPI()
     app.add_middleware(RequestIDMiddleware)
@@ -124,9 +124,9 @@ def test_http_exception_detailed_in_development():
     from fastapi.testclient import TestClient
 
     # Clear settings cache
-    from agentflow_cli.src.app.core.config.settings import get_settings
-    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
-    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
+    from tenxgraph_api.src.app.core.config.settings import get_settings
+    from tenxgraph_api.src.app.core.config.setup_middleware import RequestIDMiddleware
+    from tenxgraph_api.src.app.core.exceptions.handle_errors import init_errors_handler
 
     get_settings.cache_clear()
 
@@ -162,9 +162,9 @@ def test_validation_error_sanitized_in_production():
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from agentflow_cli.src.app.core.config.settings import get_settings
-    from agentflow_cli.src.app.core.config.setup_middleware import RequestIDMiddleware
-    from agentflow_cli.src.app.core.exceptions.handle_errors import init_errors_handler
+    from tenxgraph_api.src.app.core.config.settings import get_settings
+    from tenxgraph_api.src.app.core.config.setup_middleware import RequestIDMiddleware
+    from tenxgraph_api.src.app.core.exceptions.handle_errors import init_errors_handler
 
     # Clear cache
     get_settings.cache_clear()

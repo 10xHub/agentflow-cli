@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import FastAPI
 
-from agentflow_cli.src.app.main import _cleanup_temp_media_cache, app, container, graph_config
+from tenxgraph_api.src.app.main import _cleanup_temp_media_cache, app, container, graph_config
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,7 @@ class TestCleanupTempMediaCache:
         mock_checkpointer = Mock()
         mock_media_store = Mock()
 
-        with patch("agentflow_cli.src.app.main.container") as mock_container:
+        with patch("tenxgraph_api.src.app.main.container") as mock_container:
             mock_container.try_get.side_effect = lambda x: {
                 "checkpointer": mock_checkpointer,
                 "BaseCheckpointer": None,
@@ -30,9 +30,9 @@ class TestCleanupTempMediaCache:
                 "BaseMediaStore": None,
             }.get(x)
 
-            with patch("agentflow_cli.src.app.main.logger"):
+            with patch("tenxgraph_api.src.app.main.logger"):
                 with patch(
-                    "agentflow.storage.media.temp_cache.TemporaryMediaCache",
+                    "tenxgraph.storage.media.temp_cache.TemporaryMediaCache",
                     return_value=mock_cache,
                 ):
                     await _cleanup_temp_media_cache()
@@ -40,10 +40,10 @@ class TestCleanupTempMediaCache:
 
     async def test_cleanup_no_checkpointer(self):
         """Test cleanup when no checkpointer is available."""
-        with patch("agentflow_cli.src.app.main.container") as mock_container:
+        with patch("tenxgraph_api.src.app.main.container") as mock_container:
             mock_container.try_get.return_value = None
 
-            with patch("agentflow_cli.src.app.main.logger"):
+            with patch("tenxgraph_api.src.app.main.logger"):
                 await _cleanup_temp_media_cache()
                 # Should complete without error
 
@@ -54,7 +54,7 @@ class TestCleanupTempMediaCache:
 
         mock_checkpointer = Mock()
 
-        with patch("agentflow_cli.src.app.main.container") as mock_container:
+        with patch("tenxgraph_api.src.app.main.container") as mock_container:
             mock_container.try_get.side_effect = lambda x: {
                 "checkpointer": mock_checkpointer,
                 "BaseCheckpointer": None,
@@ -62,9 +62,9 @@ class TestCleanupTempMediaCache:
                 "BaseMediaStore": None,
             }.get(x)
 
-            with patch("agentflow_cli.src.app.main.logger"):
+            with patch("tenxgraph_api.src.app.main.logger"):
                 with patch(
-                    "agentflow.storage.media.temp_cache.TemporaryMediaCache",
+                    "tenxgraph.storage.media.temp_cache.TemporaryMediaCache",
                     return_value=mock_cache,
                 ):
                     await _cleanup_temp_media_cache()
@@ -72,21 +72,21 @@ class TestCleanupTempMediaCache:
 
     async def test_cleanup_exception_handling(self):
         """Test that cleanup handles exceptions gracefully."""
-        with patch("agentflow_cli.src.app.main.container") as mock_container:
+        with patch("tenxgraph_api.src.app.main.container") as mock_container:
             mock_container.try_get.side_effect = Exception("Test error")
 
-            with patch("agentflow_cli.src.app.main.logger"):
+            with patch("tenxgraph_api.src.app.main.logger"):
                 await _cleanup_temp_media_cache()
                 # Should complete without raising
 
     async def test_cleanup_import_error(self):
         """Test that cleanup handles import errors gracefully."""
-        with patch("agentflow_cli.src.app.main.container") as mock_container:
+        with patch("tenxgraph_api.src.app.main.container") as mock_container:
             mock_container.try_get.return_value = Mock()
 
-            with patch("agentflow_cli.src.app.main.logger"):
+            with patch("tenxgraph_api.src.app.main.logger"):
                 with patch(
-                    "agentflow.storage.media.temp_cache.TemporaryMediaCache",
+                    "tenxgraph.storage.media.temp_cache.TemporaryMediaCache",
                     side_effect=ImportError("Module not found"),
                 ):
                     await _cleanup_temp_media_cache()
@@ -169,15 +169,15 @@ class TestLifespanContext:
 
     async def test_lifespan_startup(self):
         """Test lifespan startup execution."""
-        from agentflow_cli.src.app.main import lifespan as lifespan_cm
+        from tenxgraph_api.src.app.main import lifespan as lifespan_cm
 
         with patch(
-            "agentflow_cli.src.app.main.attach_all_modules", new_callable=AsyncMock
+            "tenxgraph_api.src.app.main.attach_all_modules", new_callable=AsyncMock
         ) as mock_attach:
             mock_attach.return_value = AsyncMock()
 
             with patch(
-                "agentflow_cli.src.app.main._cleanup_temp_media_cache", new_callable=AsyncMock
+                "tenxgraph_api.src.app.main._cleanup_temp_media_cache", new_callable=AsyncMock
             ):
                 app_test = FastAPI()
                 async with lifespan_cm(app_test):
@@ -186,18 +186,18 @@ class TestLifespanContext:
 
     async def test_lifespan_cleanup(self):
         """Test lifespan cleanup/shutdown execution."""
-        from agentflow_cli.src.app.main import lifespan as lifespan_cm
+        from tenxgraph_api.src.app.main import lifespan as lifespan_cm
 
         mock_graph = AsyncMock()
         mock_graph.aclose = AsyncMock()
 
         with patch(
-            "agentflow_cli.src.app.main.attach_all_modules", new_callable=AsyncMock
+            "tenxgraph_api.src.app.main.attach_all_modules", new_callable=AsyncMock
         ) as mock_attach:
             mock_attach.return_value = mock_graph
 
             with patch(
-                "agentflow_cli.src.app.main._cleanup_temp_media_cache", new_callable=AsyncMock
+                "tenxgraph_api.src.app.main._cleanup_temp_media_cache", new_callable=AsyncMock
             ):
                 app_test = FastAPI()
                 async with lifespan_cm(app_test):
@@ -208,15 +208,15 @@ class TestLifespanContext:
 
     async def test_lifespan_none_graph(self):
         """Test lifespan when attach_all_modules returns None."""
-        from agentflow_cli.src.app.main import lifespan as lifespan_cm
+        from tenxgraph_api.src.app.main import lifespan as lifespan_cm
 
         with patch(
-            "agentflow_cli.src.app.main.attach_all_modules", new_callable=AsyncMock
+            "tenxgraph_api.src.app.main.attach_all_modules", new_callable=AsyncMock
         ) as mock_attach:
             mock_attach.return_value = None
 
             with patch(
-                "agentflow_cli.src.app.main._cleanup_temp_media_cache", new_callable=AsyncMock
+                "tenxgraph_api.src.app.main._cleanup_temp_media_cache", new_callable=AsyncMock
             ):
                 app_test = FastAPI()
                 async with lifespan_cm(app_test):
@@ -244,9 +244,9 @@ class TestEnvironmentVariables:
         """Test default GRAPH_PATH when not set."""
         original_path = os.environ.pop("GRAPH_PATH", None)
         try:
-            # When GRAPH_PATH not set, default to agentflow.json
-            test_path = os.environ.get("GRAPH_PATH", "agentflow.json")
-            assert test_path == "agentflow.json"
+            # When GRAPH_PATH not set, default to 10xgraph.json
+            test_path = os.environ.get("GRAPH_PATH", "10xgraph.json")
+            assert test_path == "10xgraph.json"
         finally:
             if original_path:
                 os.environ["GRAPH_PATH"] = original_path
@@ -269,5 +269,5 @@ class TestAppIntegration:
 
     def test_logger_initialized(self):
         """Test that logger is initialized."""
-        logger = logging.getLogger("agentflow_api")
+        logger = logging.getLogger("tenxgraph_api")
         assert logger is not None

@@ -8,7 +8,7 @@ import { AuthWidget, AuthorizationWidget, RemoteToolsWidget } from "./widgets.js
 // ------------------------------------------------------------------ header
 
 function FileInfo() {
-  const name = store.path.split(/[\\/]/).pop() || "agentflow.json";
+  const name = store.path.split(/[\\/]/).pop() || "10xgraph.json";
   const dir = store.path.slice(0, store.path.length - name.length);
   let badge = null;
   if (!store.schema) badge = null;
@@ -34,13 +34,15 @@ export function Header() {
   return (
     <header class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur sm:gap-3 sm:px-4">
       <div class="flex shrink-0 items-center gap-2.5">
-        <svg viewBox="0 0 32 32" class="size-7 shrink-0" aria-hidden="true">
-          <rect width="32" height="32" rx="8" fill="#2563eb" />
-          <path d="M10 11 22 11M10 11 16 22M22 11 16 22" stroke="white" stroke-opacity=".55" stroke-width="2" />
-          <circle cx="10" cy="11" r="3" fill="white" /><circle cx="22" cy="11" r="3" fill="white" /><circle cx="16" cy="22" r="3" fill="white" />
+        {/* The 10xGraph mark, same geometry as agentflow-docs/src/components/Logo.astro. */}
+        <svg viewBox="0 0 48 48" class="size-7 shrink-0 text-ink" aria-hidden="true">
+          <rect x="4" y="4" width="40" height="40" rx="11" fill="none" stroke="currentColor" stroke-width="4.4" />
+          <path d="M13 33L21 23L34 15L34 31L21 23" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          <g fill="currentColor"><circle cx="21" cy="23" r="4" /><circle cx="34" cy="15" r="4" /><circle cx="34" cy="31" r="4" /></g>
+          <circle cx="13" cy="33" r="4.6" class="fill-brand-amber" />
         </svg>
         <div class="hidden items-baseline gap-1.5 md:flex">
-          <span class="text-[15px] font-semibold tracking-tight text-ink">Agentflow</span>
+          <span class="text-[15px] font-semibold tracking-tight text-ink">10xGraph</span>
           <span class="text-[15px] text-faint">Config</span>
         </div>
       </div>
@@ -94,7 +96,7 @@ export function Page() {
       <div class="pt-8">
         <h1 class="text-xl font-semibold tracking-tight text-ink">Server configuration</h1>
         <p class="mt-1 max-w-prose text-sm leading-6 text-muted">
-          Every agentflow.json option on one page. Fill in the essentials to get running, then switch on what you
+          Every 10xgraph.json option on one page. Fill in the essentials to get running, then switch on what you
           need on the way to production.
         </p>
       </div>
@@ -103,7 +105,7 @@ export function Page() {
         <div class="mt-6">
           <Callout
             kind="warn" title="The existing file is not valid JSON"
-            lines={[`${store.parseError}. The form starts from defaults; saving replaces the file and keeps the old one as agentflow.json.bak.`]}
+            lines={[`${store.parseError}. The form starts from defaults; saving replaces the file and keeps the old one as 10xgraph.json.bak.`]}
           />
         </div>
       ) : null}
@@ -241,7 +243,7 @@ function SectionBody({ sec, on }) {
     return (
       <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p class="text-sm leading-6 text-muted">
-          <code class="font-mono text-[13px] text-body">{sec.key}</code> is not in agentflow.json. {sec.off_summary || ""}
+          <code class="font-mono text-[13px] text-body">{sec.key}</code> is not in 10xgraph.json. {sec.off_summary || ""}
         </p>
         <button type="button" class="btn btn-outline" onClick={() => setSection(sec, true)}>
           <Icon name="power" />Turn on {sec.title.toLowerCase()}

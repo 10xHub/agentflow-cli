@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
-from agentflow_cli.src.app.routers.setup_router import init_routes
+from tenxgraph_api.src.app.core.config.setup_middleware import setup_middleware
+from tenxgraph_api.src.app.routers.setup_router import init_routes
 
 
 HTTP_NOT_FOUND = 404

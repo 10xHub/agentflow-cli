@@ -3,9 +3,9 @@
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
-from agentflow_cli.cli.commands.api import APICommand
-from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow_cli.cli.exceptions import ConfigurationError, ServerError
+from tenxgraph_api.cli.commands.api import APICommand
+from tenxgraph_api.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.exceptions import ConfigurationError, ServerError
 
 
 class TestAPICommandNormalizeBrowserHost:
@@ -166,7 +166,7 @@ class TestAPICommandSchedulePlaygroundLaunch:
                 mock_thread.assert_called_once()
                 call_kwargs = mock_thread.call_args[1]
                 assert call_kwargs["daemon"] is True
-                assert call_kwargs["name"] == "agentflow-playground-launcher"
+                assert call_kwargs["name"] == "10xgraph-playground-launcher"
                 mock_thread_instance.start.assert_called_once()
 
     def test_schedule_playground_launch_with_ipv6(self):
@@ -241,7 +241,7 @@ class TestAPICommandExecute:
         command = APICommand(output=OutputFormatter())
         command.handle_error = Mock(return_value=1)
 
-        with patch("agentflow_cli.cli.core.validation.validate_cli_options") as mock_validate:
+        with patch("tenxgraph_api.cli.core.validation.validate_cli_options") as mock_validate:
             mock_validate.side_effect = ConfigurationError("Config not found")
 
             result = command.execute(config="config.json")
@@ -254,14 +254,14 @@ class TestAPICommandExecute:
         command = APICommand(output=OutputFormatter())
         command.handle_error = Mock(return_value=1)
 
-        with patch("agentflow_cli.cli.core.validation.validate_cli_options") as mock_validate:
+        with patch("tenxgraph_api.cli.core.validation.validate_cli_options") as mock_validate:
             mock_validate.return_value = {
                 "config": "/path/config.json",
                 "host": "localhost",
                 "port": 8000,
             }
 
-            with patch("agentflow_cli.cli.core.config.ConfigManager") as mock_config_class:
+            with patch("tenxgraph_api.cli.core.config.ConfigManager") as mock_config_class:
                 mock_config = Mock()
                 mock_config.find_config_file.return_value = Path("/path/config.json")
                 mock_config.load_config.side_effect = ServerError("Server startup failed")
@@ -277,14 +277,14 @@ class TestAPICommandExecute:
         command = APICommand(output=OutputFormatter())
         command.handle_error = Mock(return_value=1)
 
-        with patch("agentflow_cli.cli.core.validation.validate_cli_options") as mock_validate:
+        with patch("tenxgraph_api.cli.core.validation.validate_cli_options") as mock_validate:
             mock_validate.return_value = {
                 "config": "/path/config.json",
                 "host": "localhost",
                 "port": 8000,
             }
 
-            with patch("agentflow_cli.cli.core.config.ConfigManager") as mock_config_class:
+            with patch("tenxgraph_api.cli.core.config.ConfigManager") as mock_config_class:
                 mock_config = Mock()
                 mock_config.find_config_file.return_value = Path("/path/config.json")
                 mock_config.resolve_env_file.return_value = None
@@ -304,14 +304,14 @@ class TestAPICommandExecute:
         with patch.object(command, "_schedule_playground_launch") as mock_schedule:
             # This will fail since we're not mocking uvicorn properly,
             # but we can verify the method is called before that
-            with patch("agentflow_cli.cli.core.validation.validate_cli_options") as mock_validate:
+            with patch("tenxgraph_api.cli.core.validation.validate_cli_options") as mock_validate:
                 mock_validate.return_value = {
                     "config": "/path/config.json",
                     "host": "localhost",
                     "port": 8000,
                 }
 
-                with patch("agentflow_cli.cli.core.config.ConfigManager") as mock_config_class:
+                with patch("tenxgraph_api.cli.core.config.ConfigManager") as mock_config_class:
                     mock_config = Mock()
                     mock_config.find_config_file.return_value = Path("/path/config.json")
                     mock_config.resolve_env_file.return_value = None

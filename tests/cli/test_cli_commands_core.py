@@ -1,8 +1,8 @@
-from agentflow_cli.cli.commands import BaseCommand
-from agentflow_cli.cli.commands.version import VersionCommand
-from agentflow_cli.cli.constants import CLI_VERSION
-from agentflow_cli.cli.core.output import OutputFormatter
-from agentflow_cli.cli.exceptions import AgentflowCLIError
+from tenxgraph_api.cli.commands import BaseCommand
+from tenxgraph_api.cli.commands.version import VersionCommand
+from tenxgraph_api.cli.constants import CLI_VERSION
+from tenxgraph_api.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.exceptions import CLIError
 
 
 CLI_CUSTOM_EXIT = 5
@@ -36,7 +36,7 @@ class ErrorCommand(BaseCommand):
 def test_basecommand_handle_error_cli_error():
     out = DummyOutput()
     cmd = ErrorCommand(output=out)
-    err = AgentflowCLIError("boom", exit_code=CLI_CUSTOM_EXIT)
+    err = CLIError("boom", exit_code=CLI_CUSTOM_EXIT)
     code = cmd.handle_error(err)
     assert code == CLI_CUSTOM_EXIT
     assert out.errors and "boom" in out.errors[0]
@@ -72,7 +72,7 @@ def test_version_command_reports_core_not_installed(monkeypatch):
     def missing(_name):
         raise PackageNotFoundError(_name)
 
-    monkeypatch.setattr("agentflow_cli.cli.commands.version._pkg_version", missing)
+    monkeypatch.setattr("tenxgraph_api.cli.commands.version._pkg_version", missing)
     out = DummyOutput()
     cmd = VersionCommand(output=out)  # type: ignore[arg-type]
 
