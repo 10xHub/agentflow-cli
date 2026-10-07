@@ -60,8 +60,14 @@ _CSP = (
 class ConfigEditorServer:
     """Serve the editor for one config file on an ephemeral loopback port."""
 
-    def __init__(self, config_path: Path, port: int = 0, token: str | None = None) -> None:
-        self.store = ConfigFileStore(config_path)
+    def __init__(
+        self,
+        config_path: Path,
+        port: int = 0,
+        token: str | None = None,
+        seed_path: Path | None = None,
+    ) -> None:
+        self.store = ConfigFileStore(config_path, seed_path=seed_path)
         self.token = token or secrets.token_urlsafe(24)
         self._httpd = ThreadingHTTPServer((LOOPBACK_HOST, port), _Handler)
         self._httpd.daemon_threads = True

@@ -113,3 +113,6 @@ cython_debug/
 .vscode
 # Add this line to your .gitignore file
 .ruff_cache/
+
+# uv lockfile: not tracked (this is a library; CI resolves fresh)
+uv.lock

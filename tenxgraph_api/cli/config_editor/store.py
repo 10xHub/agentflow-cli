@@ -24,29 +24,38 @@ class LoadedConfig:
 
 
 class ConfigFileStore:
-    """Owns one config file: loads it, detects concurrent edits, and saves it safely."""
+    """Owns one config file: loads it, detects concurrent edits, and saves it safely.
 
-    def __init__(self, path: Path) -> None:
+    ``seed_path`` is read only while ``path`` does not exist: the editor starts from its
+    contents, and the first save creates ``path``. This is how a project that still has the
+    legacy ``agentflow.json`` moves to ``10xgraph.json`` without the old file being touched.
+    """
+
+    def __init__(self, path: Path, seed_path: Path | None = None) -> None:
         self.path = path
+        self.seed_path = seed_path
 
     @property
     def backup_path(self) -> Path:
         return self.path.with_name(f"{self.path.name}.bak")
 
+    @property
+    def seeded(self) -> bool:
+        """True while the editor starts from ``seed_path`` because ``path`` is missing."""
+        return (
+            not self.path.exists()
+            and self.seed_path is not None
+            and _read(self.seed_path).config is not None
+        )
+
     def load(self) -> LoadedConfig:
-        if not self.path.exists():
-            return LoadedConfig(config=None, version=None)
-        raw = self.path.read_bytes()
-        version = _digest(raw)
-        try:
-            data = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            return LoadedConfig(config=None, version=version, parse_error=str(exc))
-        if not isinstance(data, dict):
-            return LoadedConfig(
-                config=None, version=version, parse_error="The file is not a JSON object."
-            )
-        return LoadedConfig(config=data, version=version)
+        loaded = _read(self.path)
+        if loaded.version is None and self.seed_path is not None:
+            seed = _read(self.seed_path)
+            if seed.config is not None:
+                # Version stays None: the target does not exist yet, so a save creates it.
+                return LoadedConfig(config=seed.config, version=None)
+        return loaded
 
     def save(self, config: dict[str, Any], expected_version: str | None) -> str:
         """Write ``config`` and return the new version.
@@ -54,14 +63,15 @@ class ConfigFileStore:
         Raises:
             ConfigConflictError: The file on disk no longer matches ``expected_version``.
         """
-        current = self.load()
+        current = _read(self.path)
         if current.version != expected_version:
             raise ConfigConflictError(
                 f"{self.path.name} changed on disk after it was loaded. Reload to see the "
                 "latest version before saving."
             )
 
-        ordered = _preserve_key_order(config, current.config or {})
+        # A new file keeps the key order of the file it was seeded from.
+        ordered = _preserve_key_order(config, current.config or self.load().config or {})
         payload = (json.dumps(ordered, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,6 +91,22 @@ class ConfigFileStore:
             if temporary_path.exists():
                 temporary_path.unlink()
         return _digest(payload)
+
+
+def _read(path: Path) -> LoadedConfig:
+    if not path.exists():
+        return LoadedConfig(config=None, version=None)
+    raw = path.read_bytes()
+    version = _digest(raw)
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return LoadedConfig(config=None, version=version, parse_error=str(exc))
+    if not isinstance(data, dict):
+        return LoadedConfig(
+            config=None, version=version, parse_error="The file is not a JSON object."
+        )
+    return LoadedConfig(config=data, version=version)
 
 
 def _preserve_key_order(new: dict[str, Any], old: dict[str, Any]) -> dict[str, Any]:

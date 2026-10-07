@@ -42,7 +42,9 @@ working until 2.0.
   applies to the CLI (`api`, `play`, `dev`, `audit`, `config`, `eval`, `test`) and to the
   server started without `GRAPH_PATH` (for example from the generated Dockerfile).
   `10xgraph api` notes when it loaded the legacy name. `10xgraph init` writes
-  `10xgraph.json`.
+  `10xgraph.json`. `10xgraph config` always edits `10xgraph.json`: when only
+  `agentflow.json` exists it opens prefilled from that file, and the first save creates
+  `10xgraph.json` without touching `agentflow.json`.
 - **Core dependency is `10xgraph>=0.10.1,<2.0`** (import `tenxgraph`), replacing
   `10xscale-agentflow`. Do not install both: each ships an `agentflow` module.
 - **CLI env vars use the `TENXGRAPH_` prefix:** `TENXGRAPH_NO_FULLSCREEN`,

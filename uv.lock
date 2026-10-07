@@ -9,9 +9,9 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "10xscale-agentflow"
+name = "10xgraph"
 version = "0.10.1"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../agentflow" }
 dependencies = [
     { name = "injectq" },
     { name = "pillow" },
@@ -19,17 +19,81 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/03/9e/f8c30ebd08395f5c9c2176b0685eb955c83ee0f35142c2df3348356b251c/10xscale_agentflow-0.10.1.tar.gz", hash = "sha256:fc149c8eba743cf1ca623eaaf663cf10ba20395cafbcd19fbcaae8363da5c7b3", size = 563443, upload-time = "2026-10-06T17:34:41.352Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ed/17/5c7535385ba70944e47f3234fe5899307e4a0760835cb61585b47c2624c4/10xscale_agentflow-0.10.1-py3-none-any.whl", hash = "sha256:9862a06e6202491855b558c2bd576ed25639a798bcc805f72af1592cb0b0c0ad", size = 609049, upload-time = "2026-10-06T17:34:39.43Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "10xgraph", extras = ["all-publishers", "observability"], marker = "extra == 'all'" },
+    { name = "10xgraph", extras = ["anthropic", "anthropic-vertex", "anthropic-bedrock"], marker = "extra == 'all'" },
+    { name = "10xgraph", extras = ["google-genai", "openai", "realtime", "mcp"], marker = "extra == 'all'" },
+    { name = "10xgraph", extras = ["images", "cloud-storage", "a2a-sdk"], marker = "extra == 'all'" },
+    { name = "10xgraph", extras = ["otel", "logfire", "langsmith"], marker = "extra == 'observability'" },
+    { name = "10xgraph", extras = ["pg-checkpoint", "sqlite-checkpoint"], marker = "extra == 'all'" },
+    { name = "10xgraph", extras = ["qdrant", "mem0"], marker = "extra == 'all'" },
+    { name = "a2a-sdk", marker = "extra == 'a2a-sdk'", specifier = ">=0.2.7" },
+    { name = "aio-pika", marker = "extra == 'all-publishers'", specifier = ">=9.0.0" },
+    { name = "aio-pika", marker = "extra == 'rabbitmq'", specifier = ">=9.0.0" },
+    { name = "aiokafka", marker = "extra == 'all-publishers'", specifier = ">=0.8.0" },
+    { name = "aiokafka", marker = "extra == 'kafka'", specifier = ">=0.8.0" },
+    { name = "aiosqlite", marker = "extra == 'sqlite-checkpoint'", specifier = ">=0.19.0" },
+    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=1.0.0,<2" },
+    { name = "anthropic", extras = ["bedrock"], marker = "extra == 'anthropic-bedrock'", specifier = ">=1.0.0,<2" },
+    { name = "anthropic", extras = ["vertex"], marker = "extra == 'anthropic-vertex'", specifier = ">=1.0.0,<2" },
+    { name = "asyncpg", marker = "extra == 'pg-checkpoint'", specifier = ">=0.29.0" },
+    { name = "cloud-storage-manager", marker = "extra == 'cloud-storage'", specifier = ">=0.1.2" },
+    { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.11.3" },
+    { name = "google-genai", marker = "extra == 'google-genai'", specifier = ">=1.56.0" },
+    { name = "google-genai", marker = "extra == 'realtime'", specifier = ">=1.56.0" },
+    { name = "injectq", specifier = ">=0.4.0,<0.5" },
+    { name = "logfire", marker = "extra == 'logfire'", specifier = ">=3.0.0" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.13.0" },
+    { name = "mem0ai", marker = "extra == 'mem0'", specifier = ">=0.1.117" },
+    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.77.0" },
+    { name = "opentelemetry-api", marker = "extra == 'langsmith'", specifier = ">=1.20.0" },
+    { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.20.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'langsmith'", specifier = ">=1.20.0" },
+    { name = "opentelemetry-sdk", marker = "extra == 'langsmith'", specifier = ">=1.20.0" },
+    { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.20.0" },
+    { name = "pillow", specifier = ">=12.2.0" },
+    { name = "pillow", marker = "extra == 'images'", specifier = ">=10.0.0" },
+    { name = "pydantic", specifier = ">=2.0,<3" },
+    { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.7.0" },
+    { name = "redis", marker = "extra == 'all-publishers'", specifier = ">=4.2" },
+    { name = "redis", marker = "extra == 'pg-checkpoint'", specifier = ">=4.2" },
+    { name = "redis", marker = "extra == 'redis'", specifier = ">=4.2" },
+]
+provides-extras = ["google-genai", "realtime", "openai", "anthropic", "anthropic-vertex", "anthropic-bedrock", "pg-checkpoint", "sqlite-checkpoint", "mcp", "images", "cloud-storage", "redis", "kafka", "rabbitmq", "qdrant", "mem0", "a2a-sdk", "otel", "logfire", "langsmith", "observability", "all-publishers", "all"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "a2a-sdk" },
+    { name = "aiohttp" },
+    { name = "aiosqlite", specifier = ">=0.19.0" },
+    { name = "asyncpg", specifier = ">=0.30.0" },
+    { name = "fastmcp", specifier = ">=2.12.3" },
+    { name = "google-genai", specifier = ">=1.56.0" },
+    { name = "hypothesis", specifier = ">=6.100.0" },
+    { name = "mcp", specifier = ">=1.14.1" },
+    { name = "mem0ai", specifier = ">=0.1.117" },
+    { name = "mypy", specifier = ">=1.11.0" },
+    { name = "pre-commit", specifier = ">=3.8.0" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
+    { name = "pytest-benchmark", specifier = ">=5.1.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-env", specifier = ">=1.1.5" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "redis", specifier = ">=6.4.0" },
+    { name = "types-pyyaml" },
 ]
 
 [[package]]
-name = "10xscale-agentflow-cli"
-version = "0.6.0"
+name = "10xgraph-api"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
-    { name = "10xscale-agentflow" },
+    { name = "10xgraph" },
     { name = "fastapi" },
     { name = "gunicorn" },
     { name = "orjson" },
@@ -79,7 +143,7 @@ snowflakekit = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "10xscale-agentflow" },
+    { name = "10xgraph" },
     { name = "ag-ui-protocol" },
     { name = "httpx" },
     { name = "lib" },
@@ -104,7 +168,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "10xscale-agentflow", specifier = ">=0.10.0,<2.0" },
+    { name = "10xgraph", editable = "../agentflow" },
     { name = "ag-ui-protocol", marker = "extra == 'ag-ui'", specifier = ">=1.0,<2" },
     { name = "fastapi", specifier = ">=0.116,<1.0" },
     { name = "firebase-admin", marker = "extra == 'firebase'", specifier = ">=6.5.0" },
@@ -135,7 +199,7 @@ provides-extras = ["sentry", "firebase", "snowflakekit", "redis", "jwt", "media"
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "10xscale-agentflow", specifier = ">=0.10.0" },
+    { name = "10xgraph", editable = "../agentflow" },
     { name = "ag-ui-protocol", specifier = ">=1.0,<2" },
     { name = "httpx", specifier = "==0.27.0" },
     { name = "lib", specifier = "==4.0.0" },

@@ -343,6 +343,12 @@ source = [
 [tool.pytest-env]
 ENVIRONMENT = "pytest"
 
+[tool.uv.sources]
+# Local core checkout until 10xgraph is published to PyPI. uv only: pip and the built wheel
+# still depend on 10xgraph from PyPI. Remove once 10xgraph 0.10.1 is released; CI clones this
+# repo alone and has no ../agentflow.
+10xgraph = { path = "../agentflow", editable = true }
+
 [dependency-groups]
 dev = [
     "10xgraph>=0.10.1",
