@@ -14,39 +14,52 @@ from rich.text import Text
 from rich.theme import Theme
 
 
-# Cyan -> violet -> magenta. Sampled continuously, so stop count only affects
-# how much hue travel each segment carries, never the smoothness of the result.
-BRAND_RAMP: tuple[str, ...] = (
-    "#22d3ee",
-    "#38bdf8",
-    "#60a5fa",
-    "#818cf8",
-    "#a78bfa",
-    "#c084fc",
-    "#e879f9",
-    "#f472b6",
-)
+# 10xGraph brand palette, from the docs site tokens (agentflow-docs/src/styles/global.css).
+# A terminal's background is unknown, so each color sits between the docs light-theme and
+# dark-theme value and stays legible on both. Primary text uses the terminal's own
+# foreground (plain ``bold``), like the logo's ink, so it never vanishes on a light theme.
+ACCENT = "#6a93f0"  # docs --accent: #2f5bd3 light / #7ea6ff dark
+AMBER = "#de8a55"  # logo entry node, docs --brand-amber: #c8692f / #e9a57c
+SUCCESS = "#3fbf98"  # docs --tip: #0f7a5c / #4fd1ae
+WARNING = "#e0a447"  # docs --warn: #8a5a00 / #f0b45a
+ERROR = "#e5666d"  # docs --danger: #b4232c / #f2868a
+MUTED = "#8691a3"  # docs --muted / --faint
+LINE = "#4f5a68"  # rules and dividers
+PENDING = "#5c6674"  # not-yet-reached steps
+
+# Surfaces painted only inside the opt-in full-screen frame, which is always dark
+# (docs --bg / --surface / --surface-2 / --line / --text).
+BACKGROUND = "#0b0e13"
+SURFACE = "#10151d"
+SURFACE_RAISED = "#161c27"
+LINE_ON_DARK = "#2d3849"
+INK_ON_DARK = "#eceff4"
+
+# Motion tint: the docs accent flowing into the logo's amber entry node. Sampled
+# continuously, so the two stops never band.
+BRAND_RAMP: tuple[str, ...] = (ACCENT, AMBER)
 
 # Used for rows that are done, running, and not started, respectively.
-STATE_RAMP: tuple[str, ...] = ("#34d399", "#22d3ee", "#4b5563")
+STATE_RAMP: tuple[str, ...] = (SUCCESS, ACCENT, PENDING)
 
 TENXGRAPH_THEME = Theme(
     {
-        "tenxgraph.success": "bold #34d399",
-        "tenxgraph.error": "bold #f87171",
-        "tenxgraph.warning": "bold #fbbf24",
-        "tenxgraph.info": "#38bdf8",
-        "tenxgraph.muted": "dim #94a3b8",
-        "tenxgraph.title": "bold #c084fc",
-        "tenxgraph.brand": "bold #22d3ee",
-        "tenxgraph.command": "bold #f8fafc",
-        "tenxgraph.progress": "#38bdf8",
-        "tenxgraph.accent": "#a78bfa",
-        "tenxgraph.pending": "#4b5563",
-        "tenxgraph.rule": "#312e81",
-        "tenxgraph.chip": "bold #f8fafc on #4c1d95",
-        "tenxgraph.header": "on #16161f",
-        "tenxgraph.elapsed": "dim #64748b",
+        "tenxgraph.success": f"bold {SUCCESS}",
+        "tenxgraph.error": f"bold {ERROR}",
+        "tenxgraph.warning": f"bold {WARNING}",
+        "tenxgraph.info": ACCENT,
+        "tenxgraph.muted": MUTED,
+        "tenxgraph.title": "bold",
+        "tenxgraph.brand": f"bold {AMBER}",
+        "tenxgraph.command": "bold",
+        "tenxgraph.progress": ACCENT,
+        "tenxgraph.accent": ACCENT,
+        "tenxgraph.pending": PENDING,
+        "tenxgraph.rule": LINE,
+        "tenxgraph.chip": f"bold {INK_ON_DARK} on {SURFACE_RAISED}",
+        # Header band, drawn only by the full-screen frame on its dark surface.
+        "tenxgraph.header": f"on {SURFACE}",
+        "tenxgraph.elapsed": MUTED,
     }
 )
 
@@ -148,7 +161,7 @@ def sample_ramp(position: float, ramp: tuple[str, ...] = BRAND_RAMP) -> str:
     keeps a wide gradient bar from showing visible banding.
     """
     if not ramp:
-        return "#ffffff"
+        return INK_ON_DARK
     if len(ramp) == 1:
         return ramp[0]
 
@@ -206,6 +219,24 @@ def gradient_rule(
     thin: bool = False,
     offset: float = 0.0,
 ) -> Text:
-    """Build a full-width gradient rule used to frame branded sections."""
+    """Build a full-width rule that frames branded sections.
+
+    Calm by design: a solid line with a short amber lead-in, echoing the logo's entry
+    node. ``offset`` is kept for callers that once animated the rule.
+    """
+    del offset
     character = glyphs.thin_rule if thin else glyphs.rule
-    return gradient_text(character * max(width, 1), offset=offset)
+    span = max(width, 1)
+    lead = min(4, span)
+    text = Text(character * lead, style=AMBER)
+    text.append(character * (span - lead), style=LINE)
+    return text
+
+
+def wordmark(color: str | None = None) -> Text:
+    """The ``10xgraph`` name as the CLI shows it: bold ink, like the logo.
+
+    Without ``color`` it uses the terminal's own foreground; pass ``INK_ON_DARK`` on a
+    surface that paints its own dark background.
+    """
+    return Text("10xgraph", style=f"bold {color}" if color else "bold")

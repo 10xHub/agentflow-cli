@@ -21,22 +21,24 @@ from typing import Any
 import questionary
 from prompt_toolkit.styles import Style
 
+from tenxgraph_api.cli.core.theme import ACCENT, AMBER, MUTED, PENDING, SUCCESS
 from tenxgraph_api.cli.exceptions import ValidationError
 
 
-# Mirrors cli.core.theme, expressed in prompt_toolkit's style syntax.
+# Mirrors cli.core.theme, expressed in prompt_toolkit's style syntax. Question and typed
+# text use the terminal's own foreground so prompts read on light and dark themes.
 PROMPT_STYLE = Style(
     [
-        ("qmark", "fg:#22d3ee bold"),
-        ("question", "bold fg:#f8fafc"),
-        ("answer", "fg:#a78bfa bold"),
-        ("pointer", "fg:#22d3ee bold"),
-        ("highlighted", "fg:#22d3ee bold"),
-        ("selected", "fg:#34d399 bold"),
-        ("separator", "fg:#4b5563"),
-        ("instruction", "fg:#64748b"),
-        ("text", "fg:#cbd5f5"),
-        ("disabled", "fg:#4b5563 italic"),
+        ("qmark", f"fg:{AMBER} bold"),
+        ("question", "bold"),
+        ("answer", f"fg:{ACCENT} bold"),
+        ("pointer", f"fg:{AMBER} bold"),
+        ("highlighted", f"fg:{ACCENT} bold"),
+        ("selected", f"fg:{SUCCESS} bold"),
+        ("separator", f"fg:{PENDING}"),
+        ("instruction", f"fg:{MUTED}"),
+        ("text", ""),
+        ("disabled", f"fg:{PENDING} italic"),
     ]
 )
 

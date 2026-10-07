@@ -27,7 +27,7 @@ from rich.console import Console, Group, RenderableType
 from rich.live import Live
 from rich.text import Text
 
-from tenxgraph_api.cli.core.theme import Glyphs, sample_ramp
+from tenxgraph_api.cli.core.theme import ACCENT, LINE, SUCCESS, Glyphs, sample_ramp
 
 
 _SPINNER_FPS = 12
@@ -313,7 +313,7 @@ class LiveTimeline(_BaseTimeline):
     def _title_style(step: Step) -> str:
         return {
             StepState.DONE: "tenxgraph.command",
-            StepState.ACTIVE: "bold #ffffff",
+            StepState.ACTIVE: "bold",
             StepState.FAILED: "tenxgraph.error",
             StepState.SKIPPED: "tenxgraph.muted",
             StepState.PENDING: "tenxgraph.pending",
@@ -501,9 +501,9 @@ class LiveProgressRun(_BaseProgressRun):
             TextColumn("[tenxgraph.command]{task.description}"),
             BarColumn(
                 bar_width=None,
-                style="#242438",
-                complete_style="#22d3ee",
-                finished_style="#34d399",
+                style=LINE,
+                complete_style=ACCENT,
+                finished_style=SUCCESS,
             ),
             TextColumn("[tenxgraph.muted]{task.completed}/{task.total}"),
             TextColumn("{task.fields[tally]}"),

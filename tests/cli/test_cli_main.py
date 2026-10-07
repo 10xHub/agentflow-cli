@@ -231,3 +231,28 @@ def test_legacy_agentflow_entry_point_warns_then_runs(monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "'agentflow' command is deprecated" in err
     assert "'10xgraph'" in err
+
+
+@pytest.mark.parametrize(
+    ("env", "flags", "expected"),
+    [
+        ({}, [], False),  # default: normal scrollback, like gh / uv / cargo
+        ({"TENXGRAPH_FULLSCREEN": "1"}, [], True),
+        ({"TENXGRAPH_FULLSCREEN": "1", "TENXGRAPH_NO_FULLSCREEN": "1"}, [], False),
+        ({}, ["--fullscreen"], True),
+        ({"TENXGRAPH_FULLSCREEN": "1"}, ["--no-fullscreen"], False),
+    ],
+)
+def test_fullscreen_is_opt_in(monkeypatch, env, flags, expected):
+    for name in ("TENXGRAPH_FULLSCREEN", "TENXGRAPH_NO_FULLSCREEN", "AGENTFLOW_NO_FULLSCREEN"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    requested: list[bool] = []
+    monkeypatch.setattr(main_mod.output, "request_fullscreen", requested.append)
+    monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
+
+    result = runner.invoke(main_mod.app, [*flags, "--version"])
+
+    assert result.exit_code == 0
+    assert requested == [expected]

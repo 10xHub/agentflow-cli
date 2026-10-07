@@ -72,8 +72,13 @@ Root options apply to every command and are resolved in `main.root`:
 `--no-color`, `--progress` (auto\|tty\|plain\|json\|quiet),
 `--animation/--no-animation`, `--fullscreen/--no-fullscreen`, `--cwd`, `-v/--verbose`
 (counted), `-q/--quiet`, `--debug`, `-y/--yes`, `--non-interactive`, `-V/--version`.
-`TENXGRAPH_NO_FULLSCREEN=1` (legacy `AGENTFLOW_NO_FULLSCREEN`) opts out of the
-alternate-screen surface.
+The intro (`cli/core/animations.py`) plays by default on a temporary screen, then prints
+the header into scrollback; any key skips it (`_skip_on_keypress`, POSIX cbreak) and
+Ctrl+C quits. The pinned full-screen frame (`cli/core/screen.py`) is opt-in:
+`--fullscreen` or `TENXGRAPH_FULLSCREEN=1` (`TENXGRAPH_NO_FULLSCREEN=1` forces it off).
+Ctrl+C releases the frame without the "Press Enter" pause. Colors live in
+`cli/core/theme.py`, taken from the docs tokens and the logo (ink, amber `AMBER`,
+accent `ACCENT`).
 
 ## `10xgraph.json` (the config contract)
 

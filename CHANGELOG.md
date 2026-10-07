@@ -75,6 +75,16 @@ working until 2.0.
   [github.com/10xGraph/10xgraph-api](https://github.com/10xGraph/10xgraph-api); docs at
   [10xgraph.com](https://10xgraph.com).
 
+- **Terminal look follows the brand.** Colors come from the logo and docs palette: ink
+  text, the amber entry node, the blue accent (replacing the cyan/violet/pink gradient),
+  tuned to read on light and dark terminals. The intro is shorter (0.9s), shows the running
+  `10xgraph-api`, core and Python versions, draws the command pipeline like the logo's
+  graph, and can be skipped with any key.
+- **Easier exit.** Ctrl+C now quits immediately everywhere; it no longer stops on
+  "Press Enter to close". The pinned full-screen frame is now opt-in (`--fullscreen` or
+  `TENXGRAPH_FULLSCREEN=1`); by default the intro hands over to your normal scrollback, so
+  nothing waits for a key when a command ends.
+
 ### Unchanged on purpose
 
 - Error code `AGENTFLOW_VALIDATION_ERROR` and the `agentflow.cli/v1` schema id in

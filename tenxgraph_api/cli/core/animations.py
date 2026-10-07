@@ -1,5 +1,8 @@
 """Terminal-native animation engine for the 10xGraph CLI.
 
+The intro is short (under a second), any key skips it, and Ctrl+C quits at once.
+Its colors come from the logo: ink letters, the amber entry node, the docs accent.
+
 The intro always plays on the full canvas; what differs is who owns that canvas.
 Inside an :class:`~tenxgraph_api.cli.core.screen.AppFrame` the frame already
 holds the alternate screen and keeps it, so the sequence renders in place and
@@ -16,8 +19,15 @@ rate, and the reduced-motion budget without being re-authored.
 from __future__ import annotations
 
 import math
+import os
+import platform
+import sys
 import time
-from contextlib import nullcontext
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, nullcontext, suppress
+from functools import lru_cache
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 
 from rich.align import Align
 from rich.console import Console, Group, RenderableType
@@ -25,19 +35,28 @@ from rich.live import Live
 from rich.text import Text
 
 from tenxgraph_api.cli.constants import CLI_VERSION
-from tenxgraph_api.cli.core.screen import BACKGROUND
 from tenxgraph_api.cli.core.theme import (
+    ACCENT,
+    AMBER,
+    BACKGROUND,
     BRAND_RAMP,
+    INK_ON_DARK,
+    LINE,
+    LINE_ON_DARK,
+    MUTED,
+    PENDING,
+    SURFACE_RAISED,
     Glyphs,
     dim_hex,
     glyphs_for,
     gradient_rule,
     gradient_text,
     sample_ramp,
+    wordmark,
 )
 
 
-INTRO_DURATION_SECONDS = 1.25
+INTRO_DURATION_SECONDS = 0.9
 INTRO_FPS = 30
 _MIN_CINEMATIC_HEIGHT = 16
 # Column distance over which the reveal front and the shimmer stay lit.
@@ -138,9 +157,11 @@ def render_session_header(
     width = _usable_width(console)
     console.print(gradient_rule(width, glyphs=glyphs))
 
-    identity = Text(" ", style="tenxgraph.header")
+    # Printed into the user's own terminal, so no background band: it must read on
+    # light and dark themes alike.
+    identity = Text(" ")
     identity.append(f"{glyphs.diamond} ", style="tenxgraph.brand")
-    identity.append_text(gradient_text("10xgraph", bold=True))
+    identity.append_text(wordmark())
     identity.append(f" {glyphs.caret} ", style="tenxgraph.muted")
     identity.append(command, style="tenxgraph.command")
     if version:
@@ -150,7 +171,7 @@ def render_session_header(
     console.print(identity)
 
     if subtitle:
-        caption = Text(" ", style="tenxgraph.header")
+        caption = Text(" ")
         caption.append(subtitle, style="tenxgraph.muted")
         _pad_to_width(caption, width)
         console.print(caption)
@@ -189,9 +210,12 @@ def _play_cinematic(
             redirect_stdout=False,
             redirect_stderr=False,
         ) as live,
+        _skip_on_keypress() as skipped,
     ):
         started = time.monotonic()
         for frame in range(frame_count + 1):
+            if skipped():
+                break
             progress = frame / frame_count
             live.update(
                 _cinematic_frame(
@@ -200,6 +224,7 @@ def _play_cinematic(
                     tagline=tagline,
                     glyphs=glyphs,
                     progress=progress,
+                    can_skip=skipped is not _never,
                 ),
                 refresh=True,
             )
@@ -214,23 +239,30 @@ def _play_cinematic(
 def _play_inline(console: Console, *, command: str, glyphs: Glyphs) -> None:
     """Short in-buffer reveal for short terminals and nested screens."""
     frame_count = 12
-    with Live(
-        console=console,
-        auto_refresh=False,
-        transient=True,
-        redirect_stdout=False,
-        redirect_stderr=False,
-    ) as live:
+    with (
+        Live(
+            console=console,
+            auto_refresh=False,
+            transient=True,
+            redirect_stdout=False,
+            redirect_stderr=False,
+        ) as live,
+        _skip_on_keypress() as skipped,
+    ):
         for frame in range(frame_count + 1):
+            if skipped():
+                break
             progress = frame / frame_count
+            # Inline frames land on the user's own background, so ink follows the
+            # terminal's foreground instead of the dark-surface ink.
             live.update(
                 Group(
                     Align.center(_compact_wordmark(progress, glyphs)),
-                    Align.center(_signature_nodes(command, progress, glyphs)),
+                    Align.center(_signature_nodes(command, progress, glyphs, on_dark=False)),
                 ),
                 refresh=True,
             )
-            time.sleep(0.045)
+            time.sleep(0.04)
 
 
 def _cinematic_frame(
@@ -240,6 +272,7 @@ def _cinematic_frame(
     tagline: str,
     glyphs: Glyphs,
     progress: float,
+    can_skip: bool = False,
 ) -> RenderableType:
     """Compose one frame of the intro from its independently timed layers."""
     width = _usable_width(console)
@@ -262,11 +295,17 @@ def _cinematic_frame(
     if typing > 0:
         layers.append(Align.center(_typed(tagline, typing, glyphs)))
         layers.append(Text(""))
+    if chrome > 0:
+        layers.append(Align.center(_version_line(chrome, glyphs)))
+        layers.append(Text(""))
 
     layers.append(Align.center(_signature_nodes(command, pipeline, glyphs)))
     layers.append(Align.center(_signature_labels(command, pipeline)))
     layers.append(Text(""))
     layers.append(Align.center(_load_bar(progress, glyphs, width=min(width - 8, 44))))
+    if can_skip:
+        hint = f"any key to skip  {glyphs.bullet}  Ctrl+C to quit"
+        layers.append(Align.center(Text(hint, style=LINE)))
 
     return Align.center(
         Group(*layers),
@@ -296,12 +335,14 @@ def _block_wordmark(reveal: float, shimmer: float, glyphs: Glyphs) -> list[Text]
                 continue
             distance = front - index
             shimmer_distance = abs(shimmer_front - index)
+            # Letters settle in the logo's ink; the reveal front is the amber entry
+            # node and the shimmer the docs accent.
             if distance < _REVEAL_FRONT_WIDTH:
-                line.append(character, style="bold #ffffff")
+                line.append(character, style=f"bold {AMBER}")
             elif shimmer > 0 and shimmer_distance < _SHIMMER_WIDTH:
-                line.append(character, style="bold #f5f3ff")
+                line.append(character, style=f"bold {ACCENT}")
             else:
-                line.append(character, style=f"bold {sample_ramp(index / total)}")
+                line.append(character, style=f"bold {INK_ON_DARK}")
         lines.append(line)
     return lines
 
@@ -320,16 +361,16 @@ def _compact_wordmark(reveal: float, glyphs: Glyphs) -> Text:
     text = Text()
     text.append_text(gradient_text(" ".join(_WORDMARK[:visible]), bold=True))
     if visible < len(_WORDMARK):
-        text.append(glyphs.cursor, style="bold #ffffff")
+        text.append(glyphs.cursor, style=f"bold {AMBER}")
     return text
 
 
 def _command_chip(command: str, intensity: float, glyphs: Glyphs) -> Text:
     """Pill showing which command the intro belongs to."""
-    color = dim_hex("#4c1d95", 0.35 + 0.65 * intensity)
+    color = dim_hex(SURFACE_RAISED, 0.35 + 0.65 * intensity)
     chip = Text(style=f"on {color}")
-    chip.append(f"  {glyphs.diamond} ", style="#a78bfa")
-    chip.append(command.lower(), style="bold #f8fafc")
+    chip.append(f"  {glyphs.diamond} ", style=AMBER)
+    chip.append(command.lower(), style=f"bold {INK_ON_DARK}")
     chip.append("  ")
     return chip
 
@@ -337,9 +378,9 @@ def _command_chip(command: str, intensity: float, glyphs: Glyphs) -> Text:
 def _typed(value: str, progress: float, glyphs: Glyphs) -> Text:
     """Type ``value`` out one character at a time with a blinking caret."""
     visible = int(_ease_out(progress) * len(value))
-    text = Text(value[:visible], style="#cbd5f5")
+    text = Text(value[:visible], style="#c6ceda")
     if visible < len(value) or int(progress * 12) % 2 == 0:
-        text.append(glyphs.cursor, style="#22d3ee")
+        text.append(glyphs.cursor, style=AMBER)
     return text
 
 
@@ -361,24 +402,98 @@ def _aurora(width: int, progress: float, glyphs: Glyphs, *, rows: int) -> Text:
     return text
 
 
+def _version_line(intensity: float, glyphs: Glyphs) -> Text:
+    """What is running: CLI, core and Python versions, fading in with the chrome."""
+    color = INK_ON_DARK if intensity >= 1 else MUTED
+    text = Text()
+    for index, (label, value) in enumerate(_runtime_versions()):
+        if index:
+            text.append(f"  {glyphs.bullet}  ", style=LINE_ON_DARK)
+        text.append(f"{label} ", style=MUTED)
+        text.append(value, style=f"bold {color}" if index == 0 else color)
+    return text
+
+
+@lru_cache(maxsize=1)
+def _runtime_versions() -> tuple[tuple[str, str], ...]:
+    """``(label, version)`` pairs for the CLI, the core framework, and Python."""
+    versions = [("10xgraph-api", CLI_VERSION)]
+    with suppress(PackageNotFoundError):
+        versions.append(("core", package_version("10xgraph")))
+    versions.append(("python", platform.python_version()))
+    return tuple(versions)
+
+
+def _never() -> bool:
+    return False
+
+
+@contextmanager
+def _skip_on_keypress() -> Iterator[Callable[[], bool]]:
+    """Yield a poll that turns True once the user presses a key.
+
+    POSIX terminals only: stdin goes into cbreak mode for the length of the intro (so a
+    key arrives without Enter, and Ctrl+C still raises), and is restored afterwards. The
+    key that skips is consumed. Elsewhere the poll is always False.
+    """
+    try:
+        import select
+        import termios
+        import tty
+    except ImportError:
+        yield _never
+        return
+    try:
+        fd = sys.stdin.fileno()
+        if not os.isatty(fd):
+            raise OSError
+        saved = termios.tcgetattr(fd)
+    except (OSError, ValueError, termios.error):
+        yield _never
+        return
+
+    pressed = False
+
+    def poll() -> bool:
+        nonlocal pressed
+        if not pressed and select.select([fd], [], [], 0)[0]:
+            os.read(fd, 1024)
+            pressed = True
+        return pressed
+
+    try:
+        tty.setcbreak(fd)
+        yield poll
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+
+
 def _signature_for(command: str) -> tuple[str, ...]:
     return _SIGNATURES.get(command.lower(), _DEFAULT_SIGNATURE)
 
 
-def _signature_nodes(command: str, progress: float, glyphs: Glyphs) -> Text:
-    """Node-and-link chain that fills in as the intro advances."""
+def _signature_nodes(
+    command: str, progress: float, glyphs: Glyphs, *, on_dark: bool = True
+) -> Text:
+    """Node-and-link chain that fills in as the intro advances.
+
+    Drawn like the logo's graph: the first node is the amber entry node, the others
+    are ink, and the links between them carry the docs accent.
+    """
     stages = _signature_for(command)
     segments = len(stages) * 2 - 1
     filled = progress * segments
+    ink = f"bold {INK_ON_DARK}" if on_dark else "bold"
+    idle = LINE_ON_DARK if on_dark else PENDING
     text = Text()
     for index in range(segments):
         active = index < filled
-        position = index / max(segments - 1, 1)
-        color = sample_ramp(position) if active else "#3f3f56"
         if index % 2 == 0:
-            text.append(glyphs.node if active else glyphs.pending, style=f"bold {color}")
+            style = (f"bold {AMBER}" if index == 0 else ink) if active else idle
+            text.append(glyphs.node if active else glyphs.pending, style=style)
         else:
-            text.append(glyphs.rule * 3 if active else glyphs.thin_rule * 3, style=color)
+            rule = glyphs.rule * 3 if active else glyphs.thin_rule * 3
+            text.append(rule, style=ACCENT if active else idle)
     return text
 
 
@@ -391,9 +506,9 @@ def _signature_labels(command: str, progress: float) -> Text:
         if index:
             text.append("  ")
         if index < reached:
-            text.append(stage, style=f"bold {sample_ramp(index / max(len(stages) - 1, 1))}")
+            text.append(stage, style=f"bold {AMBER}" if index == 0 else "#c6ceda")
         else:
-            text.append(stage, style="#3f3f56")
+            text.append(stage, style=LINE_ON_DARK)
     return text
 
 
@@ -406,7 +521,7 @@ def _load_bar(progress: float, glyphs: Glyphs, *, width: int) -> Text:
         if index < filled:
             text.append(glyphs.thin_rule, style=sample_ramp(index / span, BRAND_RAMP))
         else:
-            text.append(glyphs.thin_rule, style="#242438")
+            text.append(glyphs.thin_rule, style="#222b3a")
     return text
 
 

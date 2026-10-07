@@ -164,10 +164,10 @@ Start the development API server and open the hosted playground when it is ready
 ### Adaptive and structured output
 
 ```bash
-10xgraph play                         # full-screen surface in an interactive terminal
+10xgraph play                         # branded intro, then output in your scrollback
 10xgraph demo                         # preview every animation theme safely
 10xgraph demo --style build           # one theme: typing, network, init, build, or eval
-10xgraph --no-fullscreen play         # keep output in your normal scrollback
+10xgraph --fullscreen play            # opt-in pinned header/footer surface
 10xgraph --no-animation play          # accessible/static workflow
 10xgraph --format plain --no-color audit
 10xgraph --format jsonl eval --parallel
@@ -175,18 +175,20 @@ Start the development API server and open the hosted playground when it is ready
 10xgraph --cwd ../my-agent dev
 ```
 
-On an interactive terminal a command runs on its own full-screen surface: a
-pinned header (identity, version, subtitle), a pinned footer status bar, and the
-command's output scrolling between them. The intro reveals the 10xGraph
-wordmark on the full canvas and collapses into that header, and each command
-shows its own pipeline — `play`/`dev` config→runtime→server→playground, `init`
-template→graph→config→project, `build` source→deps→image→ship, `eval`
-discover→load→score→report, `audit` python→core→config→port.
+On an interactive terminal each command opens with a short intro (under a second) in
+the logo's colors: the 10XGRAPH wordmark in ink, swept in by the amber entry node and the
+blue accent, the command, the running versions (`10xgraph-api`, core `10xgraph`,
+Python), and the command's own pipeline drawn like the logo's graph: `play`/`dev`
+config→runtime→server→playground, `init` template→graph→config→project, `build`
+source→deps→image→ship, `eval` discover→load→score→report, `audit`
+python→core→config→port. Press any key to skip it; Ctrl+C quits at once. The intro then
+leaves a one-line branded header in your normal scrollback, and the command's output
+follows it, so there is nothing to dismiss when it ends.
 
-The surface is held until you press Enter, so a fast command cannot erase its
-own result. Pass `--no-fullscreen` (or set `TENXGRAPH_NO_FULLSCREEN=1`) to keep
-everything in your normal scrollback instead — useful when you want to scroll
-back or copy a path afterwards.
+`--fullscreen` (or `TENXGRAPH_FULLSCREEN=1`) runs the command on a dedicated surface
+instead: a pinned header and footer with the output scrolling between them. That surface
+waits for Enter after a normal finish, so a fast command cannot erase its own result;
+Ctrl+C releases it immediately.
 
 Long-running work reports through a live step timeline: stages are declared up
 front, pending ones stay dimmed, and the running one animates with an elapsed

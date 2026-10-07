@@ -176,6 +176,7 @@ def test_forced_tty_header_uses_animation_renderer(monkeypatch) -> None:
         progress_mode=ProgressMode.TTY,
     )
     rendered.command_header("play", "Start the playground")
+    # The intro plays by default, on a temporary screen (not the opt-in pinned frame).
     assert calls == [("play", "Start the playground", True, False)]
 
 
@@ -486,3 +487,42 @@ def test_global_convenience_functions_delegate(monkeypatch) -> None:
 
 def test_global_instance_exists() -> None:
     assert isinstance(output, OutputFormatter)
+
+
+def test_ctrl_c_releases_the_fullscreen_frame_without_waiting(monkeypatch) -> None:
+    from tenxgraph_api.cli.core import screen
+
+    rendered, _stream = formatter(progress_mode=ProgressMode.TTY, color_mode=ColorMode.ALWAYS)
+    console = FakeConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+    waited: list[bool] = []
+    monkeypatch.setattr(
+        screen.AppFrame, "_wait_for_enter", staticmethod(lambda: waited.append(True))
+    )
+
+    assert rendered.start_fullscreen_session() is True
+    try:
+        raise KeyboardInterrupt
+    except KeyboardInterrupt:
+        # The CLI context's close callback runs while the interrupt is in flight.
+        rendered.end_fullscreen_session()
+
+    assert waited == []
+    assert console.alt_screen_calls == [True, False]
+
+
+def test_normal_finish_still_pauses_before_discarding_the_frame(monkeypatch) -> None:
+    from tenxgraph_api.cli.core import screen
+
+    rendered, _stream = formatter(progress_mode=ProgressMode.TTY, color_mode=ColorMode.ALWAYS)
+    console = FakeConsole()
+    monkeypatch.setattr(rendered, "_console", lambda **_kwargs: console)
+    waited: list[bool] = []
+    monkeypatch.setattr(
+        screen.AppFrame, "_wait_for_enter", staticmethod(lambda: waited.append(True))
+    )
+
+    assert rendered.start_fullscreen_session() is True
+    rendered.end_fullscreen_session()
+
+    assert waited == [True]

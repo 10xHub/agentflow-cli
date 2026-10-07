@@ -9,6 +9,7 @@ from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, TextIO
 
+import click
 from rich import box
 from rich.console import Console
 from rich.live import Live
@@ -40,10 +41,11 @@ from tenxgraph_api.cli.core.steps import (
     Timeline,
 )
 from tenxgraph_api.cli.core.theme import (
+    ACCENT,
+    LINE,
     TENXGRAPH_THEME,
     Glyphs,
     glyphs_for,
-    gradient_text,
 )
 
 
@@ -175,12 +177,20 @@ class OutputFormatter:
         return True
 
     def end_fullscreen_session(self) -> None:
-        """Pause on the closing hint, then restore the user's terminal."""
+        """Restore the user's terminal, pausing on the closing hint after a normal finish.
+
+        Called from the CLI context's close callback, which runs while an exception is
+        still propagating. Ctrl+C (``KeyboardInterrupt``, or Click's ``Abort`` wrapping
+        it) releases the screen immediately instead of waiting for Enter; a failure
+        still pauses so its message can be read before the screen is discarded.
+        """
         frame = self._frame
         self._frame = None
         self._session_console = None
         if frame is not None:
-            frame.close()
+            in_flight = sys.exc_info()[1]
+            interrupted = isinstance(in_flight, KeyboardInterrupt | click.exceptions.Abort)
+            frame.close(hold=not interrupted)
 
     def refresh_chrome(self) -> None:
         """Repaint pinned chrome that something else may have drawn over."""
@@ -211,7 +221,7 @@ class OutputFormatter:
         self,
         title: str,
         subtitle: str | None = None,
-        color: str = "cyan",
+        color: str = LINE,
         width: int = 50,
     ) -> None:
         """Render a compact section heading or a panel on an interactive terminal."""
@@ -237,7 +247,7 @@ class OutputFormatter:
         command: str,
         subtitle: str | None = None,
         *,
-        color: str = "cyan",
+        color: str = LINE,
         hint: str | None = None,
     ) -> None:
         """Render an animated command identity when the terminal supports it.
@@ -266,6 +276,8 @@ class OutputFormatter:
             return
         if self._fullscreen_requested:
             self.start_fullscreen_session()
+        # Without the opt-in frame the intro borrows a temporary screen, then prints a
+        # durable header into the normal scrollback: nothing to dismiss on exit.
         render_command_intro(
             self._console(),
             command=command,
@@ -568,7 +580,7 @@ class OutputFormatter:
 
         if steps and visible > len(rows):
             body.append("\n\n")
-            body.append("Next", style="bold #a78bfa")
+            body.append("Next", style=f"bold {ACCENT}")
             for step in steps:
                 if shown >= visible:
                     break
@@ -578,10 +590,10 @@ class OutputFormatter:
 
         return Panel(
             body,
-            title=gradient_text(f" {title} ", bold=True),
+            title=Text(f" {title} ", style="tenxgraph.title"),
             title_align="left",
             box=box.ROUNDED,
-            border_style="#7c3aed",
+            border_style=LINE,
             padding=(1, 2),
         )
 
@@ -589,7 +601,7 @@ class OutputFormatter:
 output = OutputFormatter()
 
 
-def print_banner(title: str, subtitle: str | None = None, color: str = "cyan") -> None:
+def print_banner(title: str, subtitle: str | None = None, color: str = LINE) -> None:
     output.print_banner(title, subtitle, color)
 
 

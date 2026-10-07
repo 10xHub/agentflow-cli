@@ -135,7 +135,8 @@ def root(  # noqa: PLR0913
         "--fullscreen/--no-fullscreen",
         help=(
             "Run the command on a dedicated full-screen surface with pinned "
-            "header and footer. Enabled by default on an interactive terminal."
+            "header and footer, and play the branded intro. Off by default: output "
+            "goes to your normal scrollback. Also TENXGRAPH_FULLSCREEN=1."
         ),
         rich_help_panel="Global output",
     ),
@@ -229,13 +230,15 @@ def root(  # noqa: PLR0913
         yes=yes,
         non_interactive=non_interactive,
     )
-    # A terminal discards an alternate screen when it is released, so the frame
-    # pauses on a closing hint before letting go. Anyone who wants output left in
-    # their scrollback — to copy a path, or scroll back after the fact — opts out
-    # with --no-fullscreen or TENXGRAPH_NO_FULLSCREEN=1. The screen itself is
-    # claimed lazily, by the first command that renders a header.
+    # Output goes to the user's normal scrollback by default, the way gh, uv or cargo
+    # behave: nothing to dismiss, nothing lost on exit. The full-screen frame (pinned
+    # chrome plus the intro) is opt-in with --fullscreen or TENXGRAPH_FULLSCREEN=1;
+    # TENXGRAPH_NO_FULLSCREEN=1 still forces it off. The screen is claimed lazily, by the
+    # first command that renders a header.
     if fullscreen is None:
-        fullscreen = not truthy_env(cli_env_name("NO_FULLSCREEN"))
+        fullscreen = truthy_env(cli_env_name("FULLSCREEN")) and not truthy_env(
+            cli_env_name("NO_FULLSCREEN")
+        )
     output.request_fullscreen(fullscreen)
     ctx.call_on_close(output.end_fullscreen_session)
 

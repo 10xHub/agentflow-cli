@@ -173,3 +173,52 @@ def test_every_cinematic_frame_renders_without_error() -> None:
             )
         )
     assert stream.getvalue()
+
+
+def test_version_line_names_the_running_cli_core_and_python() -> None:
+    import platform
+
+    from tenxgraph_api.cli.constants import CLI_VERSION
+
+    line = anim._version_line(1.0, UNICODE_GLYPHS).plain
+    assert f"10xgraph-api {CLI_VERSION}" in line
+    assert f"python {platform.python_version()}" in line
+
+
+def test_intro_frame_shows_versions_and_the_skip_hint() -> None:
+    console, _stream = terminal()
+    frame = anim._cinematic_frame(
+        console,
+        command="api",
+        tagline="Serving",
+        glyphs=UNICODE_GLYPHS,
+        progress=1.0,
+        can_skip=True,
+    )
+    console.print(frame)
+    rendered = ANSI.sub("", _stream.getvalue())
+    assert "10xgraph-api" in rendered
+    assert "any key to skip" in rendered
+
+
+def test_keypress_ends_the_intro_early(monkeypatch) -> None:
+    import contextlib
+    import time
+
+    @contextlib.contextmanager
+    def pressed():
+        yield lambda: True
+
+    monkeypatch.setattr(anim, "_skip_on_keypress", pressed)
+    console, _stream = terminal()
+    started = time.monotonic()
+    anim._play_cinematic(console, command="api", subtitle=None, glyphs=UNICODE_GLYPHS)
+    assert time.monotonic() - started < anim.INTRO_DURATION_SECONDS / 2
+
+
+def test_skip_poll_is_inert_without_a_terminal(monkeypatch) -> None:
+    import io
+
+    monkeypatch.setattr("sys.stdin", io.StringIO())
+    with anim._skip_on_keypress() as skipped:
+        assert skipped() is False

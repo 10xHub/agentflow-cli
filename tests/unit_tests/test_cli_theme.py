@@ -5,6 +5,7 @@ from __future__ import annotations
 from tenxgraph_api.cli.core.theme import (
     ASCII_GLYPHS,
     BRAND_RAMP,
+    INK_ON_DARK,
     UNICODE_GLYPHS,
     dim_hex,
     glyphs_for,
@@ -33,7 +34,7 @@ def test_ramp_interpolates_between_stops() -> None:
 
 
 def test_ramp_handles_degenerate_palettes() -> None:
-    assert sample_ramp(0.4, ()) == "#ffffff"
+    assert sample_ramp(0.4, ()) == INK_ON_DARK
     assert sample_ramp(0.4, ("#123456",)) == "#123456"
 
 

@@ -15,8 +15,9 @@ scrolling region is enforced by the terminal itself, so ordinary writes — from
 this process or a child — simply scroll inside the body and leave the chrome
 untouched.
 
-Because an alternate screen is discarded when released, ``close()`` pauses on a
-"press Enter" footer first, so a fast command cannot erase its own result.
+The frame is opt-in (``--fullscreen``). Because an alternate screen is discarded when
+released, ``close()`` pauses on a "press Enter" footer after a normal finish, so a fast
+command cannot erase its own result. Ctrl+C never waits: it releases the screen at once.
 """
 
 from __future__ import annotations
@@ -28,16 +29,17 @@ from rich.console import Console
 from rich.text import Text
 
 from tenxgraph_api.cli.core.theme import (
+    BACKGROUND,
+    INK_ON_DARK,
     TENXGRAPH_THEME,
     Glyphs,
     gradient_rule,
-    gradient_text,
+    wordmark,
 )
 
 
-# Background painted across the alternate screen, so the frame reads as its own
-# surface rather than a cleared prompt.
-BACKGROUND = "#0b0b12"
+# BACKGROUND (the docs dark --bg) is painted across the alternate screen, so the frame
+# reads as its own surface rather than a cleared prompt.
 _BACKGROUND_RGB = tuple(int(BACKGROUND[index : index + 2], 16) for index in (1, 3, 5))
 _PAINT = "\x1b[48;2;{};{};{}m".format(*_BACKGROUND_RGB)
 
@@ -163,7 +165,7 @@ class AppFrame:
         if self._chrome:
             self._draw_header()
             self._draw_footer(
-                "Press Enter to close",
+                "Press Enter or Ctrl+C to close",
                 anchored=True,
                 style="tenxgraph.brand",
             )
@@ -186,9 +188,10 @@ class AppFrame:
 
         identity = Text(" ", style="tenxgraph.header")
         identity.append(f"{glyphs.diamond} ", style="tenxgraph.brand")
-        identity.append_text(gradient_text("10xgraph", bold=True))
+        # The frame paints a dark surface, so its chrome uses light ink explicitly.
+        identity.append_text(wordmark(INK_ON_DARK))
         identity.append(f" {glyphs.caret} ", style="tenxgraph.muted")
-        identity.append(self._command, style="tenxgraph.command")
+        identity.append(self._command, style=f"bold {INK_ON_DARK}")
         if self._version:
             identity.append(" " * max(width - identity.cell_len - len(self._version) - 1, 1))
             identity.append(self._version, style="tenxgraph.muted")
