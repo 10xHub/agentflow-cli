@@ -1,4 +1,4 @@
-from agentflow_cli.src.app.core.exceptions.resources_exceptions import (
+from tenxgraph_api.src.app.core.exceptions.resources_exceptions import (
     InvalidOperationError,
     ResourceDuplicationError,
     ResourceNotFoundError,

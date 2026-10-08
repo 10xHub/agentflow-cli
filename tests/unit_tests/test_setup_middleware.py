@@ -5,7 +5,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from agentflow_cli.src.app.core.config.setup_middleware import (
+from tenxgraph_api.src.app.core.config.setup_middleware import (
     SelectiveGZipMiddleware,
     setup_middleware,
 )
@@ -43,7 +43,7 @@ async def test_selective_gzip_middleware_excludes():
         called.append((scope, receive, send))
 
     with patch(
-        "agentflow_cli.src.app.core.config.setup_middleware.GZipMiddleware"
+        "tenxgraph_api.src.app.core.config.setup_middleware.GZipMiddleware"
     ) as MockGZipMiddleware:
         mock_gzip_instance = AsyncMock()
         MockGZipMiddleware.return_value = mock_gzip_instance
@@ -72,7 +72,7 @@ async def test_selective_gzip_middleware_excludes():
 
 
 def test_setup_otel_import_error():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_otel
 
     settings = MagicMock()
     settings.OTEL_SERVICE_NAME = "test"
@@ -117,7 +117,7 @@ def test_setup_otel_with_endpoint():
         mock_exporter.OTLPSpanExporter = MagicMock()
         mock_processor.BatchSpanProcessor = MagicMock()
 
-        from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+        from tenxgraph_api.src.app.core.config.setup_middleware import _setup_otel
 
         _setup_otel(MagicMock(), settings)
 
@@ -156,7 +156,7 @@ def test_setup_otel_no_endpoint():
         mock_processor.ConsoleSpanExporter = MagicMock()
         mock_processor.SimpleSpanProcessor = MagicMock()
 
-        from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+        from tenxgraph_api.src.app.core.config.setup_middleware import _setup_otel
 
         _setup_otel(MagicMock(), settings)
 
@@ -191,15 +191,15 @@ def test_setup_otel_grpc_exporter_import_error():
         mock_resource.Resource.create.return_value = "resource_obj"
         mock_provider.TracerProvider.return_value = mock_provider
 
-        from agentflow_cli.src.app.core.config.setup_middleware import _setup_otel
+        from tenxgraph_api.src.app.core.config.setup_middleware import _setup_otel
 
         _setup_otel(MagicMock(), settings)
         # Should return gracefully on ImportError of grpc exporter
 
 
 def test_attach_otel_publisher_import_error():
-    with patch.dict("sys.modules", {"agentflow.runtime.publisher.base_publisher": None}):
-        from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+    with patch.dict("sys.modules", {"tenxgraph.runtime.publisher.base_publisher": None}):
+        from tenxgraph_api.src.app.core.config.setup_middleware import _attach_otel_publisher
 
         container = MagicMock()
         _attach_otel_publisher(container, MagicMock())
@@ -220,14 +220,14 @@ def test_attach_otel_publisher_value_error():
         pass
 
     modules = {
-        "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
-        "agentflow.runtime.publisher.composite_publisher": MagicMock(),
-        "agentflow.runtime.publisher.otel_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
+        "tenxgraph.runtime.publisher.composite_publisher": MagicMock(),
+        "tenxgraph.runtime.publisher.otel_publisher": MagicMock(
             ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
         ),
     }
     with patch.dict("sys.modules", modules):
-        from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+        from tenxgraph_api.src.app.core.config.setup_middleware import _attach_otel_publisher
 
         container = MagicMock()
         container.try_get.return_value = None
@@ -252,14 +252,14 @@ def test_attach_otel_publisher_no_existing():
         pass
 
     modules = {
-        "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
-        "agentflow.runtime.publisher.composite_publisher": MagicMock(),
-        "agentflow.runtime.publisher.otel_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
+        "tenxgraph.runtime.publisher.composite_publisher": MagicMock(),
+        "tenxgraph.runtime.publisher.otel_publisher": MagicMock(
             ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
         ),
     }
     with patch.dict("sys.modules", modules):
-        from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+        from tenxgraph_api.src.app.core.config.setup_middleware import _attach_otel_publisher
 
         container = MagicMock()
         container.try_get.return_value = None
@@ -293,16 +293,16 @@ def test_attach_otel_publisher_existing_composite():
     existing = FakeCompositePublisher()
 
     modules = {
-        "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
-        "agentflow.runtime.publisher.composite_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
+        "tenxgraph.runtime.publisher.composite_publisher": MagicMock(
             CompositePublisher=FakeCompositePublisher
         ),
-        "agentflow.runtime.publisher.otel_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.otel_publisher": MagicMock(
             ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
         ),
     }
     with patch.dict("sys.modules", modules):
-        from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+        from tenxgraph_api.src.app.core.config.setup_middleware import _attach_otel_publisher
 
         container = MagicMock()
         container.try_get.return_value = existing
@@ -310,7 +310,7 @@ def test_attach_otel_publisher_existing_composite():
         settings.OTEL_LEVEL = "standard"
 
         with patch(
-            "agentflow_cli.src.app.core.config.setup_middleware.isinstance", return_value=True
+            "tenxgraph_api.src.app.core.config.setup_middleware.isinstance", return_value=True
         ):
             _attach_otel_publisher(container, settings)
 
@@ -339,16 +339,16 @@ def test_attach_otel_publisher_existing_single():
     existing = SinglePublisher()
 
     modules = {
-        "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
-        "agentflow.runtime.publisher.composite_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
+        "tenxgraph.runtime.publisher.composite_publisher": MagicMock(
             CompositePublisher=FakeCompositePublisher
         ),
-        "agentflow.runtime.publisher.otel_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.otel_publisher": MagicMock(
             ObservabilityLevel=FakeObservabilityLevel, OtelPublisher=FakeOtelPublisher
         ),
     }
     with patch.dict("sys.modules", modules):
-        from agentflow_cli.src.app.core.config.setup_middleware import _attach_otel_publisher
+        from tenxgraph_api.src.app.core.config.setup_middleware import _attach_otel_publisher
 
         container = MagicMock()
         container.try_get.return_value = existing
@@ -397,16 +397,16 @@ def test_setup_middleware_all():
 
     with (
         patch(
-            "agentflow_cli.src.app.core.config.setup_middleware.get_settings", return_value=settings
+            "tenxgraph_api.src.app.core.config.setup_middleware.get_settings", return_value=settings
         ),
-        patch("agentflow_cli.src.app.core.config.setup_middleware.init_sentry") as mock_init_sentry,
+        patch("tenxgraph_api.src.app.core.config.setup_middleware.init_sentry") as mock_init_sentry,
         patch(
-            "agentflow_cli.src.app.core.config.setup_middleware.build_backend",
+            "tenxgraph_api.src.app.core.config.setup_middleware.build_backend",
             return_value="mock_backend",
         ) as mock_build_backend,
-        patch("agentflow_cli.src.app.core.config.setup_middleware._setup_otel") as mock_setup_otel,
+        patch("tenxgraph_api.src.app.core.config.setup_middleware._setup_otel") as mock_setup_otel,
         patch(
-            "agentflow_cli.src.app.core.config.setup_middleware._attach_otel_publisher"
+            "tenxgraph_api.src.app.core.config.setup_middleware._attach_otel_publisher"
         ) as mock_attach,
     ):
         setup_middleware(app, graph_config=graph_config, container=container)
@@ -422,7 +422,7 @@ def test_setup_middleware_all():
 
 
 def _obs_modules(*, setup_side_effect=None, existing=None, composite_cls=None):
-    """Fake agentflow.runtime.publisher modules used by _setup_observability."""
+    """Fake tenxgraph.runtime.publisher modules used by _setup_observability."""
 
     class FakeBasePublisher:
         pass
@@ -452,12 +452,12 @@ def _obs_modules(*, setup_side_effect=None, existing=None, composite_cls=None):
     setup_observability = MagicMock(side_effect=setup_side_effect)
 
     modules = {
-        "agentflow.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
-        "agentflow.runtime.publisher.composite_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.base_publisher": MagicMock(BasePublisher=FakeBasePublisher),
+        "tenxgraph.runtime.publisher.composite_publisher": MagicMock(
             CompositePublisher=composite_cls or FakeCompositePublisher
         ),
-        "agentflow.runtime.publisher.exporters": MagicMock(setup_observability=setup_observability),
-        "agentflow.runtime.publisher.otel_publisher": MagicMock(
+        "tenxgraph.runtime.publisher.exporters": MagicMock(setup_observability=setup_observability),
+        "tenxgraph.runtime.publisher.otel_publisher": MagicMock(
             ObservabilityLevel=FakeObservabilityLevel,
             OtelPublisher=FakeOtelPublisher,
         ),
@@ -472,14 +472,14 @@ def _graph_config(observability):
 
 
 def test_setup_observability_noop_when_container_none():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     # Should not raise when there is nothing to wire.
     _setup_observability(None, _graph_config({"logfire": {"enabled": True}}))
 
 
 def test_setup_observability_noop_when_no_block():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     container = MagicMock()
     _setup_observability(container, _graph_config(None))
@@ -487,7 +487,7 @@ def test_setup_observability_noop_when_no_block():
 
 
 def test_setup_observability_noop_when_no_backend_enabled():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     container = MagicMock()
     cfg = {"logfire": {"enabled": False}, "langsmith": {"enabled": False}}
@@ -496,7 +496,7 @@ def test_setup_observability_noop_when_no_backend_enabled():
 
 
 def test_setup_observability_binds_when_none_existing():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     modules, setup_obs, _base, _comp = _obs_modules()
     cfg = {"level": "standard", "logfire": {"enabled": True, "service_name": "svc"}}
@@ -514,7 +514,7 @@ def test_setup_observability_binds_when_none_existing():
 
 
 def test_setup_observability_adds_to_existing_composite():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     modules, _setup_obs, _base, comp_cls = _obs_modules()
     existing = comp_cls()
@@ -530,7 +530,7 @@ def test_setup_observability_adds_to_existing_composite():
 
 
 def test_setup_observability_wraps_single_existing():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     modules, _setup_obs, _base, _comp = _obs_modules()
 
@@ -548,7 +548,7 @@ def test_setup_observability_wraps_single_existing():
 
 
 def test_setup_observability_skips_on_value_error():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     # setup_observability raising ValueError (e.g. LangSmith key missing) must
     # not crash startup and must not bind a publisher.
@@ -566,19 +566,19 @@ def test_setup_observability_skips_on_value_error():
 
 
 def test_setup_observability_import_error_warns():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     cfg = {"logfire": {"enabled": True}}
     container = MagicMock()
 
-    with patch.dict(sys.modules, {"agentflow.runtime.publisher.base_publisher": None}):
+    with patch.dict(sys.modules, {"tenxgraph.runtime.publisher.base_publisher": None}):
         _setup_observability(container, _graph_config(cfg))
 
     container.bind_instance.assert_not_called()
 
 
 def test_setup_observability_invalid_level_falls_back():
-    from agentflow_cli.src.app.core.config.setup_middleware import _setup_observability
+    from tenxgraph_api.src.app.core.config.setup_middleware import _setup_observability
 
     modules, _setup_obs, _base, _comp = _obs_modules()
     cfg = {"level": "bogus", "logfire": {"enabled": True}}

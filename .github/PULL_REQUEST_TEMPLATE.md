@@ -24,10 +24,10 @@
 ## Documentation
 
 - [ ] `CHANGELOG.md` updated under `[Unreleased]`
-- [ ] `README.md` updated if a CLI flag, HTTP route, or `agentflow.json` key changed
+- [ ] `README.md` updated if a CLI flag, HTTP route, or `10xgraph.json` key changed
 - [ ] Breaking changes are under a `### Breaking` heading with migration steps
 
-## If you touched `agentflow_cli/cli/templates/`
+## If you touched `tenxgraph_api/cli/templates/`
 
 - [ ] I built the wheel and confirmed the new files are inside it, not just in the repo
 

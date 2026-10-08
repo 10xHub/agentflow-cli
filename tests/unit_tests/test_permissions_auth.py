@@ -66,7 +66,7 @@ class TestRequirePermissionInit:
 
     def test_init_with_resource_and_action(self):
         """Test initialization with resource and action."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         perm = RequirePermission("graph", "invoke")
 
@@ -76,7 +76,7 @@ class TestRequirePermissionInit:
 
     def test_init_with_custom_extractor(self):
         """Test initialization with custom resource ID extractor."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         def custom_extractor(request):
             return request.query_params.get("resource_id")
@@ -89,7 +89,7 @@ class TestRequirePermissionInit:
 
     def test_init_different_resources(self):
         """Test initialization with different resource types."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         for resource in ["graph", "checkpointer", "store", "agent"]:
             perm = RequirePermission(resource, "read")
@@ -97,7 +97,7 @@ class TestRequirePermissionInit:
 
     def test_init_different_actions(self):
         """Test initialization with different action types."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         for action in ["invoke", "read", "write", "delete", "stream", "create"]:
             perm = RequirePermission("resource", action)
@@ -118,7 +118,7 @@ class TestRequirePermissionCall:
         mock_authz,
     ):
         """Test __call__ when auth is not configured."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         # Configure mocks
         mock_config.auth_config = MagicMock(return_value=None)
@@ -140,7 +140,7 @@ class TestRequirePermissionCall:
         mock_authz,
     ):
         """Test __call__ with valid authentication and authorization."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         perm = RequirePermission("graph", "invoke")
 
@@ -156,14 +156,14 @@ class TestRequirePermissionCall:
         self, mock_request, mock_response, mock_credential, mock_config
     ):
         """Test __call__ when auth backend is not configured."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         # Set auth_config to return something truthy
         mock_config.auth_config = MagicMock(return_value={"enabled": True})
 
         perm = RequirePermission("graph", "invoke")
 
-        with patch("agentflow_cli.src.app.core.auth.permissions.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.permissions.logger") as mock_logger:
             result = await perm(
                 mock_request,
                 mock_response,
@@ -190,7 +190,7 @@ class TestRequirePermissionCall:
         mock_authz,
     ):
         """Test __call__ when authorization fails."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         # Configure authorization to fail
         mock_authz.authorize = AsyncMock(return_value=False)
@@ -219,14 +219,14 @@ class TestRequirePermissionCall:
         mock_authz,
     ):
         """Test __call__ when authentication returns data without user_id."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         # Configure authentication to return data without user_id
         mock_auth_backend.authenticate = MagicMock(return_value={"other_field": "value"})
 
         perm = RequirePermission("graph", "invoke")
 
-        with patch("agentflow_cli.src.app.core.auth.permissions.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.auth.permissions.logger") as mock_logger:
             result = await perm(
                 mock_request,
                 mock_response,
@@ -248,7 +248,7 @@ class TestRequirePermissionCall:
         mock_authz,
     ):
         """Test __call__ with custom resource ID extractor function."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         def custom_extractor(request):
             return "custom-resource-id"
@@ -268,7 +268,7 @@ class TestExtractResourceIdFromPath:
 
     def test_extract_thread_id_from_path(self, mock_request):
         """Test extracting thread_id from path parameters."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_request.path_params = {"thread_id": "thread-123"}
 
@@ -279,7 +279,7 @@ class TestExtractResourceIdFromPath:
 
     def test_extract_memory_id_from_path(self, mock_request):
         """Test extracting memory_id from path parameters."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_request.path_params = {"memory_id": "mem-456"}
 
@@ -290,7 +290,7 @@ class TestExtractResourceIdFromPath:
 
     def test_extract_namespace_from_path(self, mock_request):
         """Test extracting namespace from path parameters."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_request.path_params = {"namespace": "my-namespace"}
 
@@ -301,7 +301,7 @@ class TestExtractResourceIdFromPath:
 
     def test_extract_returns_none_when_no_match(self, mock_request):
         """Test that extract returns None when no matching parameter found."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_request.path_params = {"other_param": "value"}
 
@@ -312,7 +312,7 @@ class TestExtractResourceIdFromPath:
 
     def test_extract_returns_first_match(self, mock_request):
         """Test that extract returns first matching parameter."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_request.path_params = {"thread_id": "thread-789", "memory_id": "mem-999"}
 
@@ -324,7 +324,7 @@ class TestExtractResourceIdFromPath:
 
     def test_extract_converts_to_string(self, mock_request):
         """Test that extract converts resource ID to string."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_request.path_params = {"thread_id": 123}
 
@@ -349,7 +349,7 @@ class TestRequirePermissionIntegration:
         mock_authz,
     ):
         """Test complete flow with auth configured and user authorized."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_request.path_params = {"thread_id": "test-thread"}
         mock_config.auth_config = MagicMock(return_value={"enabled": True})
@@ -384,7 +384,7 @@ class TestRequirePermissionIntegration:
         mock_authz,
     ):
         """Test that when auth not configured, no auth/authz checks are performed."""
-        from agentflow_cli.src.app.core.auth.permissions import RequirePermission
+        from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
 
         mock_config.auth_config = MagicMock(return_value=None)
 

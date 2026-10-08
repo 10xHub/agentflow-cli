@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <title>10xGraph</title>
+  <style>
+    .ink { stroke: #0B0E13; fill: #0B0E13; } .amb { fill: #C8692F; }
+    @media (prefers-color-scheme: dark) { .ink { stroke: #F2F4F7; fill: #F2F4F7; } .amb { fill: #E9A57C; } }
+  </style>
+  <rect class="ink" x="4" y="4" width="40" height="40" rx="11" fill="none" style="fill:none" stroke-width="4.4"/>
+  <path class="ink" d="M13 33L21 23L34 15L34 31L21 23" style="fill:none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <g class="ink" stroke="none"><circle cx="21" cy="23" r="4"/><circle cx="34" cy="15" r="4"/><circle cx="34" cy="31" r="4"/></g>
+  <circle class="amb" cx="13" cy="33" r="4.6"/>
+</svg>

@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "10xscale-agentflow-cli"
-version = "0.6.1"
-description = "Final release under this name: the project continues as 10xGraph (https://10xgraph.com). CLI and API server for 10xScale Agentflow: serve a compiled agent graph over REST, WebSocket and AG-UI with auth, rate limiting, threads and memory."
+name = "10xgraph-api"
+version = "0.7.0"
+description = "API server and CLI for 10xGraph (formerly 10xscale-agentflow-cli): serve a compiled agent graph over REST, WebSocket and AG-UI with auth, rate limiting, threads and memory."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
@@ -17,12 +17,13 @@ maintainers = [
     {name = "10xScale", email = "contact@10xscale.ai"},
 ]
 keywords = [
-    "10xscale AgentFlow",
+    "10xgraph",
+    "10xscale",
     "api",
     "fastapi",
     "cli",
+    "agents",
     "agentflow",
-    "10xgraph"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -36,10 +37,10 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 dependencies = [
-    # 0.10.0 is the first core release shipping `interrupt()`, per-run
-    # `remote_tools` and `validate_skill`, which AG-UI, `resume` and
-    # `agentflow skills --validate` use. 0.10.x is the final core line.
-    "10xscale-agentflow>=0.10.0,<2.0",
+    # 0.10.1 is the first core release under the 10xgraph name (import `tenxgraph`).
+    # It ships `interrupt()`, per-run `remote_tools` and `validate_skill`, which
+    # AG-UI, `resume` and `10xgraph skills --validate` use.
+    "10xgraph>=0.10.1,<2.0",
     # Pre-1.0 and major-version-risky deps are capped; floors are the versions
     # the suite is verified against.
     "fastapi>=0.116,<1.0",
@@ -58,12 +59,10 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://10xgraph.com"
-Repository = "https://github.com/10xHub/agentflow-cli"
-Issues = "https://github.com/10xHub/agentflow-cli/issues"
+Repository = "https://github.com/10xGraph/10xgraph-api"
+Issues = "https://github.com/10xGraph/10xgraph-api/issues"
 Documentation = "https://10xgraph.com"
-Changelog = "https://github.com/10xHub/agentflow-cli/blob/main/CHANGELOG.md"
-"10xGraph (successor)" = "https://10xgraph.com"
-"10xGraph on GitHub" = "https://github.com/10xGraph"
+Changelog = "https://github.com/10xGraph/10xgraph-api/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 sentry = [
@@ -99,7 +98,9 @@ ag-ui = [
 ]
 
 [project.scripts]
-agentflow = "agentflow_cli.cli.main:main"
+10xgraph = "tenxgraph_api.cli.main:main"
+# Deprecated alias for the pre-rename command name; removed in 2.0.
+agentflow = "tenxgraph_api.cli.main:legacy_main"
 
 [tool.setuptools]
 zip-safe = false
@@ -107,14 +108,14 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agentflow_cli*"]
-exclude = ["tests*", "docs*", "__pycache__*", "agentflow-cli/tests*"]
+include = ["tenxgraph_api*", "agentflow_cli*"]
+exclude = ["tests*", "docs*", "__pycache__*"]
 
 [tool.setuptools.package-data]
 # `**/*` (not extension globs) so scaffolding dotfiles - .env.example,
 # .python-version - and templates/prod/pyproject.toml reach the wheel.
-# Without them `agentflow init` fails on a PyPI install.
-"agentflow_cli" = ["py.typed", "**/*"]
+# Without them `10xgraph init` fails on a PyPI install.
+"tenxgraph_api" = ["py.typed", "**/*"]
 
 [tool.setuptools.exclude-package-data]
 # Tool caches that appear if the prod template is ever run in place.
@@ -177,9 +178,9 @@ exclude = [
     "venv",
     ".venv",
     # Emitted scaffolding, not library code. These paths must match from the repo
-    # root - the previous `*/agentflow-cli/...` patterns had a hyphen typo and a
+    # root - the previous `*/10xgraph-api/...` patterns had a hyphen typo and a
     # leading `*/`, so neither ever matched and templates were being linted.
-    "agentflow_cli/cli/templates",
+    "tenxgraph_api/cli/templates",
 ]
 
 
@@ -223,10 +224,10 @@ docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.12"
-files = ["agentflow_cli"]
+files = ["tenxgraph_api"]
 # Templates are emitted code, not library code - they reference modules that only
 # exist in a scaffolded project.
-exclude = "^agentflow_cli/cli/templates/"
+exclude = "^tenxgraph_api/cli/templates/"
 ignore_missing_imports = true
 follow_imports = "silent"
 warn_redundant_casts = true
@@ -238,7 +239,7 @@ show_error_codes = true
 pretty = true
 
 [[tool.mypy.overrides]]
-module = ["agentflow_cli.cli.templates.*"]
+module = ["tenxgraph_api.cli.templates.*"]
 ignore_errors = true
 
 # --- Phased adoption backlog -------------------------------------------------
@@ -258,20 +259,20 @@ ignore_errors = true
 #   setup_middleware.py          1 error each (assignment, var-annotated)
 [[tool.mypy.overrides]]
 module = [
-    "agentflow_cli.src.app.routers.graph.services.graph_service",
-    "agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor",
-    "agentflow_cli.src.app.routers.graph.router",
-    "agentflow_cli.src.app.core.auth.permissions",
-    "agentflow_cli.src.app.core.auth.auth_backend",
-    "agentflow_cli.src.app.core.config.settings",
-    "agentflow_cli.src.app.core.config.media_settings",
-    "agentflow_cli.src.app.core.config.setup_middleware",
-    "agentflow_cli.cli.commands.eval",
+    "tenxgraph_api.src.app.routers.graph.services.graph_service",
+    "tenxgraph_api.src.app.routers.graph.services.multimodal_preprocessor",
+    "tenxgraph_api.src.app.routers.graph.router",
+    "tenxgraph_api.src.app.core.auth.permissions",
+    "tenxgraph_api.src.app.core.auth.auth_backend",
+    "tenxgraph_api.src.app.core.config.settings",
+    "tenxgraph_api.src.app.core.config.media_settings",
+    "tenxgraph_api.src.app.core.config.setup_middleware",
+    "tenxgraph_api.cli.commands.eval",
 ]
 ignore_errors = true
 
 [tool.bandit]
-exclude_dirs = ["tests", "agentflow_cli/cli/templates", ".venv", "venv"]
+exclude_dirs = ["tests", "tenxgraph_api/cli/templates", ".venv", "venv"]
 skips = ["B101", "B611", "B601"]
 
 
@@ -294,7 +295,7 @@ filterwarnings = [
 ]
 addopts = [
     # Limit coverage collection to the local project package only
-    "--cov=agentflow_cli",
+    "--cov=tenxgraph_api",
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
@@ -310,7 +311,7 @@ markers = [
 
 [tool.coverage.run]
 # Only measure the first-party project package
-source = ["agentflow_cli"]
+source = ["tenxgraph_api"]
 branch = true
 omit = [
     "*/__init__.py",           # often trivial
@@ -319,8 +320,8 @@ omit = [
     "*/scripts/*",
     "*/venv/*",
     "*/.venv/*",
-    "*/agentflow_cli/cli/templates/prod/*",
-    "*/agentflow_cli/cli/templates/dev/*",
+    "*/tenxgraph_api/cli/templates/prod/*",
+    "*/tenxgraph_api/cli/templates/dev/*",
 ]
 
 [tool.coverage.report]
@@ -335,16 +336,22 @@ show_missing = true
 
 [tool.coverage.paths]
 source = [
-    "agentflow_cli",
-    "*/site-packages/agentflow_cli",
+    "tenxgraph_api",
+    "*/site-packages/tenxgraph_api",
 ]
 
 [tool.pytest-env]
 ENVIRONMENT = "pytest"
 
+[tool.uv.sources]
+# Local core checkout until 10xgraph is published to PyPI. uv only: pip and the built wheel
+# still depend on 10xgraph from PyPI. Remove once 10xgraph 0.10.1 is released; CI clones this
+# repo alone and has no ../agentflow.
+10xgraph = { path = "../agentflow", editable = true }
+
 [dependency-groups]
 dev = [
-    "10xscale-agentflow>=0.10.0",
+    "10xgraph>=0.10.1",
     "snowflakekit",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",

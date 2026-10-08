@@ -11,7 +11,7 @@ from typing import Any
 
 import anyio
 
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
 from .conftest import _AuthOnConfig
 

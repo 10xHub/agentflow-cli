@@ -4,7 +4,7 @@
 # Extends AgentFlowExecutor to emit INPUT_REQUIRED when the LLM asks
 # for missing information (e.g. "Which currency do you want to convert to?").
 
-# Referenced in agentflow.json as:
+# Referenced in 10xgraph.json as:
 #     "executor": "executor:CurrencyAgentExecutor"
 # """
 
@@ -16,9 +16,9 @@
 # from a2a.server.events.event_queue import EventQueue
 # from a2a.server.tasks.task_updater import TaskUpdater
 # from a2a.types import TaskState, TextPart
-# from agentflow.a2a_integration.executor import AgentFlowExecutor
-# from agentflow.core.state import Message as AFMessage
-# from agentflow.utils.constants import ResponseGranularity
+# from tenxgraph.runtime.protocols.a2a.executor import AgentFlowExecutor
+# from tenxgraph.core.state import Message as AFMessage
+# from tenxgraph.utils.constants import ResponseGranularity
 
 
 # logger = logging.getLogger(__name__)

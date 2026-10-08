@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agentflow_cli.cli.commands.test import TestCommand
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands.test import TestCommand
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 # Disable pytest collection for the imported TestCommand class
@@ -44,7 +44,7 @@ def test_execute_simple_success(cmd):
     with (
         patch("subprocess.run", return_value=mock_run_res) as mock_run,
         patch(
-            "agentflow_cli.cli.commands.test.ConfigManager.auto_discover_config", return_value=None
+            "tenxgraph_api.cli.commands.test.ConfigManager.auto_discover_config", return_value=None
         ),
     ):
         code = cmd.execute(path="tests/unit_tests")
@@ -62,7 +62,7 @@ def test_execute_failure(cmd):
     with (
         patch("subprocess.run", return_value=mock_run_res) as mock_run,
         patch(
-            "agentflow_cli.cli.commands.test.ConfigManager.auto_discover_config", return_value=None
+            "tenxgraph_api.cli.commands.test.ConfigManager.auto_discover_config", return_value=None
         ),
     ):
         code = cmd.execute()
@@ -76,7 +76,7 @@ def test_execute_with_config_overrides(cmd):
 
     # Mock ConfigManager to return test config
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.get_test_config.return_value = {
         "path": "custom_tests",
         "coverage": True,
@@ -85,7 +85,7 @@ def test_execute_with_config_overrides(cmd):
 
     with (
         patch("subprocess.run", return_value=mock_run_res) as mock_run,
-        patch("agentflow_cli.cli.commands.test.ConfigManager", return_value=mock_cm),
+        patch("tenxgraph_api.cli.commands.test.ConfigManager", return_value=mock_cm),
         patch("webbrowser.open") as mock_web_open,
     ):
         code = cmd.execute(coverage=False, html=True)  # html=True requires coverage config override
@@ -104,7 +104,7 @@ def test_execute_quiet_and_extra_args(cmd):
     with (
         patch("subprocess.run", return_value=mock_run_res) as mock_run,
         patch(
-            "agentflow_cli.cli.commands.test.ConfigManager.auto_discover_config", return_value=None
+            "tenxgraph_api.cli.commands.test.ConfigManager.auto_discover_config", return_value=None
         ),
     ):
         cmd.execute(quiet=True, keyword="my_test", extra_args=("-x", "--lf"))

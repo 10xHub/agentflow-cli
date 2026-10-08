@@ -4,11 +4,12 @@
 
 | Version | Supported |
 |---|---|
-| `0.5.x` | Yes |
-| `< 0.5` | No |
+| `0.7.x` (`10xgraph-api`) | Yes |
+| `< 0.7` (`10xscale-agentflow-cli`) | No |
 
-Only the latest minor release receives security fixes. `10xscale-agentflow-cli` is
-pre-1.0; there are no long-term support branches yet.
+Only the latest minor release receives security fixes. `10xgraph-api` is
+pre-1.0; there are no long-term support branches yet. `10xscale-agentflow-cli` is no
+longer published; upgrade to `10xgraph-api` to receive fixes.
 
 ## Reporting a vulnerability
 
@@ -17,16 +18,16 @@ pre-1.0; there are no long-term support branches yet.
 Report privately through either channel:
 
 1. **GitHub private vulnerability reporting** (preferred) - go to the
-   [Security tab](https://github.com/10xHub/agentflow-cli/security/advisories/new) and
+   [Security tab](https://github.com/10xGraph/10xgraph-api/security/advisories/new) and
    open a draft advisory.
 2. **Email** - `contact@10xscale.ai`, with `SECURITY` in the subject line.
 
 Please include:
 
-- The affected version (`agentflow version` output).
+- The affected version (`10xgraph version` output).
 - A description of the issue and its impact.
 - Reproduction steps or a proof of concept.
-- Any relevant configuration (`agentflow.json`, auth mode, rate limit backend) with
+- Any relevant configuration (`10xgraph.json`, auth mode, rate limit backend) with
   secrets redacted.
 
 ## What to expect
@@ -44,20 +45,20 @@ reasonable window to ship a fix before publishing details.
 
 In scope:
 
-- Authentication and authorization bypass in `agentflow_cli/src/app/core/auth/`,
+- Authentication and authorization bypass in `tenxgraph_api/src/app/core/auth/`,
   including cross-user (IDOR) access to threads, checkpoints, or store memories.
 - Route guard bypass - reaching a non-public route without a `RequirePermission` check.
 - Rate limit bypass.
 - Secret leakage through logs, error responses, or generated scaffolding.
 - Path traversal or arbitrary file write in the media/upload endpoints or in
-  `agentflow init` scaffolding.
+  `10xgraph init` scaffolding.
 - Insecure defaults that a deployment would inherit without noticing.
 
 Out of scope:
 
 - Vulnerabilities in a user's own agent graph, tools, or `BaseAuth` subclass.
 - Issues that require an already-compromised host or an attacker-controlled
-  `agentflow.json`.
+  `10xgraph.json`.
 - Missing hardening in a deliberately permissive development configuration
   (`MODE=development`).
 - Denial of service through unbounded resource use in a user-supplied tool.

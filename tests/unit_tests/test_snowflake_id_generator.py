@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture
 def mock_snowflake_kit():
     """Mock snowflakekit module."""
-    with patch("agentflow_cli.src.app.utils.snowflake_id_generator.find_spec") as mock_find_spec:
+    with patch("tenxgraph_api.src.app.utils.snowflake_id_generator.find_spec") as mock_find_spec:
         mock_find_spec.return_value = MagicMock()
 
         mock_config_class = MagicMock()
@@ -38,9 +38,9 @@ class TestSnowFlakeIdGeneratorImportError:
 
     def test_raises_import_error_when_snowflakekit_not_available(self):
         """Test that ImportError is raised when snowflakekit is not installed."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
-        with patch("agentflow_cli.src.app.utils.snowflake_id_generator.HAS_SNOWFLAKE", False):
+        with patch("tenxgraph_api.src.app.utils.snowflake_id_generator.HAS_SNOWFLAKE", False):
             with pytest.raises(ImportError, match="snowflakekit is not installed"):
                 SnowFlakeIdGenerator()
 
@@ -50,7 +50,7 @@ class TestSnowFlakeIdGeneratorInitialization:
 
     def test_init_with_env_vars(self, mock_snowflake_kit):
         """Test initialization using environment variables."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         env_vars = {
             "SNOWFLAKE_EPOCH": "1723323246031",
@@ -70,7 +70,7 @@ class TestSnowFlakeIdGeneratorInitialization:
 
     def test_init_with_explicit_params(self, mock_snowflake_kit):
         """Test initialization with explicit parameters."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         generator = SnowFlakeIdGenerator(
             snowflake_epoch=1723323246031,
@@ -87,7 +87,7 @@ class TestSnowFlakeIdGeneratorInitialization:
 
     def test_init_with_partial_params_uses_env(self, mock_snowflake_kit):
         """Test initialization with partial parameters falls back to defaults."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         # When only some params are provided, it should use env vars
         # This should not raise an error because the code has a default fallback
@@ -106,9 +106,9 @@ class TestSnowFlakeIdGeneratorIdType:
 
     def test_id_type_is_bigint(self, mock_snowflake_kit):
         """Test that id_type returns IDType.BIGINT."""
-        from agentflow.utils.id_generator import IDType
+        from tenxgraph.utils.id_generator import IDType
 
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         generator = SnowFlakeIdGenerator(
             snowflake_epoch=1723323246031,
@@ -129,7 +129,7 @@ class TestSnowFlakeIdGeneratorGenerate:
     @pytest.mark.asyncio
     async def test_generate_returns_id(self, mock_snowflake_kit):
         """Test that generate returns a valid ID."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         generator = SnowFlakeIdGenerator(
             snowflake_epoch=1723323246031,
@@ -149,7 +149,7 @@ class TestSnowFlakeIdGeneratorGenerate:
     @pytest.mark.asyncio
     async def test_generate_multiple_ids(self, mock_snowflake_kit):
         """Test generating multiple IDs."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         # Configure mock to return different values
         mock_snowflake_kit["generator"].generate = AsyncMock(side_effect=[1, 2, 3])
@@ -179,7 +179,7 @@ class TestSnowFlakeIdGeneratorConfigEnvValues:
 
     def test_init_with_custom_env_values(self, mock_snowflake_kit):
         """Test initialization with custom environment values."""
-        from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+        from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
         custom_env = {
             "SNOWFLAKE_EPOCH": "999999999999",

@@ -4,18 +4,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from agentflow.storage.store import BaseStore, MemorySearchResult, MemoryType
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
+from tenxgraph.storage.store import BaseStore, MemorySearchResult, MemoryType
 
-from agentflow_cli.src.app.core.auth.authorization import (
+from tenxgraph_api.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
 )
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
-from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
+from tenxgraph_api.src.app.core.config.setup_middleware import setup_middleware
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def mock_auth_user():
 def app(mock_store, mock_auth_user):
     """FastAPI test app with store router."""
     # Import early before binding
-    from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+    from tenxgraph_api.src.app.core.auth.base_auth import BaseAuth
 
     app = FastAPI()
     setup_middleware(app)
@@ -66,10 +66,10 @@ def app(mock_store, mock_auth_user):
 
     # Mock authentication to provide a user
     with patch(
-        "agentflow_cli.src.app.core.auth.auth_backend.verify_current_user",
+        "tenxgraph_api.src.app.core.auth.auth_backend.verify_current_user",
         return_value=mock_auth_user,
     ):
-        from agentflow_cli.src.app.routers.store.router import router as store_router
+        from tenxgraph_api.src.app.routers.store.router import router as store_router
 
         app.include_router(store_router)
 
@@ -96,7 +96,7 @@ def unauth_app(mock_store):
     serialization issues from AsyncMock default returns.
     """
     # Import early before binding
-    from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+    from tenxgraph_api.src.app.core.auth.base_auth import BaseAuth
 
     app = FastAPI()
     setup_middleware(app)
@@ -132,10 +132,10 @@ def unauth_app(mock_store):
 
     # Patch auth to no-op so BaseAuth DI is not required in unauthenticated tests
     with patch(
-        "agentflow_cli.src.app.core.auth.auth_backend.verify_current_user",
+        "tenxgraph_api.src.app.core.auth.auth_backend.verify_current_user",
         return_value={},
     ):
-        from agentflow_cli.src.app.routers.store.router import router as store_router
+        from tenxgraph_api.src.app.routers.store.router import router as store_router
 
         app.include_router(store_router)
         yield app

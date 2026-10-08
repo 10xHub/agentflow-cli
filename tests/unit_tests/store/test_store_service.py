@@ -3,9 +3,9 @@
 from uuid import uuid4
 
 import pytest
-from agentflow.storage.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
+from tenxgraph.storage.store.store_schema import DistanceMetric, MemoryType, RetrievalStrategy
 
-from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
+from tenxgraph_api.src.app.routers.store.schemas.store_schemas import (
     ForgetMemorySchema,
     SearchMemorySchema,
     StoreMemorySchema,
@@ -107,7 +107,7 @@ class TestStoreMemory:
     async def test_store_memory_no_store_raises_error(self, mock_user):
         """Test storing memory when store is not configured."""
         # Arrange
-        from agentflow_cli.src.app.routers.store.services.store_service import (
+        from tenxgraph_api.src.app.routers.store.services.store_service import (
             StoreService,
         )
 

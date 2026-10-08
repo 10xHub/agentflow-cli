@@ -16,20 +16,20 @@ import pytest
 
 
 pytest.importorskip("ag_ui")
-# The graph below pauses on interrupt(), which no released agentflow core ships yet.
-pytest.importorskip("agentflow.utils.interrupt", reason="needs an agentflow core with interrupt()")
+# The graph below pauses on interrupt(), which needs a core release that ships it.
+pytest.importorskip("tenxgraph.utils.interrupt", reason="needs a tenxgraph core with interrupt()")
 
 from ag_ui.core import EventType
 from ag_ui.core.events import Event
-from agentflow.core.graph import CompiledGraph, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message, TextBlock, ToolCallBlock
-from agentflow.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
-from agentflow.utils.constants import END
-from agentflow.utils.interrupt import interrupt
 from injectq import InjectQ
 from pydantic import TypeAdapter
+from tenxgraph.core.graph import CompiledGraph, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message, TextBlock, ToolCallBlock
+from tenxgraph.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
+from tenxgraph.utils.constants import END
+from tenxgraph.utils.interrupt import interrupt
 
-from agentflow_cli.src.app.routers.ag_ui import router as ag_ui_router
+from tenxgraph_api.src.app.routers.ag_ui import router as ag_ui_router
 
 from .conftest import OwnershipAuthz, build_app, make_client, user_headers
 
@@ -124,7 +124,7 @@ class _Config:
     thread_name_generator_path = None
 
     def __init__(self, allow_client_tools: bool = True) -> None:
-        from agentflow_cli.src.app.core.config.graph_config import AgUiConfig
+        from tenxgraph_api.src.app.core.config.graph_config import AgUiConfig
 
         self.ag_ui = AgUiConfig(enabled=True, allow_client_tools=allow_client_tools)
 
@@ -145,7 +145,7 @@ def graph_and_checkpointer():
 
 
 def _client(graph_and_checkpointer, config: _Config):
-    from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+    from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
 
     graph, checkpointer = graph_and_checkpointer
     authz = OwnershipAuthz()
@@ -522,7 +522,7 @@ def test_invalid_client_tools_are_rejected_before_running(setup, tools):
 
 
 def test_client_tools_can_be_turned_off(graph_and_checkpointer):
-    """allow_client_tools=false: only tools declared in agentflow.json reach the model."""
+    """allow_client_tools=false: only tools declared in 10xgraph.json reach the model."""
     client, _, _ = _client(graph_and_checkpointer, _Config(allow_client_tools=False))
     events = _events(
         client.post(

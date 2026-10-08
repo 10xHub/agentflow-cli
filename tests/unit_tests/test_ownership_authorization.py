@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentflow_cli.src.app.core.auth.authorization import (
+from tenxgraph_api.src.app.core.auth.authorization import (
     DefaultAuthorizationBackend,
     OwnershipAuthorizationBackend,
 )
@@ -148,8 +148,8 @@ async def test_repeated_checks_hit_backing_lookup_once():
 
 
 def test_builtin_and_mode_defaults(monkeypatch):
-    from agentflow_cli.src.app import loader
-    from agentflow_cli.src.app.core.config import settings as settings_mod
+    from tenxgraph_api.src.app import loader
+    from tenxgraph_api.src.app.core.config import settings as settings_mod
 
     resolve = loader._resolve_authorization_backend
 

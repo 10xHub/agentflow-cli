@@ -3,18 +3,18 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from agentflow.core import CompiledGraph
-from agentflow.storage.checkpointer import BaseCheckpointer
-from agentflow.storage.store import BaseStore
 from injectq import InjectQ
+from tenxgraph.core import CompiledGraph
+from tenxgraph.storage.checkpointer import BaseCheckpointer
+from tenxgraph.storage.store import BaseStore
 
-from agentflow_cli import BaseAuth
-from agentflow_cli.src.app.core.auth.authorization import (
+from tenxgraph_api import BaseAuth
+from tenxgraph_api.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
 )
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig, RemoteToolConfig
-from agentflow_cli.src.app.loader import (
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig, RemoteToolConfig
+from tenxgraph_api.src.app.loader import (
     attach_all_modules,
     load_and_bind_auth,
     load_and_bind_authorization,
@@ -26,7 +26,7 @@ from agentflow_cli.src.app.loader import (
     load_store,
     load_thread_name_generator,
 )
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
+from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 
 @pytest.mark.asyncio
@@ -298,7 +298,7 @@ def test_load_and_bind_auth():
 
     # Dotted path conversion to py file check
     with patch("pathlib.Path.exists", return_value=True):
-        with patch("agentflow_cli.src.app.loader.load_auth") as mock_load_auth:
+        with patch("tenxgraph_api.src.app.loader.load_auth") as mock_load_auth:
             mock_auth_instance = MagicMock(spec=BaseAuth)
             mock_load_auth.return_value = mock_auth_instance
 
@@ -318,12 +318,12 @@ def test_load_and_bind_auth():
 
 def test_load_and_bind_auth_jwt_needs_no_path(monkeypatch, tmp_path):
     """The documented ``"auth": "jwt"`` config must boot (it has no path)."""
-    from agentflow_cli.src.app.core.auth.jwt_auth import JwtAuth
-    from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+    from tenxgraph_api.src.app.core.auth.jwt_auth import JwtAuth
+    from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
 
     monkeypatch.setenv("JWT_SECRET_KEY", "x" * 32)
     monkeypatch.setenv("JWT_ALGORITHM", "HS256")
-    config_file = tmp_path / "agentflow.json"
+    config_file = tmp_path / "10xgraph.json"
     config_file.write_text('{"agent": "graph.react:app", "auth": "jwt"}')
 
     container = MagicMock(spec=InjectQ)
@@ -335,7 +335,7 @@ def test_load_and_bind_auth_jwt_needs_no_path(monkeypatch, tmp_path):
 
 
 def test_load_and_bind_authorization(monkeypatch):
-    from agentflow_cli.src.app.core.config import settings as settings_module
+    from tenxgraph_api.src.app.core.config import settings as settings_module
 
     # The unconfigured default depends on MODE; do not depend on which test cached the
     # settings first.
@@ -345,7 +345,7 @@ def test_load_and_bind_authorization(monkeypatch):
 
     # Path provided
     mock_auth_backend = MagicMock(spec=AuthorizationBackend)
-    with patch("agentflow_cli.src.app.loader.load_authorization", return_value=mock_auth_backend):
+    with patch("tenxgraph_api.src.app.loader.load_authorization", return_value=mock_auth_backend):
         load_and_bind_authorization(container, "mod:auth")
         container.bind_instance.assert_called_once_with(AuthorizationBackend, mock_auth_backend)
 
@@ -380,14 +380,14 @@ async def test_attach_all_modules():
     mock_auth_backend = MagicMock(spec=AuthorizationBackend)
 
     with (
-        patch("agentflow_cli.src.app.loader.load_graph", return_value=mock_graph),
+        patch("tenxgraph_api.src.app.loader.load_graph", return_value=mock_graph),
         patch(
-            "agentflow_cli.src.app.loader.load_thread_name_generator", return_value=mock_generator
+            "tenxgraph_api.src.app.loader.load_thread_name_generator", return_value=mock_generator
         ),
-        patch("agentflow_cli.src.app.loader.load_authorization", return_value=mock_auth_backend),
+        patch("tenxgraph_api.src.app.loader.load_authorization", return_value=mock_auth_backend),
         patch("pathlib.Path.exists", return_value=True),
         patch(
-            "agentflow_cli.src.app.core.config.media_settings.get_media_settings"
+            "tenxgraph_api.src.app.core.config.media_settings.get_media_settings"
         ) as mock_get_media_settings,
     ):
         mock_get_media_settings.return_value = MagicMock()

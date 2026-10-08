@@ -13,9 +13,9 @@ import pytest
 # ---------------------------------------------------------------------------
 # MediaService unit tests
 # ---------------------------------------------------------------------------
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
-from agentflow_cli.src.app.core.config.media_settings import MediaSettings, MediaStorageType
+from tenxgraph_api.src.app.core.config.media_settings import MediaSettings, MediaStorageType
 
 
 def _make_settings(**overrides) -> MediaSettings:
@@ -33,7 +33,7 @@ class TestMediaService:
     """Unit tests for MediaService."""
 
     def _make_service(self, **kwargs):
-        from agentflow_cli.src.app.routers.media import MediaService
+        from tenxgraph_api.src.app.routers.media import MediaService
 
         return MediaService(
             settings=_make_settings(**kwargs),
@@ -165,9 +165,9 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_noop_when_no_media_service(self):
-        from agentflow.core.state import Message
+        from tenxgraph.core.state import Message
 
-        from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+        from tenxgraph_api.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
         )
 
@@ -177,10 +177,10 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_document_file_id_resolved_to_text(self):
-        from agentflow.core.state import Message
-        from agentflow.core.state.message_block import DocumentBlock, MediaRef, TextBlock
+        from tenxgraph.core.state import Message
+        from tenxgraph.core.state.message_block import DocumentBlock, MediaRef, TextBlock
 
-        from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+        from tenxgraph_api.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
         )
 
@@ -201,11 +201,11 @@ class TestMultimodalPreprocessor:
         assert result[0].content[1].text == "The extracted PDF text"
 
     @pytest.mark.asyncio
-    async def test_image_file_id_to_agentflow_url(self):
-        from agentflow.core.state import Message
-        from agentflow.core.state.message_block import ImageBlock, MediaRef
+    async def test_image_file_id_to_media_url(self):
+        from tenxgraph.core.state import Message
+        from tenxgraph.core.state.message_block import ImageBlock, MediaRef
 
-        from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+        from tenxgraph_api.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
         )
 
@@ -220,14 +220,14 @@ class TestMultimodalPreprocessor:
         result = await preprocess_multimodal_messages([msg], mock_svc)
         media = result[0].content[0].media
         assert media.kind == "url"
-        assert media.url == "agentflow://media/file-img-123"
+        assert media.url == "graph://media/file-img-123"
 
     @pytest.mark.asyncio
     async def test_text_only_message_unchanged(self):
-        from agentflow.core.state import Message
-        from agentflow.core.state.message_block import TextBlock
+        from tenxgraph.core.state import Message
+        from tenxgraph.core.state.message_block import TextBlock
 
-        from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+        from tenxgraph_api.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
         )
 
@@ -239,10 +239,10 @@ class TestMultimodalPreprocessor:
 
     @pytest.mark.asyncio
     async def test_document_file_id_without_cached_text(self):
-        from agentflow.core.state import Message
-        from agentflow.core.state.message_block import DocumentBlock, MediaRef
+        from tenxgraph.core.state import Message
+        from tenxgraph.core.state.message_block import DocumentBlock, MediaRef
 
-        from agentflow_cli.src.app.routers.graph.services.multimodal_preprocessor import (
+        from tenxgraph_api.src.app.routers.graph.services.multimodal_preprocessor import (
             preprocess_multimodal_messages,
         )
 
@@ -255,10 +255,10 @@ class TestMultimodalPreprocessor:
         mock_svc.get_cached_extraction.return_value = None
 
         result = await preprocess_multimodal_messages([msg], mock_svc)
-        # Should convert file_id → agentflow://media/ URL reference
+        # Should convert file_id → graph://media/ URL reference
         media = result[0].content[0].media
         assert media.kind == "url"
-        assert media.url == "agentflow://media/file-no-cache"
+        assert media.url == "graph://media/file-no-cache"
 
 
 # ---------------------------------------------------------------------------
@@ -285,25 +285,25 @@ class TestMediaSettings:
 
 class TestMediaStoreFactory:
     def test_memory_store(self):
-        from agentflow.storage.media.storage.memory_store import InMemoryMediaStore
+        from tenxgraph.storage.media.storage.memory_store import InMemoryMediaStore
 
-        from agentflow_cli.src.app.routers.media import _create_media_store
+        from tenxgraph_api.src.app.routers.media import _create_media_store
 
         s = _make_settings(MEDIA_STORAGE_TYPE=MediaStorageType.MEMORY)
         store = _create_media_store(s)
         assert isinstance(store, InMemoryMediaStore)
 
     def test_local_store(self):
-        from agentflow.storage.media.storage.local_store import LocalFileMediaStore
+        from tenxgraph.storage.media.storage.local_store import LocalFileMediaStore
 
-        from agentflow_cli.src.app.routers.media import _create_media_store
+        from tenxgraph_api.src.app.routers.media import _create_media_store
 
         s = _make_settings(MEDIA_STORAGE_TYPE=MediaStorageType.LOCAL)
         store = _create_media_store(s)
         assert isinstance(store, LocalFileMediaStore)
 
     def test_unknown_type_raises(self):
-        from agentflow_cli.src.app.routers.media import _create_media_store
+        from tenxgraph_api.src.app.routers.media import _create_media_store
 
         s = _make_settings()
         s.MEDIA_STORAGE_TYPE = "bogus"
@@ -318,7 +318,7 @@ class TestMediaStoreFactory:
 
 class TestSchemas:
     def test_file_upload_response_schema(self):
-        from agentflow_cli.src.app.routers.media.schemas import FileUploadResponse
+        from tenxgraph_api.src.app.routers.media.schemas import FileUploadResponse
 
         r = FileUploadResponse(
             file_id="abc",
@@ -331,7 +331,7 @@ class TestSchemas:
         assert r.extracted_text is None
 
     def test_multimodal_config_response_schema(self):
-        from agentflow_cli.src.app.routers.media.schemas import MultimodalConfigResponse
+        from tenxgraph_api.src.app.routers.media.schemas import MultimodalConfigResponse
 
         r = MultimodalConfigResponse(
             media_storage_type="local",

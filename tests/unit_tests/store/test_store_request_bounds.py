@@ -5,7 +5,7 @@
 import pytest
 from pydantic import ValidationError
 
-from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
+from tenxgraph_api.src.app.routers.store.schemas.store_schemas import (
     MAX_LIST_LIMIT,
     MAX_SEARCH_LIMIT,
     MAX_SEARCH_TOKENS,

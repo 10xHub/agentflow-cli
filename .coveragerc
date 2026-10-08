@@ -1,6 +1,6 @@
 [run]
 branch = True
-source = agentflow_cli
+source = tenxgraph_api
 omit =
     */__init__.py
     tests/*
@@ -23,5 +23,5 @@ show_missing = True
 
 [paths]
 source =
-    agentflow_cli
-    */site-packages/agentflow_cli
+    tenxgraph_api
+    */site-packages/tenxgraph_api

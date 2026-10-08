@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 import pytest
 
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
 
 
 class TestGraphConfigAuthConfig:
@@ -27,7 +27,7 @@ class TestGraphConfigAuthConfig:
         """Create a temporary config file and return a function to write to it."""
 
         def _create_config(config_data: dict) -> str:
-            config_path = tmp_path / "agentflow.json"
+            config_path = tmp_path / "10xgraph.json"
             with open(config_path, "w") as f:
                 json.dump(config_data, f)
             return str(config_path)
@@ -360,7 +360,7 @@ class TestGraphConfigJwtEnvLoading:
         """Create a temporary config file and return a function to write to it."""
 
         def _create_config(config_data: dict) -> str:
-            config_path = tmp_path / "agentflow.json"
+            config_path = tmp_path / "10xgraph.json"
             with open(config_path, "w") as f:
                 json.dump(config_data, f)
             return str(config_path)

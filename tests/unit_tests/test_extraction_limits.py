@@ -12,12 +12,12 @@ import zipfile
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from agentflow.core.state.message_block import DocumentBlock, MediaRef
-from agentflow.storage.media.config import DocumentHandling
+from tenxgraph.core.state.message_block import DocumentBlock, MediaRef
+from tenxgraph.storage.media.config import DocumentHandling
 
-from agentflow_cli.src.app.utils.media import extractor as extractor_module
-from agentflow_cli.src.app.utils.media.extractor import DocumentExtractor
-from agentflow_cli.src.app.utils.media.pipeline import DocumentPipeline
+from tenxgraph_api.src.app.utils.media import extractor as extractor_module
+from tenxgraph_api.src.app.utils.media.extractor import DocumentExtractor
+from tenxgraph_api.src.app.utils.media.pipeline import DocumentPipeline
 
 
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -146,7 +146,7 @@ async def test_inline_document_uses_its_declared_type():
 
 @pytest.mark.asyncio
 async def test_upload_uses_its_declared_type():
-    from agentflow_cli.src.app.routers.media import MediaService
+    from tenxgraph_api.src.app.routers.media import MediaService
 
     fake = RecordingExtractor()
     service = MediaService.__new__(MediaService)

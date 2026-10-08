@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @source "./";
 
-/* Agentflow tokens (see agentflow-docs/src/css/tokens.css). Dark is canonical. */
+/* 10xGraph tokens (see agentflow-docs/src/css/tokens.css). Dark is canonical. */
 :root {
   color-scheme: light;
   --af-canvas: #f5f7fb;
@@ -20,6 +20,8 @@
   --af-brand-solid-hover: #1d4ed8;
   --af-brand-soft: rgba(37, 99, 235, 0.08);
   --af-brand-ring: rgba(37, 99, 235, 0.22);
+  /* Entry-node accent of the 10xGraph mark; same values as the docs site and favicon.svg. */
+  --af-brand-amber: #c8692f;
   --af-ok: #047857;
   --af-ok-soft: rgba(16, 185, 129, 0.1);
   --af-warn: #b45309;
@@ -55,6 +57,7 @@
     --af-brand-solid-hover: #3b82f6;
     --af-brand-soft: rgba(59, 130, 246, 0.14);
     --af-brand-ring: rgba(59, 130, 246, 0.35);
+    --af-brand-amber: #e9a57c;
     --af-ok: #34d399;
     --af-ok-soft: rgba(16, 185, 129, 0.14);
     --af-warn: #fbbf24;
@@ -91,6 +94,7 @@
   --color-brand-solid-hover: var(--af-brand-solid-hover);
   --color-brand-soft: var(--af-brand-soft);
   --color-brand-ring: var(--af-brand-ring);
+  --color-brand-amber: var(--af-brand-amber);
   --color-ok: var(--af-ok);
   --color-ok-soft: var(--af-ok-soft);
   --color-warn: var(--af-warn);

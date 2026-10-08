@@ -2,7 +2,7 @@
 
 import logging
 
-from agentflow_cli.src.app.core.utils.log_sanitizer import (
+from tenxgraph_api.src.app.core.utils.log_sanitizer import (
     BEARER_PATTERN,
     JWT_PATTERN,
     SENSITIVE_PATTERNS,

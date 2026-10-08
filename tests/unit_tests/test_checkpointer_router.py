@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from agentflow_cli.src.app.routers.checkpointer.router import (
+from tenxgraph_api.src.app.routers.checkpointer.router import (
     validate_thread_id,
 )
 
@@ -85,12 +85,12 @@ class TestGetStateLogic:
     """Test GET state endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_get_state_calls_service(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that get_state calls service with correct config."""
-        from agentflow_cli.src.app.routers.checkpointer.router import get_state
+        from tenxgraph_api.src.app.routers.checkpointer.router import get_state
 
         mock_success_response.return_value = {"data": {}}
         mock_service.get_state.return_value = {"key": "value"}
@@ -107,7 +107,7 @@ class TestGetStateLogic:
     @pytest.mark.asyncio
     async def test_get_state_validates_thread_id(self, mock_request, mock_service, mock_user):
         """Test that get_state validates thread_id."""
-        from agentflow_cli.src.app.routers.checkpointer.router import get_state
+        from tenxgraph_api.src.app.routers.checkpointer.router import get_state
 
         with pytest.raises(HTTPException):
             await get_state(
@@ -122,13 +122,13 @@ class TestPutStateLogic:
     """Test PUT state endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_put_state_merges_config(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that put_state merges config properly."""
-        from agentflow_cli.src.app.routers.checkpointer.router import put_state
-        from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+        from tenxgraph_api.src.app.routers.checkpointer.router import put_state
+        from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
             StateSchema,
         )
 
@@ -152,8 +152,8 @@ class TestPutStateLogic:
     @pytest.mark.asyncio
     async def test_put_state_validates_thread_id(self, mock_request, mock_service, mock_user):
         """Test that put_state validates thread_id."""
-        from agentflow_cli.src.app.routers.checkpointer.router import put_state
-        from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+        from tenxgraph_api.src.app.routers.checkpointer.router import put_state
+        from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
             StateSchema,
         )
 
@@ -173,12 +173,12 @@ class TestClearStateLogic:
     """Test DELETE state endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_clear_state_calls_service(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that clear_state calls service with correct config."""
-        from agentflow_cli.src.app.routers.checkpointer.router import clear_state
+        from tenxgraph_api.src.app.routers.checkpointer.router import clear_state
 
         mock_success_response.return_value = {"data": {}}
         mock_service.clear_state.return_value = {}
@@ -201,8 +201,8 @@ class TestPutMessagesLogic:
         self, mock_request, mock_service, mock_user
     ):
         """Test that put_messages rejects empty messages."""
-        from agentflow_cli.src.app.routers.checkpointer.router import put_messages
-        from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+        from tenxgraph_api.src.app.routers.checkpointer.router import put_messages
+        from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
             PutMessagesSchema,
         )
 
@@ -228,7 +228,7 @@ class TestGetMessageLogic:
         self, mock_request, mock_service, mock_user
     ):
         """Test that get_message validates message_id."""
-        from agentflow_cli.src.app.routers.checkpointer.router import get_message
+        from tenxgraph_api.src.app.routers.checkpointer.router import get_message
 
         with pytest.raises(HTTPException) as exc_info:
             await get_message(
@@ -241,12 +241,12 @@ class TestGetMessageLogic:
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_get_message_calls_service(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that get_message calls service."""
-        from agentflow_cli.src.app.routers.checkpointer.router import get_message
+        from tenxgraph_api.src.app.routers.checkpointer.router import get_message
 
         mock_success_response.return_value = {"data": {}}
         mock_service.get_message.return_value = {}
@@ -266,12 +266,12 @@ class TestListMessagesLogic:
     """Test GET messages endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_list_messages_passes_filters(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that list_messages passes filters to service."""
-        from agentflow_cli.src.app.routers.checkpointer.router import list_messages
+        from tenxgraph_api.src.app.routers.checkpointer.router import list_messages
 
         mock_success_response.return_value = {"data": {}}
         mock_service.get_messages.return_value = {}
@@ -298,8 +298,8 @@ class TestDeleteMessageLogic:
     @pytest.mark.asyncio
     async def test_delete_message_validates_message_id(self, mock_request, mock_service, mock_user):
         """Test that delete_message validates message_id."""
-        from agentflow_cli.src.app.routers.checkpointer.router import delete_message
-        from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+        from tenxgraph_api.src.app.routers.checkpointer.router import delete_message
+        from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
             ConfigSchema,
         )
 
@@ -317,13 +317,13 @@ class TestDeleteMessageLogic:
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_delete_message_merges_config(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that delete_message merges config properly."""
-        from agentflow_cli.src.app.routers.checkpointer.router import delete_message
-        from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+        from tenxgraph_api.src.app.routers.checkpointer.router import delete_message
+        from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
             ConfigSchema,
         )
 
@@ -349,12 +349,12 @@ class TestGetThreadLogic:
     """Test GET thread endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_get_thread_calls_service(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that get_thread calls service."""
-        from agentflow_cli.src.app.routers.checkpointer.router import get_thread
+        from tenxgraph_api.src.app.routers.checkpointer.router import get_thread
 
         mock_success_response.return_value = {"data": {}}
         mock_service.get_thread.return_value = {}
@@ -373,12 +373,12 @@ class TestListThreadsLogic:
     """Test GET threads endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_list_threads_passes_filters(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that list_threads passes filters to service."""
-        from agentflow_cli.src.app.routers.checkpointer.router import list_threads
+        from tenxgraph_api.src.app.routers.checkpointer.router import list_threads
 
         mock_success_response.return_value = {"data": {}}
         mock_service.list_threads.return_value = {}
@@ -402,13 +402,13 @@ class TestDeleteThreadLogic:
     """Test DELETE thread endpoint logic."""
 
     @pytest.mark.asyncio
-    @patch("agentflow_cli.src.app.routers.checkpointer.router.success_response")
+    @patch("tenxgraph_api.src.app.routers.checkpointer.router.success_response")
     async def test_delete_thread_merges_config(
         self, mock_success_response, mock_request, mock_service, mock_user
     ):
         """Test that delete_thread merges config properly."""
-        from agentflow_cli.src.app.routers.checkpointer.router import delete_thread
-        from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+        from tenxgraph_api.src.app.routers.checkpointer.router import delete_thread
+        from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
             ConfigSchema,
         )
 
@@ -431,8 +431,8 @@ class TestDeleteThreadLogic:
     @pytest.mark.asyncio
     async def test_delete_thread_validates_thread_id(self, mock_request, mock_service, mock_user):
         """Test that delete_thread validates thread_id."""
-        from agentflow_cli.src.app.routers.checkpointer.router import delete_thread
-        from agentflow_cli.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
+        from tenxgraph_api.src.app.routers.checkpointer.router import delete_thread
+        from tenxgraph_api.src.app.routers.checkpointer.schemas.checkpointer_schemas import (
             ConfigSchema,
         )
 

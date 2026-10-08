@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from agentflow_cli.src.app.core.middleware.request_limits import RequestSizeLimitMiddleware
+from tenxgraph_api.src.app.core.middleware.request_limits import RequestSizeLimitMiddleware
 
 
 @pytest.fixture
@@ -217,10 +217,10 @@ def test_upload_route_uses_its_own_limit():
 
 
 def test_upload_limit_follows_the_media_setting(monkeypatch):
-    from agentflow_cli.src.app.core.config import setup_middleware
+    from tenxgraph_api.src.app.core.config import setup_middleware
 
     monkeypatch.setattr(
-        "agentflow_cli.src.app.core.config.media_settings.get_media_settings",
+        "tenxgraph_api.src.app.core.config.media_settings.get_media_settings",
         lambda: type("S", (), {"MEDIA_MAX_SIZE_MB": 25.0})(),
     )
     limits = setup_middleware._upload_path_limits(10 * 1024 * 1024)

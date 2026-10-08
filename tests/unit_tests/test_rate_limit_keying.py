@@ -11,9 +11,9 @@ from types import SimpleNamespace
 import pytest
 from starlette.datastructures import Headers
 
-from agentflow_cli.src.app.core.config.graph_config import RateLimitConfig
-from agentflow_cli.src.app.core.middleware.rate_limit import keying
-from agentflow_cli.src.app.core.middleware.rate_limit.keying import client_key_for
+from tenxgraph_api.src.app.core.config.graph_config import RateLimitConfig
+from tenxgraph_api.src.app.core.middleware.rate_limit import keying
+from tenxgraph_api.src.app.core.middleware.rate_limit.keying import client_key_for
 
 
 def _cfg(**overrides) -> RateLimitConfig:

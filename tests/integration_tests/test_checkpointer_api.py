@@ -8,10 +8,10 @@ server-side pagination cap.
 from __future__ import annotations
 
 import pytest
-from agentflow.core.state import AgentState
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.state import AgentState
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
-from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer_router
+from tenxgraph_api.src.app.routers.checkpointer.router import router as checkpointer_router
 
 from .conftest import build_app, make_client, user_headers
 

@@ -13,7 +13,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from agentflow_cli.src.app.core.middleware.security_headers import (
+from tenxgraph_api.src.app.core.middleware.security_headers import (
     SecurityHeadersMiddleware,
     create_security_headers_middleware,
 )

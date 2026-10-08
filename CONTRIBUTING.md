@@ -1,4 +1,4 @@
-# Contributing to 10xScale Agentflow CLI
+# Contributing to 10xGraph API
 
 Thanks for helping out. This document covers setup, the checks your change has to pass,
 and what we look for in a pull request.
@@ -7,9 +7,9 @@ By participating you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## Scope of this repository
 
-This repo is the **API server and CLI layer** (`10xscale-agentflow-cli`). The core
+This repo is the **API server and CLI layer** (`10xgraph-api`). The core
 orchestration engine - `StateGraph`, `ToolNode`, state, persistence, memory - lives in
-the separate [`10xscale-agentflow`](https://github.com/10xHub/agentflow) package. If your
+the separate [`10xgraph`](https://github.com/10xGraph/10xgraph) package. If your
 change is about graph execution rather than serving or scaffolding, it likely belongs
 there.
 
@@ -18,8 +18,8 @@ there.
 Requires Python 3.12 or 3.13 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/10xHub/agentflow-cli.git
-cd agentflow-cli
+git clone https://github.com/10xGraph/10xgraph-api.git
+cd 10xgraph-api
 uv sync --dev
 uv run pre-commit install
 ```
@@ -43,7 +43,7 @@ Notes:
 - Tests must not make unmocked outbound network calls.
 - Tests that need real external services must be marked `@pytest.mark.integration` so
   they stay behind the `--integration` flag.
-- `agentflow_cli/cli/templates/` is excluded from ruff, mypy, and bandit. It is emitted
+- `tenxgraph_api/cli/templates/` is excluded from ruff, mypy, and bandit. It is emitted
   scaffolding, not library code, and references modules that only exist once a project is
   scaffolded.
 
@@ -54,21 +54,21 @@ Notes:
    that fails before the fix.
 3. Update `CHANGELOG.md` under `[Unreleased]`, in the right subsection
    (`Added` / `Changed` / `Fixed` / `Removed` / `Breaking`).
-4. Update `README.md` if you changed a CLI flag, an HTTP route, or an `agentflow.json`
+4. Update `README.md` if you changed a CLI flag, an HTTP route, or a `10xgraph.json`
    key.
 5. Open the pull request against `main` and fill in the template.
 
 ### Public API changes
 
-Anything exported from `agentflow_cli`, any CLI command or flag, any HTTP route, and any
-`agentflow.json` key is public surface. It is governed by the compatibility policy at the
+Anything exported from `tenxgraph_api`, any CLI command or flag, any HTTP route, and any
+`10xgraph.json` key is public surface. It is governed by the compatibility policy at the
 top of [CHANGELOG.md](CHANGELOG.md): nothing is removed without a deprecation cycle, moved
 modules keep a shim for at least one minor release, and breaking changes are documented
 under a `### Breaking` heading with migration steps.
 
 ### Touching templates
 
-`agentflow_cli/cli/templates/` ships inside the wheel, including dotfiles
+`tenxgraph_api/cli/templates/` ships inside the wheel, including dotfiles
 (`.env.example`, `.python-version`) and `prod/pyproject.toml`. If you add a file there,
 verify it survives packaging:
 
@@ -105,5 +105,5 @@ they disagree. Publishing to PyPI is a deliberate manual `make publish`.
 
 ## License
 
-Agentflow is [MIT licensed](LICENSE) and made by [10xScale](https://10xscale.ai). Contributions
+10xGraph is [MIT licensed](LICENSE) and made by [10xScale](https://10xscale.ai). Contributions
 are accepted under the same license.

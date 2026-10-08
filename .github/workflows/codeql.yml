@@ -33,7 +33,7 @@ jobs:
           config: |
             paths-ignore:
               # Emitted scaffolding, not library code.
-              - agentflow_cli/cli/templates
+              - tenxgraph_api/cli/templates
               - tests
 
       - name: Perform CodeQL analysis

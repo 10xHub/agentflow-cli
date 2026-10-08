@@ -1,19 +1,19 @@
 """Tests for Sprint 2 - DocumentExtractor & DocumentPipeline.
 
-These tests live in agentflow-api because document extraction is an API concern
+These tests live in 10xgraph-api because document extraction is an API concern
 (not a core library concern).
 """
 
 import pytest
-from agentflow.core.state.message_block import DocumentBlock, MediaRef, TextBlock
-from agentflow.storage.media.config import DocumentHandling
+from tenxgraph.core.state.message_block import DocumentBlock, MediaRef, TextBlock
+from tenxgraph.storage.media.config import DocumentHandling
 
-from agentflow_cli.src.app.utils.media.extractor import (
+from tenxgraph_api.src.app.utils.media.extractor import (
     DocumentExtractor,
     ExtractionError,
     FileTypeNotSupportedError,
 )
-from agentflow_cli.src.app.utils.media.pipeline import DocumentPipeline
+from tenxgraph_api.src.app.utils.media.pipeline import DocumentPipeline
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ class TestDocumentExtractor:
 
     def test_no_textxtract_raises_import_error(self, monkeypatch):
         """If textxtract is not installed, instantiation raises ImportError."""
-        import agentflow_cli.src.app.utils.media.extractor as mod
+        import tenxgraph_api.src.app.utils.media.extractor as mod
 
         monkeypatch.setattr(mod, "AsyncTextExtractor", None)
         with pytest.raises(ImportError, match="textxtract is required"):

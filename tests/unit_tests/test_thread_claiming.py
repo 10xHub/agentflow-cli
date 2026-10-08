@@ -14,11 +14,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from injectq import InjectQ
 
-from agentflow_cli.src.app.routers.graph.services import graph_service as graph_service_module
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+from tenxgraph_api.src.app.routers.graph.services import graph_service as graph_service_module
+from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
 
-graph_router = importlib.import_module("agentflow_cli.src.app.routers.graph.router")
+graph_router = importlib.import_module("tenxgraph_api.src.app.routers.graph.router")
 
 
 def _service(owners: dict[str, str]) -> GraphService:

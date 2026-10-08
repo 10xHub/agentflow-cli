@@ -1,6 +1,9 @@
 import os
 
-from agentflow.core.exceptions import (
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from starlette.exceptions import HTTPException
+from tenxgraph.core.exceptions import (
     GraphError,
     GraphRecursionError,
     MetricsError,
@@ -10,18 +13,15 @@ from agentflow.core.exceptions import (
     StorageError,
     TransientStorageError,
 )
-from agentflow.utils.validators import ValidationError
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from starlette.exceptions import HTTPException
+from tenxgraph.utils.validators import ValidationError
 
-from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
-from agentflow_cli.src.app.core.exceptions.handle_errors import (
+from tenxgraph_api.src.app.core.config.setup_middleware import setup_middleware
+from tenxgraph_api.src.app.core.exceptions.handle_errors import (
     _sanitize_error_message,
     init_errors_handler,
 )
-from agentflow_cli.src.app.core.exceptions.resources_exceptions import ResourceNotFoundError
-from agentflow_cli.src.app.core.exceptions.user_exception import (
+from tenxgraph_api.src.app.core.exceptions.resources_exceptions import ResourceNotFoundError
+from tenxgraph_api.src.app.core.exceptions.user_exception import (
     UserAccountError,
     UserPermissionError,
 )
@@ -42,7 +42,7 @@ def setup_app(mode: str = "development"):
     else:
         os.environ.pop("ORIGINS", None)
 
-    from agentflow_cli.src.app.core.config.settings import get_settings
+    from tenxgraph_api.src.app.core.config.settings import get_settings
 
     get_settings.cache_clear()
 
@@ -224,7 +224,7 @@ def test_resource_not_found_error_handler():
 
 
 def test_validation_error_handler_development():
-    """Test agentflow ValidationError handler in development."""
+    """Test tenxgraph ValidationError handler in development."""
     app = setup_app("development")
 
     @app.get("/validation-error")
@@ -241,7 +241,7 @@ def test_validation_error_handler_development():
 
 
 def test_validation_error_handler_production():
-    """Test agentflow ValidationError handler in production."""
+    """Test tenxgraph ValidationError handler in production."""
     app = setup_app("production")
 
     @app.get("/validation-error")

@@ -1,7 +1,7 @@
 """
 Role-Based Access Control (RBAC) Authorization Example
 
-This example demonstrates how to implement RBAC authorization in AgentFlow CLI.
+This example demonstrates how to implement RBAC authorization in 10xGraph CLI.
 
 RBAC Model:
 - Roles: admin, developer, viewer
@@ -10,15 +10,15 @@ RBAC Model:
 
 Setup:
 1. Create this file in your project (e.g., auth/rbac_backend.py)
-2. Configure agentflow.json to use this backend
+2. Configure 10xgraph.json to use this backend
 3. Ensure user context includes 'role' field
 """
 
 from typing import Any
 
 # Import the authorization backend interface
-# In your project: from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+# In your project: from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
+from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
 
 
 class RBACAuthorizationBackend(AuthorizationBackend):
@@ -261,7 +261,7 @@ class MultiRoleRBACBackend(AuthorizationBackend):
 """
 CONFIGURATION:
 
-# agentflow.json
+# 10xgraph.json
 {
   "auth": "jwt",
   "authorization": {
@@ -360,7 +360,7 @@ async def test_guest_no_access(rbac_backend):
 """
 INTEGRATION WITH ENDPOINTS:
 
-All AgentFlow endpoints automatically use the configured authorization backend.
+All 10xGraph endpoints automatically use the configured authorization backend.
 
 # Example: Graph invocation endpoint
 @router.post("/graph/invoke")

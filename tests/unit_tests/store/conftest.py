@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from agentflow.core.state import Message
-from agentflow.storage.store import BaseStore, MemorySearchResult, MemoryType
+from tenxgraph.core.state import Message
+from tenxgraph.storage.store import BaseStore, MemorySearchResult, MemoryType
 
-from agentflow_cli.src.app.routers.store.services.store_service import StoreService
+from tenxgraph_api.src.app.routers.store.services.store_service import StoreService
 
 
 @pytest.fixture

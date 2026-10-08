@@ -4,11 +4,11 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from agentflow.core.state import StreamChunk, StreamEvent
 from fastapi import WebSocketDisconnect
+from tenxgraph.core.state import StreamChunk, StreamEvent
 
-from agentflow_cli.src.app.routers.graph.router import websocket_graph
-from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import WsGraphInputSchema
+from tenxgraph_api.src.app.routers.graph.router import websocket_graph
+from tenxgraph_api.src.app.routers.graph.schemas.graph_schemas import WsGraphInputSchema
 
 
 # ─────────────────────────────────────────────────────────────────────────────

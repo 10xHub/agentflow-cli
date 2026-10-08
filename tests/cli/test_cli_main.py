@@ -3,8 +3,8 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-import agentflow_cli.cli.main as main_mod
-from agentflow_cli.cli.exceptions import AgentflowCLIError
+import tenxgraph_api.cli.main as main_mod
+from tenxgraph_api.cli.exceptions import CLIError
 
 
 runner = CliRunner()
@@ -24,7 +24,7 @@ def test_play_command_delegates_to_api_command(monkeypatch):
     result = runner.invoke(main_mod.app, ["play", "--port", "9001", "--no-reload"])
 
     assert result.exit_code == 0
-    assert called["config"] == "agentflow.json"
+    assert called["config"] == "10xgraph.json"
     assert called["host"] == "127.0.0.1"
     assert called["port"] == 9001
     assert called["reload"] is False
@@ -183,12 +183,12 @@ def test_a2a_command_is_not_exposed():
     assert "No such command 'a2a'" in result.output
 
 
-def test_handle_agentflow_cli_error(monkeypatch):
+def test_handle_tenxgraph_api_error(monkeypatch):
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
     monkeypatch.setattr(
         main_mod.VersionCommand,
         "execute",
-        lambda self: (_ for _ in ()).throw(AgentflowCLIError("Custom error message", exit_code=42)),
+        lambda self: (_ for _ in ()).throw(CLIError("Custom error message", exit_code=42)),
     )
     result = runner.invoke(main_mod.app, ["version"])
     assert result.exit_code == 42
@@ -207,7 +207,7 @@ def test_handle_generic_exception(monkeypatch):
 
 def test_main_keyboard_interrupt(monkeypatch):
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
-    with patch("agentflow_cli.cli.main.app", side_effect=KeyboardInterrupt):
+    with patch("tenxgraph_api.cli.main.app", side_effect=KeyboardInterrupt):
         with pytest.raises(SystemExit) as exc_info:
             main_mod.main()
         assert exc_info.value.code == 130
@@ -215,7 +215,44 @@ def test_main_keyboard_interrupt(monkeypatch):
 
 def test_main_generic_exception(monkeypatch):
     monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
-    with patch("agentflow_cli.cli.main.app", side_effect=ValueError("Main error")):
+    with patch("tenxgraph_api.cli.main.app", side_effect=ValueError("Main error")):
         with pytest.raises(SystemExit) as exc_info:
             main_mod.main()
         assert exc_info.value.code == 1
+
+
+def test_legacy_agentflow_entry_point_warns_then_runs(monkeypatch, capsys):
+    called = []
+    monkeypatch.setattr(main_mod, "main", lambda: called.append(True))
+
+    main_mod.legacy_main()
+
+    assert called == [True]
+    err = capsys.readouterr().err
+    assert "'agentflow' command is deprecated" in err
+    assert "'10xgraph'" in err
+
+
+@pytest.mark.parametrize(
+    ("env", "flags", "expected"),
+    [
+        ({}, [], False),  # default: normal scrollback, like gh / uv / cargo
+        ({"TENXGRAPH_FULLSCREEN": "1"}, [], True),
+        ({"TENXGRAPH_FULLSCREEN": "1", "TENXGRAPH_NO_FULLSCREEN": "1"}, [], False),
+        ({}, ["--fullscreen"], True),
+        ({"TENXGRAPH_FULLSCREEN": "1"}, ["--no-fullscreen"], False),
+    ],
+)
+def test_fullscreen_is_opt_in(monkeypatch, env, flags, expected):
+    for name in ("TENXGRAPH_FULLSCREEN", "TENXGRAPH_NO_FULLSCREEN", "AGENTFLOW_NO_FULLSCREEN"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    requested: list[bool] = []
+    monkeypatch.setattr(main_mod.output, "request_fullscreen", requested.append)
+    monkeypatch.setattr(main_mod, "setup_cli_logging", lambda **kwargs: None)
+
+    result = runner.invoke(main_mod.app, [*flags, "--version"])
+
+    assert result.exit_code == 0
+    assert requested == [expected]

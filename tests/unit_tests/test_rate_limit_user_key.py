@@ -9,13 +9,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig, RateLimitConfig
-from agentflow_cli.src.app.core.middleware.rate_limit import (
+from tenxgraph_api.src.app.core.auth.base_auth import BaseAuth
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig, RateLimitConfig
+from tenxgraph_api.src.app.core.middleware.rate_limit import (
     MemoryRateLimitBackend,
     RateLimitMiddleware,
 )
-from agentflow_cli.src.app.core.middleware.rate_limit.keying import client_key_for
+from tenxgraph_api.src.app.core.middleware.rate_limit.keying import client_key_for
 
 
 class TokenIsUserAuth(BaseAuth):

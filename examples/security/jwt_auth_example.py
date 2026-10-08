@@ -2,10 +2,10 @@
 JWT Authentication Example
 
 This example demonstrates how to use the built-in JWT authentication
-in AgentFlow CLI applications.
+in 10xGraph CLI applications.
 
 Setup:
-1. Configure agentflow.json with "auth": "jwt"
+1. Configure 10xgraph.json with "auth": "jwt"
 2. Set JWT_SECRET_KEY environment variable
 3. Run the application
 
@@ -240,7 +240,7 @@ JWT_SECRET_KEY=<generate-with-secrets.token_urlsafe(32)>
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# agentflow.json
+# 10xgraph.json
 {
   "auth": "jwt",
   "agent": "graph.react:app"

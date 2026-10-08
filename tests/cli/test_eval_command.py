@@ -3,11 +3,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
-from agentflow.qa.evaluation.eval_result import EvalCaseResult
+from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
+from tenxgraph.qa.evaluation.eval_result import EvalCaseResult
 
-from agentflow_cli.cli.commands.eval import EvalCommand, _PendingCase, _PendingSimulation
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands.eval import EvalCommand, _PendingCase, _PendingSimulation
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 # Disable pytest collection for the imported EvalCommand class
@@ -45,14 +45,14 @@ def cmd() -> EvalCommand:
 
 def test_load_agent_from_config_success(cmd):
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.get_config_value.return_value = "my_module:my_agent"
 
     mock_agent = MagicMock()
     mock_module = types.SimpleNamespace(my_agent=mock_agent)
 
     with (
-        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm),
         patch("importlib.import_module", return_value=mock_module) as mock_import,
     ):
         agent = cmd._load_agent_from_config()
@@ -64,17 +64,17 @@ def test_load_agent_from_config_no_json(cmd):
     mock_cm = MagicMock()
     mock_cm.auto_discover_config.return_value = None
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm):
-        with pytest.raises(RuntimeError, match="No agentflow.json found"):
+    with patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm):
+        with pytest.raises(RuntimeError, match="No 10xgraph.json found"):
             cmd._load_agent_from_config()
 
 
 def test_load_agent_from_config_invalid_spec(cmd):
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.get_config_value.return_value = "invalid_spec"
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm):
+    with patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm):
         with pytest.raises(RuntimeError, match="Invalid 'agent' field"):
             cmd._load_agent_from_config()
 
@@ -105,10 +105,10 @@ def test_case_progress_fields_for_a_passing_case(cmd):
 
 def test_resolve_eval_dir(cmd):
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.get_evaluation_config.return_value = {"directory": "custom_evals"}
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm):
+    with patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm):
         eval_dir = cmd._resolve_eval_dir()
         assert eval_dir == Path.cwd() / "custom_evals"
 
@@ -117,7 +117,7 @@ def test_collect_simulations(cmd):
     mod = types.SimpleNamespace(app=MagicMock(), SIMULATOR_CONFIG=MagicMock())
     scenarios = [MagicMock(scenario_id="s1", description="desc1")]
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager"):
+    with patch("tenxgraph_api.cli.commands.eval.ConfigManager"):
         res = cmd._collect_simulations(mod, scenarios, "file_eval.py")
         assert len(res) == 1
         assert isinstance(res[0], _PendingSimulation)
@@ -152,8 +152,8 @@ async def test_run_flat_pool_cases(cmd):
     )
 
     with (
-        patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"),
-        patch("agentflow_cli.cli.commands.eval.override_dependency"),
+        patch("tenxgraph_api.cli.commands.eval._reset_inject_proxy"),
+        patch("tenxgraph_api.cli.commands.eval.override_dependency"),
     ):
         results = await cmd._run_flat_pool([pc], max_concurrency=4, parallel=False)
         assert len(results) == 1
@@ -185,8 +185,8 @@ async def test_run_flat_pool_case_error(cmd):
     )
 
     with (
-        patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"),
-        patch("agentflow_cli.cli.commands.eval.override_dependency"),
+        patch("tenxgraph_api.cli.commands.eval._reset_inject_proxy"),
+        patch("tenxgraph_api.cli.commands.eval.override_dependency"),
     ):
         results = await cmd._run_flat_pool([pc], max_concurrency=4, parallel=False)
         assert len(results) == 1
@@ -196,7 +196,7 @@ async def test_run_flat_pool_case_error(cmd):
 
 @pytest.mark.asyncio
 async def test_run_flat_pool_simulation(cmd):
-    from agentflow.qa.evaluation.token_usage import TokenUsage
+    from tenxgraph.qa.evaluation.token_usage import TokenUsage
 
     # Mock simulator
     simulator = MagicMock()
@@ -262,7 +262,7 @@ async def test_run_flat_pool_simulation_error(cmd):
 
 
 def test_execute_target_not_found(cmd):
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager"):
+    with patch("tenxgraph_api.cli.commands.eval.ConfigManager"):
         code = cmd.execute(target="non_existent_path")
         assert code == 1
         assert len(cmd.output.errors) > 0
@@ -270,7 +270,7 @@ def test_execute_target_not_found(cmd):
 
 def test_execute_no_files(cmd, tmp_path):
     with (
-        patch("agentflow_cli.cli.commands.eval.ConfigManager"),
+        patch("tenxgraph_api.cli.commands.eval.ConfigManager"),
         patch.object(cmd, "_discover", return_value=[]),
     ):
         code = cmd.execute(target=str(tmp_path))
@@ -279,11 +279,11 @@ def test_execute_no_files(cmd, tmp_path):
 
 
 def test_execute_success(cmd, tmp_path):
-    from agentflow.qa.evaluation.token_usage import TokenUsage
+    from tenxgraph.qa.evaluation.token_usage import TokenUsage
 
     # Mock ConfigManager and its returns
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.get_evaluation_config.return_value = {}
 
     # Mock discovery and collection
@@ -315,14 +315,14 @@ def test_execute_success(cmd, tmp_path):
     quads = [("test_eval.py", "eval_set_id", "eval_set_name", mock_case_result)]
 
     with (
-        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm),
         patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]),
         patch.object(cmd, "_load_confeval", return_value=None),
         patch.object(cmd, "_collect_from_file", return_value=[fake_case]),
         patch.object(cmd, "_print_criteria_block"),
         patch.object(cmd, "_run_flat_pool", return_value=quads),
         patch.object(cmd, "_merge_reports", return_value=mock_report),
-        patch("agentflow_cli.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr),
+        patch("tenxgraph_api.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr),
         patch("webbrowser.open") as mock_web_open,
     ):
         code = cmd.execute(target=str(tmp_path), open_report=True)
@@ -332,11 +332,11 @@ def test_execute_success(cmd, tmp_path):
 
 
 def test_execute_below_threshold(cmd, tmp_path):
-    from agentflow.qa.evaluation.token_usage import TokenUsage
+    from tenxgraph.qa.evaluation.token_usage import TokenUsage
 
     # Mock ConfigManager and its returns
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.get_evaluation_config.return_value = {}
 
     fake_case = MagicMock()
@@ -359,14 +359,14 @@ def test_execute_below_threshold(cmd, tmp_path):
     quads = [("test_eval.py", "eval_set_id", "eval_set_name", mock_case_result)]
 
     with (
-        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm),
         patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]),
         patch.object(cmd, "_load_confeval", return_value=None),
         patch.object(cmd, "_collect_from_file", return_value=[fake_case]),
         patch.object(cmd, "_print_criteria_block"),
         patch.object(cmd, "_run_flat_pool", return_value=quads),
         patch.object(cmd, "_merge_reports", return_value=mock_report),
-        patch("agentflow_cli.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr),
+        patch("tenxgraph_api.cli.commands.eval.ReporterManager", return_value=mock_rep_mgr),
     ):
         code = cmd.execute(target=str(tmp_path), threshold=0.8)
         assert code == 1
@@ -375,7 +375,7 @@ def test_execute_below_threshold(cmd, tmp_path):
 
 def test_execute_collect_error(cmd, tmp_path):
     with (
-        patch("agentflow_cli.cli.commands.eval.ConfigManager"),
+        patch("tenxgraph_api.cli.commands.eval.ConfigManager"),
         patch.object(cmd, "_discover", return_value=[Path("test_eval.py")]),
         patch.object(cmd, "_collect_from_file", side_effect=ValueError("load error")),
     ):
@@ -385,7 +385,7 @@ def test_execute_collect_error(cmd, tmp_path):
 
 
 def test_reset_inject_proxy():
-    from agentflow_cli.cli.commands.eval import _reset_inject_proxy
+    from tenxgraph_api.cli.commands.eval import _reset_inject_proxy
 
     _reset_inject_proxy(None)
 
@@ -412,7 +412,7 @@ def test_load_confeval_func_error(cmd, tmp_path):
 
 
 def test_collect_eval_functions(cmd):
-    from agentflow.qa.evaluation import EvalConfig, EvalSet
+    from tenxgraph.qa.evaluation import EvalConfig, EvalSet
 
     class FakeEvalSet(EvalSet):
         def __init__(self):
@@ -532,7 +532,7 @@ def test_criteria_by_file_maps_source_and_criteria(cmd):
 
 @pytest.mark.asyncio
 async def test_run_flat_pool_simulation_no_criterion(cmd):
-    from agentflow.qa.evaluation.token_usage import TokenUsage
+    from tenxgraph.qa.evaluation.token_usage import TokenUsage
 
     simulator = MagicMock()
     simulator.criteria = []
@@ -594,8 +594,8 @@ async def test_run_flat_pool_parallel(cmd):
     )
 
     with (
-        patch("agentflow_cli.cli.commands.eval._reset_inject_proxy"),
-        patch("agentflow_cli.cli.commands.eval.override_dependency"),
+        patch("tenxgraph_api.cli.commands.eval._reset_inject_proxy"),
+        patch("tenxgraph_api.cli.commands.eval.override_dependency"),
     ):
         results = await cmd._run_flat_pool([pc], max_concurrency=2, parallel=True)
         assert len(results) == 1
@@ -604,21 +604,21 @@ async def test_run_flat_pool_parallel(cmd):
 
 def test_resolve_eval_dir_error(cmd):
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.get_evaluation_config.side_effect = ValueError("config load error")
 
-    with patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm):
+    with patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm):
         eval_dir = cmd._resolve_eval_dir()
         assert eval_dir == Path.cwd() / "evals"
 
 
 def test_execute_load_config_error(cmd, tmp_path):
     mock_cm = MagicMock()
-    mock_cm.auto_discover_config.return_value = "agentflow.json"
+    mock_cm.auto_discover_config.return_value = "10xgraph.json"
     mock_cm.load_config.side_effect = ValueError("corrupt json")
 
     with (
-        patch("agentflow_cli.cli.commands.eval.ConfigManager", return_value=mock_cm),
+        patch("tenxgraph_api.cli.commands.eval.ConfigManager", return_value=mock_cm),
         patch.object(cmd, "_discover", return_value=[]),
     ):
         code = cmd.execute(target=str(tmp_path))

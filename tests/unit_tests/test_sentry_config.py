@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock, patch
 
-from agentflow_cli.src.app.core.config.sentry_config import init_sentry
+from tenxgraph_api.src.app.core.config.sentry_config import init_sentry
 
 
 class TestInitSentry:
@@ -14,7 +14,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = None
         mock_settings.MODE = "DEVELOPMENT"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger") as mock_logger:
             init_sentry(mock_settings)
             mock_logger.warning.assert_called_once()
 
@@ -24,7 +24,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = ""
         mock_settings.MODE = "DEVELOPMENT"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger") as mock_logger:
             init_sentry(mock_settings)
             mock_logger.warning.assert_called_once()
 
@@ -34,7 +34,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "INVALID"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger") as mock_logger:
             init_sentry(mock_settings)
             # Should warn about invalid environment
             mock_logger.warning.assert_called()
@@ -45,12 +45,12 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "production"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger"):
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger"):
             with patch("sys.modules") as mock_modules:
                 mock_sentry = Mock()
                 mock_modules.__getitem__.return_value = mock_sentry
                 with patch(
-                    "agentflow_cli.src.app.core.config.sentry_config.sentry_sdk", mock_sentry
+                    "tenxgraph_api.src.app.core.config.sentry_config.sentry_sdk", mock_sentry
                 ):
                     init_sentry(mock_settings)
 
@@ -60,12 +60,12 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "staging"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger"):
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger"):
             with patch("sys.modules") as mock_modules:
                 mock_sentry = Mock()
                 mock_modules.__getitem__.return_value = mock_sentry
                 with patch(
-                    "agentflow_cli.src.app.core.config.sentry_config.sentry_sdk", mock_sentry
+                    "tenxgraph_api.src.app.core.config.sentry_config.sentry_sdk", mock_sentry
                 ):
                     init_sentry(mock_settings)
 
@@ -75,12 +75,12 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "development"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger"):
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger"):
             with patch("sys.modules") as mock_modules:
                 mock_sentry = Mock()
                 mock_modules.__getitem__.return_value = mock_sentry
                 with patch(
-                    "agentflow_cli.src.app.core.config.sentry_config.sentry_sdk", mock_sentry
+                    "tenxgraph_api.src.app.core.config.sentry_config.sentry_sdk", mock_sentry
                 ):
                     init_sentry(mock_settings)
 
@@ -90,7 +90,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "production"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger") as mock_logger:
             with patch("builtins.__import__", side_effect=ImportError("sentry_sdk not found")):
                 init_sentry(mock_settings)
                 # Should log warning about missing sentry_sdk
@@ -102,7 +102,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "production"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger") as mock_logger:
             # Create a mock that raises an exception
             mock_sentry_sdk = Mock()
             mock_sentry_sdk.init = Mock(side_effect=Exception("Init failed"))
@@ -125,7 +125,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "production"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger"):
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger"):
             # Create mock sentry_sdk module
             mock_sentry_sdk = Mock()
             mock_init = Mock()
@@ -150,7 +150,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "production"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger") as mock_logger:
             # Mock the sentry_sdk module
             mock_sentry_sdk = Mock()
 
@@ -172,7 +172,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "PRODUCTION"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger"):
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger"):
             mock_sentry_sdk = Mock()
             with patch.dict(
                 "sys.modules", {"sentry_sdk": mock_sentry_sdk, "sentry_sdk.integrations": Mock()}
@@ -189,7 +189,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = "Production"
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger"):
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger"):
             mock_sentry_sdk = Mock()
             with patch.dict(
                 "sys.modules", {"sentry_sdk": mock_sentry_sdk, "sentry_sdk.integrations": Mock()}
@@ -206,7 +206,7 @@ class TestInitSentry:
         mock_settings.SENTRY_DSN = "https://example@sentry.io/12345"
         mock_settings.MODE = None
 
-        with patch("agentflow_cli.src.app.core.config.sentry_config.logger") as mock_logger:
+        with patch("tenxgraph_api.src.app.core.config.sentry_config.logger") as mock_logger:
             init_sentry(mock_settings)
             # Should warn about invalid environment
             mock_logger.warning.assert_called()
@@ -216,7 +216,7 @@ def test_only_server_errors_are_reported_and_sampling_is_configurable():
     """L9: a 403 is not a Sentry event, and tracing is not forced to 100%."""
     from types import ModuleType
 
-    from agentflow_cli.src.app.core.config.settings import Settings
+    from tenxgraph_api.src.app.core.config.settings import Settings
 
     captured = {}
     sdk = ModuleType("sentry_sdk")

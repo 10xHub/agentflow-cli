@@ -1,4 +1,4 @@
-# Makefile for Agentflow packaging and publishing
+# Makefile for 10xGraph packaging and publishing
 
 .PHONY: build publish testpublish clean test test-cov
 
@@ -31,4 +31,4 @@ docs-build:
 test-cov:
 	# Ensure pytest-cov is available
 	uv pip install pytest-cov
-	uv run pytest --cov=agentflow_cli --cov-report=html --cov-report=term-missing --cov-report=xml -v
+	uv run pytest --cov=tenxgraph_api --cov-report=html --cov-report=term-missing --cov-report=xml -v

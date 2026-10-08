@@ -3,7 +3,7 @@
 import os
 from unittest.mock import patch
 
-from agentflow_cli.src.app.core.config.settings import Settings, get_settings
+from tenxgraph_api.src.app.core.config.settings import Settings, get_settings
 
 
 def test_mode_normalization():

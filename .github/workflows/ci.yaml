@@ -119,7 +119,7 @@ jobs:
         run: uvx twine check dist/*
 
       # Extension-based package-data globs silently drop these, which breaks
-      # `agentflow init` for PyPI installs. Assert against the artifact, not the config.
+      # `10xgraph init` for PyPI installs. Assert against the artifact, not the config.
       - name: Assert scaffolding templates are present in the wheel
         run: |
           python - <<'PY'
@@ -128,12 +128,12 @@ jobs:
           wheel = sorted(glob.glob("dist/*.whl"))[-1]
           names = set(zipfile.ZipFile(wheel).namelist())
           required = [
-              "agentflow_cli/py.typed",
-              "agentflow_cli/cli/templates/dev/.env.example",
-              "agentflow_cli/cli/templates/prod/.env.example",
-              "agentflow_cli/cli/templates/prod/.python-version",
-              "agentflow_cli/cli/templates/prod/pyproject.toml",
-              "agentflow_cli/cli/templates/prod/.pre-commit-config.yaml",
+              "tenxgraph_api/py.typed",
+              "tenxgraph_api/cli/templates/dev/.env.example",
+              "tenxgraph_api/cli/templates/prod/.env.example",
+              "tenxgraph_api/cli/templates/prod/.python-version",
+              "tenxgraph_api/cli/templates/prod/pyproject.toml",
+              "tenxgraph_api/cli/templates/prod/.pre-commit-config.yaml",
           ]
           missing = [p for p in required if p not in names]
           if missing:
@@ -148,5 +148,5 @@ jobs:
         run: |
           python -m venv /tmp/smoke
           /tmp/smoke/bin/pip install --quiet dist/*.whl
-          /tmp/smoke/bin/agentflow version
-          /tmp/smoke/bin/agentflow --help
+          /tmp/smoke/bin/10xgraph version
+          /tmp/smoke/bin/10xgraph --help

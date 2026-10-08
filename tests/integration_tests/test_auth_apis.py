@@ -6,7 +6,7 @@ are guarded by the real ``RequirePermission`` dependency, not by hand-rolled che
 
 from __future__ import annotations
 
-from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer_router
+from tenxgraph_api.src.app.routers.checkpointer.router import router as checkpointer_router
 
 from .conftest import build_app, make_client, user_headers
 

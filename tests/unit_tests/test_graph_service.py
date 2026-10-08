@@ -4,18 +4,18 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from agentflow.core.exceptions.media_exceptions import UnsupportedMediaInputError
-from agentflow.core.state import AgentState, Message, StreamChunk, StreamEvent
-from agentflow.storage.checkpointer import BaseCheckpointer
 from fastapi import HTTPException
 from pydantic import BaseModel
+from tenxgraph.core.exceptions.media_exceptions import UnsupportedMediaInputError
+from tenxgraph.core.state import AgentState, Message, StreamChunk, StreamEvent
+from tenxgraph.storage.checkpointer import BaseCheckpointer
 
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
-from agentflow_cli.src.app.routers.graph.schemas.graph_schemas import (
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
+from tenxgraph_api.src.app.routers.graph.schemas.graph_schemas import (
     GraphInputSchema,
 )
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
+from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
+from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 
 class MockStateModel(BaseModel):
@@ -240,7 +240,7 @@ class TestGraphServiceMethods:
 
     @pytest.mark.asyncio
     async def test_stream_graph_exception_handling(self, service, mock_graph, monkeypatch):
-        from agentflow_cli.src.app.core.config import settings as settings_module
+        from tenxgraph_api.src.app.core.config import settings as settings_module
 
         # The reason is only generic in production; do not depend on which test cached
         # the settings first.

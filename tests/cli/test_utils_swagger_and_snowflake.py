@@ -3,7 +3,7 @@ import importlib
 import pytest
 from pydantic import BaseModel
 
-from agentflow_cli.src.app.utils.swagger_helper import generate_swagger_responses
+from tenxgraph_api.src.app.utils.swagger_helper import generate_swagger_responses
 
 
 class DemoModel(BaseModel):
@@ -27,7 +27,7 @@ def test_generate_swagger_responses_pagination():
     importlib.util.find_spec("snowflakekit") is None, reason="snowflakekit not installed"
 )
 def test_snowflake_id_generator_sequence():  # pragma: no cover - executed only if dependency present
-    from agentflow_cli.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
+    from tenxgraph_api.src.app.utils.snowflake_id_generator import SnowFlakeIdGenerator
 
     # Use explicit config to avoid env dependence
     gen = SnowFlakeIdGenerator(

@@ -6,7 +6,7 @@ Purpose: let the playground's Memory inspector exercise the full store API
 endpoints with deterministic, seeded data. Search is a naive case-insensitive
 substring match with a fake similarity score — enough to see the UI work.
 
-Referenced in agentflow.json as ``"store": "graph.dummy_store:store"``. Swap for a
+Referenced in 10xgraph.json as ``"store": "graph.dummy_store:store"``. Swap for a
 real ``QdrantStore``/``Mem0Store`` when embeddings + a vector DB are available.
 """
 
@@ -16,9 +16,9 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from agentflow.core.state import Message
-from agentflow.storage.store import BaseStore
-from agentflow.storage.store.store_schema import MemorySearchResult, MemoryType
+from tenxgraph.core.state import Message
+from tenxgraph.storage.store import BaseStore
+from tenxgraph.storage.store.store_schema import MemorySearchResult, MemoryType
 
 
 def _now() -> datetime:
@@ -211,5 +211,5 @@ class DummyInMemoryStore(BaseStore):
         return hits[:limit]
 
 
-# The instance agentflow.json points at.
+# The instance 10xgraph.json points at.
 store = DummyInMemoryStore()

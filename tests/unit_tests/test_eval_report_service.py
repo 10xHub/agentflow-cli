@@ -1,5 +1,5 @@
-"""Unit tests for EvalReportService, which reads real `agentflow eval` JSON
-reports (eval_reports/*.json, written by agentflow.qa.evaluation.reporters.json.JSONReporter)
+"""Unit tests for EvalReportService, which reads real `10xgraph eval` JSON
+reports (eval_reports/*.json, written by tenxgraph.qa.evaluation.reporters.json.JSONReporter)
 instead of the dummy in-module data the evals router used to serve."""
 
 import json
@@ -7,7 +7,7 @@ import json
 import pytest
 from fastapi import HTTPException
 
-from agentflow_cli.src.app.routers.evals.services.eval_report_service import (
+from tenxgraph_api.src.app.routers.evals.services.eval_report_service import (
     EvalReportService,
     _case_conversation,
     _case_input,

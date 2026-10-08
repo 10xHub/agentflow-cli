@@ -11,20 +11,20 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from agentflow.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 from injectq import InjectQ
 from injectq.integrations.fastapi import setup_fastapi
+from tenxgraph.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
 
-from agentflow_cli.src.app.core.auth.authorization import (
+from tenxgraph_api.src.app.core.auth.authorization import (
     AuthorizationBackend,
     DefaultAuthorizationBackend,
 )
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
-from agentflow_cli.src.app.core.config.graph_config import GraphConfig
-from agentflow_cli.src.app.core.config.media_settings import MediaSettings, MediaStorageType
-from agentflow_cli.src.app.core.config.setup_middleware import setup_middleware
+from tenxgraph_api.src.app.core.auth.base_auth import BaseAuth
+from tenxgraph_api.src.app.core.config.graph_config import GraphConfig
+from tenxgraph_api.src.app.core.config.media_settings import MediaSettings, MediaStorageType
+from tenxgraph_api.src.app.core.config.setup_middleware import setup_middleware
 
 
 class HeaderAuth(BaseAuth):

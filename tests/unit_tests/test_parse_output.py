@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
-from agentflow_cli.src.app.core.config.settings import Settings
-from agentflow_cli.src.app.utils.parse_output import parse_message_output, parse_state_output
+from tenxgraph_api.src.app.core.config.settings import Settings
+from tenxgraph_api.src.app.utils.parse_output import parse_message_output, parse_state_output
 
 
 class StateModel(BaseModel):

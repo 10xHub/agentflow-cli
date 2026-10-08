@@ -2,7 +2,7 @@
 
 import pytest
 
-from agentflow_cli.src.app.utils.thread_name_generator import (
+from tenxgraph_api.src.app.utils.thread_name_generator import (
     AIThreadNameGenerator,
     DefaultThreadNameGenerator,
 )

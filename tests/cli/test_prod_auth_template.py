@@ -13,10 +13,10 @@ import pytest
 from fastapi import HTTPException, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
-import agentflow_cli
+import tenxgraph_api
 
 
-TEMPLATE = Path(agentflow_cli.__file__).parent / "cli/templates/prod/auth/agent_auth.py"
+TEMPLATE = Path(tenxgraph_api.__file__).parent / "cli/templates/prod/auth/agent_auth.py"
 
 
 def _agent_auth():

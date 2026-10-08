@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from agentflow_cli.src.app.main import app
+from tenxgraph_api.src.app.main import app
 
 
 HTTP_OK = 200

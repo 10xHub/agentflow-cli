@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import io
 
-from agentflow_cli.cli.commands import demo as demo_module
-from agentflow_cli.cli.commands.demo import DemoCommand
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands import demo as demo_module
+from tenxgraph_api.cli.commands.demo import DemoCommand
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 def test_demo_renders_all_themes_without_side_effects(monkeypatch) -> None:

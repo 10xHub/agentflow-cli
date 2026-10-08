@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentflow_cli.src.app.core.auth.ownership_resolver import ThreadOwnershipResolver
+from tenxgraph_api.src.app.core.auth.ownership_resolver import ThreadOwnershipResolver
 
 
 class _CountingLookup:
@@ -147,7 +147,7 @@ async def test_not_implemented_propagates():
 
 @pytest.mark.asyncio
 async def test_l1_entry_expires_after_its_ttl(monkeypatch):
-    from agentflow_cli.src.app.core.auth import ownership_resolver
+    from tenxgraph_api.src.app.core.auth import ownership_resolver
 
     now = [1000.0]
     monkeypatch.setattr(ownership_resolver.time, "monotonic", lambda: now[0])

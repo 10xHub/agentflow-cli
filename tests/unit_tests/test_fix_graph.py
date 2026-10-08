@@ -3,11 +3,11 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from agentflow.core.state import AgentState, Message, TextBlock
-from agentflow.storage.checkpointer import BaseCheckpointer
 from fastapi import HTTPException
+from tenxgraph.core.state import AgentState, Message, TextBlock
+from tenxgraph.storage.checkpointer import BaseCheckpointer
 
-from agentflow_cli.src.app.routers.graph.services.graph_service import GraphService
+from tenxgraph_api.src.app.routers.graph.services.graph_service import GraphService
 
 
 class TestFixGraph:

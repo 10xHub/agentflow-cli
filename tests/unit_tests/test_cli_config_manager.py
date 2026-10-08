@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from agentflow_cli.cli.core.config import ConfigManager
-from agentflow_cli.cli.exceptions import ConfigurationError
+from tenxgraph_api.cli.core.config import ConfigManager, resolve_default_config
+from tenxgraph_api.cli.exceptions import ConfigurationError
 
 
 class TestConfigManager:
@@ -86,7 +86,7 @@ class TestConfigManager:
     def test_auto_discover_config(self, temp_dir):
         """Test auto-discovering config file."""
         # Create a config file in temp directory
-        config_path = Path(temp_dir) / "agentflow.json"
+        config_path = Path(temp_dir) / "10xgraph.json"
         config_path.write_text(json.dumps({"agent": "test"}))
 
         # Change to temp directory for discovery
@@ -118,7 +118,7 @@ class TestConfigManager:
             os.chdir(old_cwd)
 
     def test_auto_discover_config_walks_parent_directories(self, tmp_path, monkeypatch):
-        config_path = tmp_path / "agentflow.json"
+        config_path = tmp_path / "10xgraph.json"
         config_path.write_text(json.dumps({"agent": "graph.agent:app"}), encoding="utf-8")
         nested = tmp_path / "packages" / "worker"
         nested.mkdir(parents=True)
@@ -322,3 +322,51 @@ class TestConfigManager:
         with pytest.raises(ConfigurationError) as exc_info:
             manager._validate_config(config_data)
         assert "must be a string" in str(exc_info.value)
+
+
+class TestLegacyConfigName:
+    """10xgraph.json wins; agentflow.json is read only when it is the only file present."""
+
+    @staticmethod
+    def _write(path: Path, agent: str) -> Path:
+        path.write_text(json.dumps({"agent": agent}), encoding="utf-8")
+        return path
+
+    def test_new_name_wins_over_legacy_in_the_same_directory(self, tmp_path, monkeypatch):
+        new = self._write(tmp_path / "10xgraph.json", "new:app")
+        self._write(tmp_path / "agentflow.json", "old:app")
+        monkeypatch.chdir(tmp_path)
+
+        assert ConfigManager().find_config_file("10xgraph.json") == new
+        assert ConfigManager().auto_discover_config() == new
+
+    def test_legacy_name_is_found_when_new_is_absent(self, tmp_path, monkeypatch):
+        legacy = self._write(tmp_path / "agentflow.json", "old:app")
+        monkeypatch.chdir(tmp_path)
+
+        assert ConfigManager().find_config_file("10xgraph.json") == legacy
+        assert ConfigManager().auto_discover_config() == legacy
+
+    def test_nearest_directory_wins_over_name_priority(self, tmp_path, monkeypatch):
+        self._write(tmp_path / "10xgraph.json", "outer:app")
+        nested = tmp_path / "service"
+        nested.mkdir()
+        legacy = self._write(nested / "agentflow.json", "inner:app")
+        monkeypatch.chdir(nested)
+
+        assert ConfigManager().find_config_file("10xgraph.json") == legacy
+
+    def test_explicit_name_does_not_fall_back(self, tmp_path, monkeypatch):
+        self._write(tmp_path / "agentflow.json", "old:app")
+        monkeypatch.chdir(tmp_path)
+
+        with pytest.raises(ConfigurationError):
+            ConfigManager().find_config_file("custom.json")
+
+    def test_resolve_default_config_prefers_new_then_legacy(self, tmp_path):
+        assert resolve_default_config("10xgraph.json", tmp_path) == tmp_path / "10xgraph.json"
+        legacy = self._write(tmp_path / "agentflow.json", "old:app")
+        assert resolve_default_config("10xgraph.json", tmp_path) == legacy
+        new = self._write(tmp_path / "10xgraph.json", "new:app")
+        assert resolve_default_config("10xgraph.json", tmp_path) == new
+        assert resolve_default_config("custom.json", tmp_path) == tmp_path / "custom.json"

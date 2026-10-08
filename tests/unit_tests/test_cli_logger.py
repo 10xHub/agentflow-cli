@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from io import StringIO
 
-from agentflow_cli.cli.logger import (
+from tenxgraph_api.cli.logger import (
     CLILoggerMixin,
     create_debug_logger,
     get_logger,
@@ -14,7 +14,7 @@ from agentflow_cli.cli.logger import (
 
 
 def teardown_function() -> None:
-    root = logging.getLogger("agentflowcli")
+    root = logging.getLogger("tenxgraph_api.cli")
     root.handlers.clear()
 
 
@@ -23,7 +23,7 @@ def test_mixin_uses_named_child_logger() -> None:
         pass
 
     command = ExampleCommand()
-    assert command.logger.name == "agentflowcli.ExampleCommand"
+    assert command.logger.name == "tenxgraph_api.cli.ExampleCommand"
     assert command.logger.propagate is True
     assert command.logger.handlers == []
 
@@ -32,7 +32,7 @@ def test_children_share_single_root_handler() -> None:
     setup_cli_logging(verbose=True)
     first = get_logger("first")
     second = get_logger("second")
-    root = logging.getLogger("agentflowcli")
+    root = logging.getLogger("tenxgraph_api.cli")
     assert len(root.handlers) == 1
     assert first.handlers == []
     assert second.handlers == []
@@ -42,16 +42,16 @@ def test_children_share_single_root_handler() -> None:
 
 def test_quiet_and_verbose_levels() -> None:
     setup_cli_logging(verbose=True)
-    assert logging.getLogger("agentflowcli").level == logging.DEBUG
+    assert logging.getLogger("tenxgraph_api.cli").level == logging.DEBUG
     setup_cli_logging(quiet=True, verbose=True)
-    assert logging.getLogger("agentflowcli").level == logging.ERROR
+    assert logging.getLogger("tenxgraph_api.cli").level == logging.ERROR
 
 
 def test_reconfiguration_replaces_handler() -> None:
     setup_cli_logging()
-    original = logging.getLogger("agentflowcli").handlers[0]
+    original = logging.getLogger("tenxgraph_api.cli").handlers[0]
     setup_cli_logging(level=logging.WARNING)
-    root = logging.getLogger("agentflowcli")
+    root = logging.getLogger("tenxgraph_api.cli")
     assert len(root.handlers) == 1
     assert root.handlers[0] is not original
     assert root.handlers[0].level == logging.WARNING
@@ -69,4 +69,4 @@ def test_custom_stream_is_isolated() -> None:
 def test_debug_logger_enables_debug_globally() -> None:
     logger = create_debug_logger("debug")
     assert logger.getEffectiveLevel() == logging.DEBUG
-    assert logging.getLogger("agentflowcli").handlers[0].level == logging.DEBUG
+    assert logging.getLogger("tenxgraph_api.cli").handlers[0].level == logging.DEBUG

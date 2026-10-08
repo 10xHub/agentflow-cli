@@ -1,4 +1,4 @@
-"""The AG-UI endpoint is off unless agentflow.json turns it on."""
+"""The AG-UI endpoint is off unless 10xgraph.json turns it on."""
 
 # ruff: noqa: S101
 
@@ -8,14 +8,14 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI
 
-from agentflow_cli.src.app.core.auth.route_guard import _iter_routes, find_unprotected_routes
-from agentflow_cli.src.app.core.config.graph_config import AgUiConfig, GraphConfig
-from agentflow_cli.src.app.routers import setup_router
-from agentflow_cli.src.app.routers.setup_router import init_routes
+from tenxgraph_api.src.app.core.auth.route_guard import _iter_routes, find_unprotected_routes
+from tenxgraph_api.src.app.core.config.graph_config import AgUiConfig, GraphConfig
+from tenxgraph_api.src.app.routers import setup_router
+from tenxgraph_api.src.app.routers.setup_router import init_routes
 
 
 def _config(tmp_path: Path, data: dict) -> GraphConfig:
-    path = tmp_path / "agentflow.json"
+    path = tmp_path / "10xgraph.json"
     path.write_text(json.dumps({"agent": "mod:app", **data}))
     return GraphConfig(str(path))
 
@@ -69,7 +69,7 @@ def test_missing_sdk_fails_with_install_hint(monkeypatch):
         raise ModuleNotFoundError("No module named 'ag_ui'", name="ag_ui")
 
     monkeypatch.setattr(setup_router, "_import_ag_ui_router", _missing)
-    with pytest.raises(RuntimeError, match=r"10xscale-agentflow-cli\[ag-ui\]"):
+    with pytest.raises(RuntimeError, match=r"10xgraph-api\[ag-ui\]"):
         init_routes(FastAPI(), ag_ui=True)
 
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentflow_cli.src.app.routers.store.schemas.store_schemas import (
+from tenxgraph_api.src.app.routers.store.schemas.store_schemas import (
     SearchMemorySchema,
     StoreMemorySchema,
     UpdateMemorySchema,

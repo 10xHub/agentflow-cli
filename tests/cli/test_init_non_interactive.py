@@ -5,8 +5,8 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from agentflow_cli.cli.commands.init import InitCommand
-from agentflow_cli.cli.core.output import OutputFormatter
+from tenxgraph_api.cli.commands.init import InitCommand
+from tenxgraph_api.cli.core.output import OutputFormatter
 
 
 def test_dry_run_does_not_create_target(tmp_path: Path) -> None:
@@ -42,7 +42,7 @@ def test_non_interactive_quick_start_creates_project(tmp_path: Path) -> None:
     )
 
     assert result == 0
-    assert (target / "agentflow.json").exists()
+    assert (target / "10xgraph.json").exists()
     assert (target / "graph" / "agent.py").exists()
 
 

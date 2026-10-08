@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentflow_cli.src.app.core.auth.authorization import (
+from tenxgraph_api.src.app.core.auth.authorization import (
     RoleBasedAuthorizationBackend,
     all_scopes,
 )
@@ -37,11 +37,11 @@ def test_admin_wildcard_expands_to_all_scopes():
 
 def _required_scopes() -> set[str]:
     """Every ``resource:action`` a route asks ``RequirePermission`` for."""
-    from agentflow_cli.src.app.core.auth.permissions import RequirePermission
-    from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer
-    from agentflow_cli.src.app.routers.graph.router import router as graph
-    from agentflow_cli.src.app.routers.media.router import router as media
-    from agentflow_cli.src.app.routers.store.router import router as store
+    from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
+    from tenxgraph_api.src.app.routers.checkpointer.router import router as checkpointer
+    from tenxgraph_api.src.app.routers.graph.router import router as graph
+    from tenxgraph_api.src.app.routers.media.router import router as media
+    from tenxgraph_api.src.app.routers.store.router import router as store
 
     found: set[str] = set()
 
@@ -99,7 +99,7 @@ async def test_rbac_still_enforces_thread_ownership():
 
 
 def test_loader_builds_rbac_from_dict_config():
-    from agentflow_cli.src.app.loader import _resolve_authorization_backend
+    from tenxgraph_api.src.app.loader import _resolve_authorization_backend
 
     b = _resolve_authorization_backend(
         {"backend": "rbac", "roles": ROLES, "default_scopes": ["graph:read"]}
@@ -109,7 +109,7 @@ def test_loader_builds_rbac_from_dict_config():
 
 
 def test_loader_rejects_unknown_backend_dict():
-    from agentflow_cli.src.app.loader import _resolve_authorization_backend
+    from tenxgraph_api.src.app.loader import _resolve_authorization_backend
 
     with pytest.raises(ValueError):
         _resolve_authorization_backend({"backend": "nope"})

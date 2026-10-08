@@ -2,7 +2,7 @@
 API Key Authentication Backend Example
 
 This example shows how to implement a custom API key authentication backend
-for AgentFlow CLI applications.
+for 10xGraph CLI applications.
 
 Use Case:
 - Service-to-service authentication
@@ -11,7 +11,7 @@ Use Case:
 
 Setup:
 1. Create this file in your project (e.g., auth/api_key.py)
-2. Configure agentflow.json to use this backend
+2. Configure 10xgraph.json to use this backend
 3. Set API_KEYS environment variable
 """
 
@@ -24,8 +24,8 @@ from fastapi import HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 # Import the base authentication class
-# In your project: from agentflow_cli import BaseAuth
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+# In your project: from tenxgraph_api import BaseAuth
+from tenxgraph_api.src.app.core.auth.base_auth import BaseAuth
 
 
 class APIKeyAuth(BaseAuth):
@@ -246,7 +246,7 @@ def hash_api_key(api_key: str) -> str:
 """
 CONFIGURATION:
 
-# agentflow.json
+# 10xgraph.json
 {
   "auth": {
     "method": "custom",

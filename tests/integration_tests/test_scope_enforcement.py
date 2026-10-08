@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
-from agentflow_cli.src.app.routers.checkpointer.router import router as checkpointer_router
+from tenxgraph_api.src.app.routers.checkpointer.router import router as checkpointer_router
 
 from .conftest import build_app, make_client
 
@@ -71,9 +71,9 @@ def test_no_scopes_declared_is_permissive():
 def test_rbac_backend_maps_roles_to_scopes_end_to_end():
     """With the RBAC backend, roles decide scopes: a 'viewer' role grants
     checkpointer:read (GET works) but not checkpointer:delete (DELETE -> 403)."""
-    from agentflow.storage.checkpointer import InMemoryCheckpointer as _Cp
+    from tenxgraph.storage.checkpointer import InMemoryCheckpointer as _Cp
 
-    from agentflow_cli.src.app.core.auth.authorization import RoleBasedAuthorizationBackend
+    from tenxgraph_api.src.app.core.auth.authorization import RoleBasedAuthorizationBackend
 
     authz = RoleBasedAuthorizationBackend(
         {"viewer": ["checkpointer:read"], "admin": ["*"]},
@@ -101,10 +101,10 @@ def test_authz_block_drives_core_isolation_via_api():
     isolation, so ONLY the stamped block -- not authorize() -- blocks the non-owner."""
 
     import anyio
-    from agentflow.core.authz import build_authz
-    from agentflow.core.state import AgentState
+    from tenxgraph.core.authz import build_authz
+    from tenxgraph.core.state import AgentState
 
-    from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+    from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
 
     class _OwnerScopeBackend(AuthorizationBackend):
         async def authorize(self, user, resource, action, resource_id=None, **ctx):
