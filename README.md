@@ -31,7 +31,7 @@ Not built in: automatic per-tool permissions (user A may call `refund`, user B m
 |---|---|---|
 | [`10xgraph`](https://github.com/10xGraph/10xGraph) | Core engine: graph, state, replay-safe tools, checkpointing, memory | `pip install 10xgraph` (pulled in by this package) |
 | `10xgraph-api` (this repository) | Production server and the `10xgraph` command | `pip install 10xgraph-api` |
-| [`10xgraph-client`](https://github.com/10xHub/agentflow-client) | Typed TypeScript client for every endpoint | `npm install 10xgraph-client` (until it is published, `@10xscale/agentflow-client`) |
+| [`10xgraph-client`](https://github.com/10xGraph/10xgraph-client) | Typed TypeScript client for every endpoint | `npm install 10xgraph-client` |
 
 Docs: [10xgraph.com](https://10xgraph.com).
 
