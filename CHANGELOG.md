@@ -20,7 +20,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.7.0] - Unreleased
+## [0.7.0] - 2026-10-10
 
 **First release as `10xgraph-api`.** 10xScale Agentflow is now 10xGraph. This package
 replaces `10xscale-agentflow-cli`; the server, the CLI and the HTTP API are unchanged apart
@@ -45,7 +45,7 @@ working until 2.0.
   `10xgraph.json`. `10xgraph config` always edits `10xgraph.json`: when only
   `agentflow.json` exists it opens prefilled from that file, and the first save creates
   `10xgraph.json` without touching `agentflow.json`.
-- **Core dependency is `10xgraph>=0.10.1,<2.0`** (import `tenxgraph`), replacing
+- **Core dependency is `10xgraph>=0.10.0,<2.0`** (import `tenxgraph`), replacing
   `10xscale-agentflow`. Do not install both: each ships an `agentflow` module.
 - **CLI env vars use the `TENXGRAPH_` prefix:** `TENXGRAPH_NO_FULLSCREEN`,
   `TENXGRAPH_NO_SPINNER`, `TENXGRAPH_ASCII`. The `AGENTFLOW_` names are read when the new

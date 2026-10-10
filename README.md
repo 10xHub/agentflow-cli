@@ -1,34 +1,39 @@
-
 # 10xGraph API
 
-> Formerly `10xscale-agentflow-cli`. Upgrading? See
-> [Migrating from 10xscale-agentflow-cli](#migrating-from-10xscale-agentflow-cli).
+*Formerly `10xscale-agentflow-cli`.* The production server for 10xGraph agents.
 
 [![CI](https://github.com/10xGraph/10xgraph-api/actions/workflows/ci.yaml/badge.svg)](https://github.com/10xGraph/10xgraph-api/actions/workflows/ci.yaml)
-[![Release](https://github.com/10xGraph/10xgraph-api/actions/workflows/release.yml/badge.svg)](https://github.com/10xGraph/10xgraph-api/actions/workflows/release.yml)
-
+[![Release](https://img.shields.io/github/v/release/10xGraph/10xgraph-api)](https://github.com/10xGraph/10xgraph-api/releases/latest)
 [![PyPI](https://img.shields.io/pypi/v/10xgraph-api?color=blue)](https://pypi.org/project/10xgraph-api/)
 [![Python](https://img.shields.io/pypi/pyversions/10xgraph-api)](https://pypi.org/project/10xgraph-api/)
 [![License](https://img.shields.io/github/license/10xGraph/10xgraph-api)](https://github.com/10xGraph/10xgraph-api/blob/main/LICENSE)
-[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/10xGraph/10xgraph-api/actions/workflows/ci.yaml)
-[![Tests](https://img.shields.io/badge/tests-871%20passed-brightgreen.svg)](https://github.com/10xGraph/10xgraph-api/actions/workflows/ci.yaml)
-[![Status](https://img.shields.io/badge/status-beta-yellow.svg)](https://pypi.org/project/10xgraph-api/)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-**10xGraph API** turns a 10xGraph `CompiledGraph` into a production-grade FastAPI service, plus a Typer-based command line to scaffold, run, build, test, and evaluate it. You write a graph, point `10xgraph.json` at it, and `10xgraph api` serves it over REST + WebSocket with authentication, rate limiting, media handling, checkpointer/thread management, and a memory store API.
+`10xgraph-api` generates the production server around a [10xGraph](https://github.com/10xGraph/10xGraph) agent. Point `10xgraph.json` at your compiled graph and it serves REST, SSE streaming, WebSocket and realtime-audio endpoints with JWT or custom auth, scoped authorization on every endpoint, owner-only threads and rate limiting, then writes your Docker Compose and Kubernetes files. MIT licensed and self-hosted.
 
-> ### 📦 Part of the 10xGraph library
->
-> This package (`10xgraph-api`) is the **API server + CLI layer** of
-> [**10xGraph**](https://github.com/10xGraph/10xGraph). The core orchestration
-> engine (`StateGraph`, `Agent`, `ToolNode`, state, persistence, memory, and tools) lives in the
-> separate [`10xgraph`](https://pypi.org/project/10xgraph/) package. This package
-> builds on top of it to expose your agent graphs as a deployable service.
->
-> - **Core framework:** [`10xgraph`](https://pypi.org/project/10xgraph/) · [source](https://github.com/10xGraph/10xGraph)
-> - **This package (API + CLI):** [`10xgraph-api`](https://pypi.org/project/10xgraph-api/) · [source](https://github.com/10xGraph/10xgraph-api)
-> - **TypeScript client:** [`@10xscale/agentflow-client`](https://www.npmjs.com/package/@10xscale/agentflow-client)
-> - **Docs:** [10xgraph.com](https://10xgraph.com/)
+Other frameworks give you the graph. 10xGraph gives you the graph and the server around it, in the same open-source project.
+
+---
+
+## What the server gives you
+
+- **Endpoints generated from the graph.** Invoke, SSE stream, stop, WebSocket and realtime audio; threads, state and messages; the memory store; file uploads for multimodal input; and an optional [AG-UI](https://10xgraph.com/docs/server/ag-ui) endpoint for CopilotKit and other AG-UI clients.
+- **Authentication.** `"auth": "jwt"`, or your own `BaseAuth` subclass.
+- **Scoped authorization on every endpoint.** Routes require `resource:action` scopes such as `graph:invoke`, `graph:stream` or `checkpointer:read`, checked by a pluggable `AuthorizationBackend`. The server refuses to start if any non-public route has no guard.
+- **Owner-only threads.** In production mode a thread is readable and writable only by the user who created it, on every step that touches it. Ownership checks are cached in-process and optionally in Redis, so they do not hit the database on each request.
+- **Rate limiting.** Sliding-window limits with a memory, Redis or custom backend.
+- **Production hardening.** Request size limits (10 MB default), security headers, error and log sanitization, startup warnings for insecure settings, and Snowflake IDs for multi-node deployments.
+- **Deployment files.** `10xgraph build --docker-compose --k8s` writes a `Dockerfile`, `.dockerignore`, `docker-compose.yml` and `k8s.yaml`.
+- **A secure-by-default scaffold.** `10xgraph init --yes --template production --auth jwt --rate-limit redis` writes a project with JWT auth, owner-only thread access, a Redis rate limit, a prompt-injection validator, evals, tests, `.env.example` and a pre-commit config.
+
+Not built in: automatic per-tool permissions (user A may call `refund`, user B may not). Tools receive the caller's verified scopes and can check them with `tenxgraph.core.authz.has_scope`.
+
+| Package | What it does | Install |
+|---|---|---|
+| [`10xgraph`](https://github.com/10xGraph/10xGraph) | Core engine: graph, state, replay-safe tools, checkpointing, memory | `pip install 10xgraph` (pulled in by this package) |
+| `10xgraph-api` (this repository) | Production server and the `10xgraph` command | `pip install 10xgraph-api` |
+| [`10xgraph-client`](https://github.com/10xGraph/10xgraph-client) | Typed TypeScript client for every endpoint | `npm install 10xgraph-client` (until it is published, `@10xscale/agentflow-client`) |
+
+Docs: [10xgraph.com](https://10xgraph.com).
 
 ---
 
@@ -70,23 +75,6 @@ Kept working until 2.0, so you can migrate at your own pace:
 
 ---
 
-## ✨ Key Features
-
-- **🖥️ Professional CLI** - Scaffold, run, build, test, and evaluate agents from one command line
-- **⚡ FastAPI Backend** - Your compiled graph auto-served over REST + WebSocket, high-performance and async
-- **🔌 Config-Driven** - One `10xgraph.json` wires agent, auth, checkpointer, store, Redis, and rate limits
-- **🔐 Authentication** - Built-in JWT auth, custom `BaseAuth` backends, and RBAC authorization
-- **🚦 Rate Limiting** - Sliding-window limits with memory, Redis, or custom backends
-- **🆔 Distributed IDs** - Snowflake ID generation for multi-node deployments
-- **🧵 Thread Management** - Conversation thread naming, listing, state, and message APIs
-- **🖼️ Multimodal & Media** - File upload/download endpoints and media handling for multimodal agents
-- **🎙️ Realtime Audio Bridge** - WebSocket endpoint for live audio-to-audio agents (Gemini Live)
-- **🐳 Docker & Kubernetes Ready** - Generate production Dockerfiles and compose files with one command
-- **🛡️ Production Hardening** - Error/log sanitization, request size limits, security headers, startup validation
-- **💉 Dependency Injection** - InjectQ for clean, testable dependency wiring
-
----
-
 ## Installation
 
 **Basic installation:**
@@ -95,7 +83,7 @@ Kept working until 2.0, so you can migrate at your own pace:
 pip install 10xgraph-api
 ```
 
-Optional extras — install only what you configure:
+Optional extras; install only what you configure:
 
 ```bash
 pip install "10xgraph-api[redis]"   # Redis rate-limit / cache backend
@@ -105,11 +93,11 @@ pip install "10xgraph-api[otel]"    # OpenTelemetry tracing
 pip install "10xgraph-api[snowflakekit]"  # Snowflake ID generation
 ```
 
-Requires **Python ≥ 3.12**. Depends on the core `10xgraph` framework.
+Requires Python 3.12 or newer. Installs the core `10xgraph` framework as a dependency.
 
 ---
 
-## 🚀 Quick Start
+## Quick start
 
 ```bash
 # 1. Scaffold a project (interactive: dev vs production, auth, rate limiting)
@@ -130,7 +118,7 @@ available; `dev` is the goal-oriented wrapper around them.
 
 ---
 
-## 🖥️ CLI Commands
+## CLI commands
 
 Run `10xgraph --help` or `10xgraph COMMAND --help` for the generated command reference.
 
@@ -263,9 +251,9 @@ valid `agent` key, and whether the default port is free.
 10xgraph --no-animation audit     # static output
 ```
 
-Nothing is written or changed. It exits `1` if any check fails and `0` otherwise —
-warnings (no project config, port already bound) are reported without failing the
-run — so it works as a CI gate.
+Nothing is written or changed. It exits `1` if any check fails and `0` otherwise.
+Warnings (no project config, port already bound) are reported without failing the run,
+so it works as a CI gate.
 
 ### `10xgraph config`
 
@@ -290,7 +278,7 @@ Preview the terminal animations and progress states without touching project sta
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 The configuration file (`10xgraph.json`) defines your agent, authentication, and infrastructure settings:
 
@@ -301,6 +289,7 @@ The configuration file (`10xgraph.json`) defines your agent, authentication, and
   "auth": null,
   "checkpointer": null,
   "injectq": null,
+  "authorization": null,
   "store": null,
   "remote_tools": [],
   "redis": null,
@@ -324,14 +313,15 @@ The configuration file (`10xgraph.json`) defines your agent, authentication, and
 | `redis` | string \| null | Redis connection URL |
 | `rate_limit` | object \| null | Sliding-window rate limiting configuration |
 | `thread_name_generator` | string \| null | Path to a custom thread name generator |
+| `ag_ui` | object | `{"enabled": true}` mounts `POST /v1/ag-ui` (needs the `ag-ui` extra) |
 
-See the **[Configuration Guide](./docs/configuration.md)** for complete details.
+Full reference: [Configuration](https://10xgraph.com/docs/reference/api-cli/configuration).
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
-10xGraph supports multiple authentication strategies. See the **[Authentication Guide](./docs/authentication.md)** for details.
+JWT or your own backend. Guide: [Authentication](https://10xgraph.com/docs/server/auth).
 
 ### JWT Authentication
 
@@ -355,19 +345,22 @@ JWT_ALGORITHM=HS256
 
 **auth/custom.py:**
 ```python
-from tenxgraph_api import BaseAuth
-from fastapi import Response, HTTPException
+from typing import Any
+
+from fastapi import HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
+from tenxgraph_api import BaseAuth
 
 
 class MyAuthBackend(BaseAuth):
     def authenticate(
         self,
-        res: Response,
+        request: Request,
+        response: Response,
         credential: HTTPAuthorizationCredentials,
-    ) -> dict[str, any] | None:
+    ) -> dict[str, Any] | None:
         token = credential.credentials
-        user = verify_token(token)
+        user = verify_token(token)  # your token check
         if not user:
             raise HTTPException(401, "Invalid token")
         return {"user_id": user.id, "username": user.username, "email": user.email}
@@ -375,7 +368,7 @@ class MyAuthBackend(BaseAuth):
 
 ---
 
-## 🆔 ID Generation
+## ID generation
 
 10xGraph includes Snowflake ID generation for distributed, time-sortable unique IDs.
 
@@ -404,11 +397,11 @@ SNOWFLAKE_NODE_BITS=5
 SNOWFLAKE_WORKER_BITS=8
 ```
 
-See the **[ID Generation Guide](./docs/id-generation.md)** for more details.
+More: [Extensibility](https://10xgraph.com/docs/concepts/extensibility).
 
 ---
 
-## 🧵 Thread Name Generation
+## Thread name generation
 
 Generate human-friendly names for conversation threads.
 
@@ -420,21 +413,21 @@ name = generator.generate_name()
 # "thoughtful-dialogue", "exploring-ideas", ...
 ```
 
-See the **[Thread Name Generator Guide](./docs/thread-name-generator.md)** for custom implementations.
+Custom generators: [Extensibility](https://10xgraph.com/docs/concepts/extensibility).
 
 ---
 
-## 🛡️ Security
+## Security
 
-10xGraph CLI provides production-grade security features.
+Security features of the server:
 
-- ✅ **Authentication** - JWT and custom authentication backends
-- ✅ **Authorization** - Resource-based access control with extensible backends
-- ✅ **Request Limits** - DoS protection with configurable size limits (default 10MB)
-- ✅ **Error Sanitization** - Production-safe error messages preventing information disclosure
-- ✅ **Log Sanitization** - Automatic redaction of sensitive data (tokens, passwords, secrets)
-- ✅ **Security Warnings** - Startup validation for insecure configurations
-- ✅ **HTTPS Ready** - SSL/TLS support with secure headers
+- **Authentication:** JWT and custom authentication backends
+- **Authorization:** scoped access on every endpoint, owner-only threads, extensible backends
+- **Request limits:** configurable request size limit (10 MB default)
+- **Error sanitization:** production-safe error messages that do not leak internals
+- **Log sanitization:** automatic redaction of tokens, passwords and secrets
+- **Security warnings:** startup validation for insecure configurations
+- **Security headers:** HSTS, frame options and CSP, configurable
 
 ### Production Security Checklist
 
@@ -449,14 +442,14 @@ REDOCS_PATH=
 MAX_REQUEST_SIZE=10485760        # request size limit (10MB default)
 ```
 
-For deployment hardening and authentication patterns, see the
-**[Deployment Guide](./docs/deployment.md)** and **[Authentication Guide](./docs/authentication.md)**.
+See the [Production checklist](https://10xgraph.com/docs/server/production-checklist) and
+[Authentication](https://10xgraph.com/docs/server/auth).
 
 ---
 
-## 🐳 Deployment
+## Deployment
 
-See the **[Deployment Guide](./docs/deployment.md)** for full instructions.
+Guide: [Deploy](https://10xgraph.com/docs/server/deploy).
 
 ```bash
 # Generate Docker files
@@ -469,14 +462,11 @@ docker compose up --build -d
 docker compose logs -f
 ```
 
-Cloud targets covered in the guide: [AWS ECS](./docs/deployment.md#aws-ecs),
-[Google Cloud Run](./docs/deployment.md#google-cloud-run),
-[Azure Container Instances](./docs/deployment.md#azure-container-instances),
-[Kubernetes](./docs/deployment.md#kubernetes), and [Heroku](./docs/deployment.md#heroku).
+For Kubernetes, `10xgraph build --k8s` writes `k8s.yaml`; see [Kubernetes](https://10xgraph.com/docs/server/kubernetes).
 
 ---
 
-## 📁 Project Structure
+## Project structure
 
 ```
 10xgraph-api/
@@ -484,7 +474,6 @@ Cloud targets covered in the guide: [AWS ECS](./docs/deployment.md#aws-ecs),
 │   ├── __init__.py        # Package exports (BaseAuth, SnowFlakeIdGenerator, ThreadNameGenerator)
 │   ├── cli/               # Typer CLI: main.py + commands/ + templates/
 │   └── src/app/           # FastAPI application (main.py, loader.py, core/, routers/, utils/)
-├── docs/                   # Documentation
 ├── tests/                  # Test suite
 ├── 10xgraph.json          # Configuration
 ├── pyproject.toml          # Project metadata
@@ -493,14 +482,13 @@ Cloud targets covered in the guide: [AWS ECS](./docs/deployment.md#aws-ecs),
 
 ---
 
-## 🔧 Development
+## Development
 
 ```bash
 # Clone and set up
 git clone https://github.com/10xGraph/10xgraph-api.git
 cd 10xgraph-api
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --dev
 pre-commit install
 
 # Quality gate
@@ -515,7 +503,6 @@ pre-commit run --all-files            # full gate (ruff + bandit, pinned version
 ```bash
 make build     # build sdist + wheel
 make test      # run tests
-make test-cov  # run tests with coverage
 make publish   # upload to PyPI (maintainers)
 make clean     # remove build artifacts
 ```
@@ -528,46 +515,42 @@ sdist + wheel, checks the distribution metadata, and creates a GitHub Release wi
 notes and the artifacts attached. PyPI publishing is manual (`make publish`).
 
 ```bash
-git tag v0.3.2.9 && git push origin v0.3.2.9
+git tag v0.7.0 && git push origin v0.7.0
 ```
 
 ---
 
-## 📄 License
+## License
 
 10xGraph is [MIT licensed](https://github.com/10xGraph/10xgraph-api/blob/main/LICENSE) and made by
 [10xScale](https://10xscale.ai). Contributions are accepted under the same license.
 
 ---
 
-## 🔗 Links & Resources
+## Links
 
-- **[Documentation](https://10xgraph.com/)** - Full framework docs
-- **[Core framework (`10xgraph`)](https://github.com/10xGraph/10xgraph)** - The orchestration engine this CLI serves
-- **[This repository](https://github.com/10xGraph/10xgraph-api)** - Source code and issues
-- **[PyPI Project](https://pypi.org/project/10xgraph-api/)** - Package releases (final release: `0.6.0`)
-- **[10xGraph](https://10xgraph.com)** and **[github.com/10xGraph](https://github.com/10xGraph)** - Where development continues
-- **[Local docs](./docs/)** - CLI, configuration, deployment, auth, rate limiting, IDs, thread names
+- Documentation: [10xgraph.com](https://10xgraph.com)
+- Core framework: [`10xgraph`](https://github.com/10xGraph/10xGraph)
+- PyPI: [`10xgraph-api`](https://pypi.org/project/10xgraph-api/)
+- [Issues](https://github.com/10xGraph/10xgraph-api/issues)
+- [Changelog](https://github.com/10xGraph/10xgraph-api/blob/main/CHANGELOG.md)
 
 ---
 
-## 🙏 Contributing
+## Contributing
 
-Contributions are welcome! Fork the repo, create a feature branch, run tests and linting, and open a
+Contributions are welcome. Fork the repo, create a feature branch, run tests and linting, and open a
 Pull Request. See the [repository](https://github.com/10xGraph/10xgraph-api) for issue reporting and
 guidelines.
 
 ---
 
-## 💬 Support
+## Support
 
-- **Documentation:** [10xgraph.com](https://10xgraph.com/) and [local docs](./docs/)
+- **Documentation:** [10xgraph.com](https://10xgraph.com/)
 - **Issues:** [GitHub Issues](https://github.com/10xGraph/10xgraph-api/issues)
 - **Repository:** [GitHub](https://github.com/10xGraph/10xgraph-api)
 
 ---
 
-Developed by [10xScale](https://10xscale.ai) and maintained by the community. New projects should
-start on [10xGraph](https://github.com/10xGraph).
-
-**Made with ❤️ for the AI agent development community**
+Developed by [10xScale](https://10xscale.ai), which runs its own AI products on 10xGraph.

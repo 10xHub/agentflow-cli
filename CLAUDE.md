@@ -11,7 +11,7 @@ for the monorepo overview see the workspace-root `CLAUDE.md`.
 - Requires: Python >= 3.12 · Status: `4 - Beta`
 - Console entry points: `10xgraph = tenxgraph_api.cli.main:main`, plus the deprecated alias
   `agentflow = tenxgraph_api.cli.main:legacy_main` (prints a notice to stderr; removed in 2.0)
-- Depends on the core framework: `10xgraph>=0.10.1,<2.0` (import `tenxgraph`). Must not be
+- Depends on the core framework: `10xgraph>=0.10.0,<2.0` (import `tenxgraph`). Must not be
   installed alongside the old `10xscale-agentflow`: both provide an `agentflow` module.
 
 ## Rename compatibility (kept until 2.0)
@@ -197,14 +197,12 @@ ruff check . && ruff format .
   printed `unknown` from a wheel - is gone.
 - **There is no `agentflow doctor`.** The environment check shipped as `10xgraph audit`; earlier
   README/CHANGELOG copy called it `doctor`. Anything still saying `doctor` is stale.
-- **README links to `./docs/`** (`configuration.md`, `authentication.md`, `deployment.md`,
-  `id-generation.md`, `thread-name-generator.md`) but there is no `docs/` directory in this
-  package — every one of those links is broken.
+- There is no `docs/` directory in this package. The README links to the docs site
+  (`10xgraph.com/docs/...`) instead; keep it that way.
 - **a2a / a2ui routers no longer exist.** Don't document a2a HTTP endpoints as live; restore the
   files from git history if that surface is actually built.
-- **`pyproject.toml` URLs** point at `10xgraph.com` and `github.com/10xGraph/10xgraph-api`,
-  but the git remote is still `Iamsdt/pyagenity-api.git` and needs to be repointed before
-  release (checklist 1.5).
+- The local git remote is still `Iamsdt/pyagenity-api.git`; GitHub redirects it to
+  `10xGraph/10xgraph-api`, so pushes work. Repoint it when convenient.
 - The workspace-root `CLAUDE.md` lists only `init/api/play/build` and an older `10xgraph.json`
   shape; the real CLI has `eval/test/skills/version` too and the config supports `rate_limit`,
   `thread_name_generator`, and `authorization`.
