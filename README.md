@@ -31,7 +31,7 @@ Not built in: automatic per-tool permissions (user A may call `refund`, user B m
 |---|---|---|
 | [`10xgraph`](https://github.com/10xGraph/10xGraph) | Core engine: graph, state, replay-safe tools, checkpointing, memory | `pip install 10xgraph` (pulled in by this package) |
 | `10xgraph-api` (this repository) | Production server and the `10xgraph` command | `pip install 10xgraph-api` |
-| [`10xgraph-client`](https://github.com/10xGraph/10xgraph-client) | Typed TypeScript client for every endpoint | `npm install 10xgraph-client` (until it is published, `@10xscale/agentflow-client`) |
+| [`10xgraph-client`](https://github.com/10xHub/agentflow-client) | Typed TypeScript client for every endpoint | `npm install 10xgraph-client` (until it is published, `@10xscale/agentflow-client`) |
 
 Docs: [10xgraph.com](https://10xgraph.com).
 
@@ -539,9 +539,33 @@ git tag v0.7.0 && git push origin v0.7.0
 
 ## Contributing
 
-Contributions are welcome. Fork the repo, create a feature branch, run tests and linting, and open a
-Pull Request. See the [repository](https://github.com/10xGraph/10xgraph-api) for issue reporting and
-guidelines.
+**Your avatar belongs on this wall.**
+
+<a href="https://github.com/10xGraph/10xgraph-api/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=10xGraph/10xgraph-api" alt="People who have contributed to 10xgraph-api" />
+</a>
+
+Every person above shipped code that serves real agents in production. Merge one pull request and you join them, here and on the contributor page at [10xgraph.com/maintainers](https://10xgraph.com/maintainers).
+
+Your first pull request can be small. These are real, self-contained, and useful today:
+
+- **Type one module.** `pyproject.toml` lists the modules `mypy` still skips, each with its error count. Start with a one-error module, fix it, delete its line.
+- **Add a test for an edge case you hit.** A request that should be rejected, a config that should fail at startup, a header that should be set.
+- **Write the deployment recipe you needed.** Behind a reverse proxy, on a specific cloud, with your auth provider. Recipes go on [10xgraph.com](https://10xgraph.com), where every page has an "Edit this page" link.
+- **Turn a bug into a failing test.** Open it as a draft pull request; the fix can come later.
+
+From clone to a passing check:
+
+```bash
+git clone https://github.com/10xGraph/10xgraph-api.git
+cd 10xgraph-api
+uv sync --dev
+uv run pytest
+uv run pre-commit run --all-files   # ruff, bandit and hygiene checks, as in CI
+uv run mypy
+```
+
+Draft pull requests are welcome, so open early and ask questions in the PR. For bigger changes, start a thread in the core repository's [Discussions](https://github.com/10xGraph/10xGraph/discussions) first so the work does not overlap.
 
 ---
 
