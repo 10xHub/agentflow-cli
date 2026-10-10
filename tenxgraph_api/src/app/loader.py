@@ -6,6 +6,7 @@ from pathlib import Path
 
 from injectq import InjectQ
 from tenxgraph.core import CompiledGraph
+from tenxgraph.core.graph.remote_tool import RemoteToolConfig as CoreRemoteToolConfig
 from tenxgraph.storage.checkpointer import BaseCheckpointer
 from tenxgraph.storage.store import BaseStore
 
@@ -428,7 +429,7 @@ async def attach_all_modules(
     if remote_tools:
         if graph is None:
             raise RuntimeError("Cannot attach remote tools because the graph failed to load")
-        grouped: dict[str, list[dict]] = {}
+        grouped: dict[str, list[dict | CoreRemoteToolConfig]] = {}
         for tool in remote_tools:
             grouped.setdefault(tool.node_name, []).append(tool.to_tool_schema())
         for node_name, schemas in grouped.items():
